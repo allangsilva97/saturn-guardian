@@ -1,14 +1,17 @@
 {
   "name": "saturn-vanguard",
   "productName": "Saturn Vanguard",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Retro 2D run-and-gun platformer",
   "main": "main.js",
   "private": true,
   "scripts": {
     "prepare-app": "node build-app.mjs",
     "start": "node build-app.mjs && electron .",
-    "dist": "node build-app.mjs && electron-builder --win portable"
+    "start:128": "node build-app.mjs 128 && electron .",
+    "dist": "npm run dist:64 && npm run dist:128",
+    "dist:64": "node build-app.mjs 64 && electron-builder --win portable -c.portable.artifactName=SaturnVanguard-64bit.exe",
+    "dist:128": "node build-app.mjs 128 && electron-builder --win portable -c.portable.artifactName=SaturnVanguard-128bit.exe"
   },
   "build": {
     "appId": "com.saturnvanguard.game",
@@ -18,14 +21,11 @@
       "app/**/*"
     ],
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "win": {
       "target": "portable",
       "icon": "build/icon.png"
-    },
-    "portable": {
-      "artifactName": "SaturnVanguard.exe"
     }
   },
   "devDependencies": {

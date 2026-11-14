@@ -54,9 +54,9 @@
     <div id="main-menu" class="absolute inset-0 z-30 bg-slate-950/95 flex flex-col items-center p-4 overflow-y-auto">
         <div class="my-auto w-full flex flex-col items-center">
             <div class="text-center mb-4">
-                <div class="pixel-font text-sky-400 text-[10px] mb-2 tracking-widest animate-pulse">SATURN 64-BIT VANGUARD ENGINE</div>
+                <div id="gfx-engine" class="pixel-font text-sky-400 text-[10px] mb-2 tracking-widest animate-pulse">SATURN 64-BIT VANGUARD ENGINE</div>
                 <h1 class="pixel-font text-2xl md:text-4xl text-yellow-400 font-bold tracking-wider mb-1 drop-shadow-[0_0_15px_rgba(234,179,8,0.6)]">SATURN VANGUARD</h1>
-                <p class="text-sm text-slate-400 tracking-widest uppercase">4 Worlds &bull; 12 Stages &bull; 64-Bit Enhanced Edition</p>
+                <p id="gfx-edition" class="text-sm text-slate-400 tracking-widest uppercase">4 Worlds &bull; 12 Stages &bull; 64-Bit Enhanced Edition</p>
             </div>
 
             <div class="w-full max-w-5xl saturn-panel p-5 mb-3 rounded-lg">
@@ -102,6 +102,7 @@
 
                 <div class="flex flex-wrap gap-3 justify-between items-center mt-5">
                     <div class="flex flex-wrap gap-2">
+                        <button onclick="toggleGfx()" id="gfx-btn" class="px-3 py-2 bg-slate-800 border border-sky-700 text-xs text-sky-300 rounded hover:bg-slate-700">GFX: 64-BIT</button>
                         <button onclick="toggleCRT()" id="crt-toggle-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">CRT: ON</button>
                         <button onclick="toggleMute()" id="mute-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">SOUND: ON</button>
                         <button onclick="resetProgress()" class="px-3 py-2 bg-slate-900 border border-red-900 text-xs text-red-400 rounded hover:bg-red-950">RESET SAVE</button>
@@ -400,6 +401,38 @@
     // =====================================================================
     //  MENU / ARMORY UI
     // =====================================================================
+    // ---- Graphics mode: 64-bit (chunky 480x270 pixels) or 128-bit (3x resolution + lighting) ----
+    // Gameplay always runs in the same 480x270 logical space; only rendering changes.
+    // Priority: ?mode= URL param, then a build default (desktop .exe), then the saved web choice.
+    const GFX_KEY = 'saturn-vanguard-gfx';
+    let gfx128 = (() => {
+        const q = new URLSearchParams(location.search).get('mode');
+        if (q === '128' || q === '64') return q === '128';
+        if (window.SV_DEFAULT_MODE) return window.SV_DEFAULT_MODE === '128';
+        try { return localStorage.getItem(GFX_KEY) === '128'; } catch (e) { return false; }
+    })();
+    let RES = 1;
+    const snap = v => Math.round(v * RES) / RES;
+    function updateGfxLabels() {
+        const bits = gfx128 ? '128' : '64';
+        document.getElementById('gfx-btn').textContent = `GFX: ${bits}-BIT`;
+        document.getElementById('gfx-engine').textContent = `SATURN ${bits}-BIT VANGUARD ENGINE`;
+        document.getElementById('gfx-edition').innerHTML = `4 Worlds &bull; 12 Stages &bull; ${bits}-Bit ${gfx128 ? 'Remastered' : 'Enhanced'} Edition`;
+        document.title = gfx128 ? 'Saturn Vanguard 128' : 'Saturn Vanguard';
+    }
+    function toggleGfx() {
+        gfx128 = !gfx128;
+        if (!window.SV_DEFAULT_MODE) { try { localStorage.setItem(GFX_KEY, gfx128 ? '128' : '64'); } catch (e) {} }
+        updateGfxLabels();
+        if (crtEnabled === gfx128) toggleCRT(); // scanlines suit 64-bit; 128-bit starts clean (still toggleable)
+    }
+    function applyGfx() {
+        RES = gfx128 ? 3 : 1;
+        if (canvas.width !== W * RES) { canvas.width = W * RES; canvas.height = H * RES; }
+        ctx.imageSmoothingEnabled = gfx128;
+        canvas.style.imageRendering = gfx128 ? 'auto' : '';
+        if (gfx128) buildPostFx();
+    }
     function toggleCRT() {
         crtEnabled = !crtEnabled;
         document.getElementById('scanline-layer').classList.toggle('hidden', !crtEnabled);
@@ -543,9 +576,11 @@
         return p.crouch ? { x: p.x, y: p.y + 12, w: p.w, h: p.h - 12 } : p;
     }
     function burst(x, y, n, color, spd = 3, life = 22) {
+        if (gfx128) n = Math.round(n * 1.6);
         for (let i = 0; i < n; i++) {
             particles.push({ x, y, vx: (Math.random() - 0.5) * spd * 2, vy: (Math.random() - 0.5) * spd * 2,
-                life: life * (0.6 + Math.random() * 0.4), max: life, color, size: Math.random() < 0.3 ? 3 : 2 });
+                life: life * (0.6 + Math.random() * 0.4), max: life, color,
+                size: gfx128 ? 0.8 + Math.random() * 1.8 : (Math.random() < 0.3 ? 3 : 2) });
         }
     }
     function popText(x, y, text, color = '#facc15') { texts.push({ x, y, text, color, life: 50 }); }
@@ -701,8 +736,8 @@
         if (!canvas) {
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
-            ctx.imageSmoothingEnabled = false;
         }
+        applyGfx();
         resetGame();
         state = 'playing';
         lastTs = 0; acc = 0;
@@ -1639,6 +1674,7 @@
         skyGrad.addColorStop(0, theme.sky[0]);
         skyGrad.addColorStop(0.6, theme.sky[1]);
         skyGrad.addColorStop(1, theme.sky[2]);
+        if (gfx128) buildSky();
     }
 
     function drawShape(style, x, base, w, h, fill, top) {
@@ -1660,14 +1696,15 @@
     }
 
     function drawBackground() {
-        ctx.fillStyle = skyGrad;
-        ctx.fillRect(0, 0, W, H);
+        if (gfx128) drawSkyHD();
+        else { ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, W, H); }
         for (const s of stars) {
             const sx = ((s.x - cameraX * 0.05) % (W * 2) + W * 2) % (W * 2);
             if (sx > W) continue;
             ctx.globalAlpha = (stage.world === 1 ? 0.2 : 0.45) + 0.4 * Math.sin(frame * 0.05 + s.tw);
             ctx.fillStyle = '#e0f2fe';
-            ctx.fillRect(sx, s.y, s.s, s.s);
+            if (gfx128) { ctx.beginPath(); ctx.arc(sx, s.y, s.s * 0.45, 0, Math.PI * 2); ctx.fill(); }
+            else ctx.fillRect(sx, s.y, s.s, s.s);
         }
         ctx.globalAlpha = 1;
 
@@ -1682,6 +1719,7 @@
         pg.addColorStop(0, pl.c1); pg.addColorStop(1, pl.c2);
         ctx.fillStyle = pg;
         ctx.beginPath(); ctx.arc(px, py, pl.r, 0, Math.PI * 2); ctx.fill();
+        if (gfx128) drawPlanetHD(px, py, pl);
         if (pl.ring) { ctx.beginPath(); ctx.ellipse(px, py, pl.r * 2, pl.r * 0.38, -0.3, 0, Math.PI); ctx.stroke(); }
 
         const st = theme.structure;
@@ -1691,6 +1729,7 @@
             if (bx + b.w < 0 || bx > W) continue;
             drawShape(st, Math.round(bx), 232, Math.ceil(b.w), b.h, theme.far, theme.far);
         }
+        if (gfx128) drawAtmosphereHD(120, 0.35);
         const midOff = -((cameraX * 0.45) % MID_PERIOD);
         for (let k = 0; k < 2; k++) for (const b of midLayer) {
             const bx = Math.round(midOff + k * MID_PERIOD + b.x);
@@ -1706,8 +1745,14 @@
             if (theme.lights && st === 'city') {
                 ctx.fillStyle = theme.lights;
                 for (const [lx, ly] of b.lights) ctx.fillRect(bx + lx, 232 - b.h + ly, 2, 2);
+                if (gfx128) {
+                    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+                    for (const [lx, ly] of b.lights) light(bx + lx + 1, 232 - b.h + ly + 1, 5, theme.lights, 0.5);
+                    ctx.restore();
+                }
             }
         }
+        if (gfx128) drawAtmosphereHD(170, 0.25);
     }
 
     function drawPlatforms() {
@@ -1769,7 +1814,7 @@
     }
 
     function drawEnemy(en) {
-        const x = Math.round(en.x), y = Math.round(en.y), t = en.t, f = en.facing, white = en.hurt > 0;
+        const x = snap(en.x), y = snap(en.y), t = en.t, f = en.facing, white = en.hurt > 0;
         const body = white ? '#fff' : t.color, head = white ? '#fff' : t.head;
         ctx.save();
         ctx.globalAlpha = en.alpha;
@@ -1952,7 +1997,7 @@
         const p = player;
         if (p.invuln > 0 && p.invuln < 9000 && Math.floor(p.invuln / 3) % 2 === 0) return;
         const cls = CLASSES[selectedClass], el = ELEMENTS[selectedElement];
-        const x = Math.round(p.x), y = Math.round(p.y), f = p.facing, top = p.crouch ? y + 10 : y;
+        const x = snap(p.x), y = snap(p.y), f = p.facing, top = p.crouch ? y + 10 : y;
 
         ctx.fillStyle = '#1e293b';
         if (p.crouch) { ctx.fillRect(x + 2, y + 24, 5, 6); ctx.fillRect(x + 10, y + 24, 5, 6); }
@@ -2040,7 +2085,16 @@
     }
 
     function drawFx() {
-        for (const pt of particles) {
+        if (gfx128) {
+            // streaked sparks: a short motion trail along the particle's velocity
+            ctx.lineCap = 'round';
+            for (const pt of particles) {
+                ctx.globalAlpha = Math.min(1, pt.life / (pt.max * 0.5));
+                ctx.strokeStyle = pt.color; ctx.lineWidth = pt.size;
+                ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(pt.x - pt.vx * 1.8, pt.y - pt.vy * 1.8); ctx.stroke();
+            }
+            ctx.lineCap = 'butt';
+        } else for (const pt of particles) {
             ctx.globalAlpha = Math.min(1, pt.life / (pt.max * 0.5));
             ctx.fillStyle = pt.color;
             ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
@@ -2063,6 +2117,18 @@
 
     function drawWeather() {
         if (!theme.weather) return;
+        if (gfx128) {
+            for (const w of weather) {
+                if (theme.weather === 'sand') {
+                    ctx.strokeStyle = `rgba(253,186,116,${0.2 + w.s * 0.3})`; ctx.lineWidth = 0.6 + w.s * 0.6;
+                    ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(w.x + 6 + w.s * 8, w.y - 0.6); ctx.stroke();
+                } else {
+                    ctx.fillStyle = theme.weather === 'snow' ? `rgba(255,255,255,${0.45 + w.s * 0.5})` : `rgba(216,180,254,${0.3 + w.s * 0.5})`;
+                    ctx.beginPath(); ctx.arc(w.x, w.y, 0.5 + w.s * 1.1, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+            return;
+        }
         for (const w of weather) {
             if (theme.weather === 'sand') { ctx.fillStyle = `rgba(253,186,116,${0.25 + w.s * 0.35})`; ctx.fillRect(w.x, w.y, 4 + w.s * 4, 1); }
             else if (theme.weather === 'snow') { ctx.fillStyle = `rgba(255,255,255,${0.5 + w.s * 0.5})`; ctx.fillRect(w.x, w.y, w.s > 0.6 ? 2 : 1, w.s > 0.6 ? 2 : 1); }
@@ -2095,17 +2161,231 @@
         ctx.fillStyle = color; ctx.fillText(text, (W - w) / 2, y);
     }
 
+    // =====================================================================
+    //  128-BIT RENDERING EXTRAS (lighting, shadows, bloom, vignette, sky)
+    // =====================================================================
+    const glowCache = new Map();
+    function glowSprite(color) {
+        let c = glowCache.get(color);
+        if (!c) {
+            if (glowCache.size > 256) glowCache.clear();
+            c = document.createElement('canvas'); c.width = c.height = 64;
+            const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gr.addColorStop(0, color); gr.addColorStop(0.25, color); gr.addColorStop(1, 'rgba(0,0,0,0)');
+            g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+            glowCache.set(color, c);
+        }
+        return c;
+    }
+    // Additive light; caller sets globalCompositeOperation = 'lighter'
+    function light(x, y, r, color, a) {
+        if (a <= 0.01) return;
+        ctx.globalAlpha = Math.min(1, a);
+        ctx.drawImage(glowSprite(color), x - r, y - r, r * 2, r * 2);
+    }
+
+    let bloomCanvas, bloomCtx, vignetteCanvas, skyCanvas, hazeLayer = [], shafts = [];
+    function buildPostFx() {
+        if (!bloomCanvas) {
+            bloomCanvas = document.createElement('canvas');
+            bloomCanvas.width = W / 4; bloomCanvas.height = H / 4;
+            bloomCtx = bloomCanvas.getContext('2d');
+        }
+        if (!vignetteCanvas) {
+            vignetteCanvas = document.createElement('canvas');
+            vignetteCanvas.width = W; vignetteCanvas.height = H;
+            const v = vignetteCanvas.getContext('2d');
+            const g = v.createRadialGradient(W / 2, H * 0.45, H * 0.35, W / 2, H / 2, W * 0.62);
+            g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.55)');
+            v.fillStyle = g; v.fillRect(0, 0, W, H);
+        }
+    }
+    // Pre-renders the sky gradient + soft nebula clouds at full 128-bit resolution
+    function buildSky() {
+        const rnd = mulberry32(777 + stage.world * 97);
+        skyCanvas = document.createElement('canvas');
+        skyCanvas.width = W * RES; skyCanvas.height = H * RES;
+        const s = skyCanvas.getContext('2d');
+        s.scale(RES, RES);
+        const g = s.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, theme.sky[0]); g.addColorStop(0.6, theme.sky[1]); g.addColorStop(1, theme.sky[2]);
+        s.fillStyle = g; s.fillRect(0, 0, W, H);
+        s.globalCompositeOperation = 'lighter';
+        const tint = WORLDS[stage.world].color;
+        for (let i = 0; i < 9; i++) {
+            const r = 50 + rnd() * 110;
+            s.globalAlpha = 0.05 + rnd() * 0.07;
+            s.drawImage(glowSprite(i % 3 === 0 ? tint : theme.sky[2]), rnd() * W - r, rnd() * H * 0.7 - r, r * 2, r * 1.3);
+        }
+        s.globalCompositeOperation = 'source-over'; s.globalAlpha = 1;
+        hazeLayer = []; let x = 0;
+        while (x < 700) { const w = 60 + rnd() * 90; hazeLayer.push({ x, w, h: 50 + rnd() * 70 }); x += w * 0.7; }
+        shafts = Array.from({ length: 4 }, () => ({ x: rnd() * W, w: 18 + rnd() * 30, ph: rnd() * 6.28 }));
+    }
+
+    function drawPlanetHD(px, py, pl) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        light(px, py, pl.r * 2.2, pl.hole ? '#a855f7' : pl.c1, pl.hole ? 0.35 : 0.22);
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(px, py, pl.r, 0, Math.PI * 2); ctx.clip();
+        if (!pl.hole) {
+            for (let i = -3; i <= 3; i++) {
+                ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.10)';
+                ctx.fillRect(px - pl.r, py + i * pl.r * 0.28 + Math.sin(i * 1.7) * 2, pl.r * 2, pl.r * 0.14);
+            }
+        }
+        const sh = ctx.createRadialGradient(px - pl.r * 0.45, py - pl.r * 0.45, pl.r * 0.3, px, py, pl.r * 1.15);
+        sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(0.7, 'rgba(0,0,0,0.15)'); sh.addColorStop(1, 'rgba(0,0,0,0.7)');
+        ctx.fillStyle = sh; ctx.fillRect(px - pl.r, py - pl.r, pl.r * 2, pl.r * 2);
+        ctx.restore();
+    }
+
+    function drawSkyHD() {
+        ctx.drawImage(skyCanvas, 0, 0, W, H);
+        // faint distant range behind the far layer
+        const off = -((cameraX * 0.1) % 700);
+        ctx.fillStyle = theme.far; ctx.globalAlpha = 0.45;
+        for (let k = 0; k < 2; k++) for (const b of hazeLayer) {
+            const bx = off + k * 700 + b.x;
+            if (bx + b.w < 0 || bx > W) continue;
+            ctx.beginPath(); ctx.moveTo(bx, 232); ctx.quadraticCurveTo(bx + b.w / 2, 232 - b.h * 2, bx + b.w, 232); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+    function drawAtmosphereHD(y0, alpha) {
+        const g = ctx.createLinearGradient(0, y0, 0, 240);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(1, theme.sky[2]);
+        ctx.globalAlpha = alpha; ctx.fillStyle = g; ctx.fillRect(0, y0, W, 240 - y0); ctx.globalAlpha = 1;
+    }
+    function drawShaftsHD() {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const c = WORLDS[stage.world].color;
+        for (const s of shafts) {
+            const x = ((s.x - cameraX * 0.15) % (W + 120) + W + 120) % (W + 120) - 60;
+            ctx.globalAlpha = 0.035 + 0.025 * Math.sin(frame * 0.01 + s.ph);
+            const g = ctx.createLinearGradient(0, 0, 0, H);
+            g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + s.w, 0); ctx.lineTo(x + s.w + 70, H); ctx.lineTo(x + 70, H); ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function drawPlatformShadingHD() {
+        for (const p of platforms) {
+            if (p.x + p.w < cameraX || p.x > cameraX + W) continue;
+            const g = ctx.createLinearGradient(0, p.y, 0, p.y + Math.min(p.h, 40));
+            g.addColorStop(0, 'rgba(255,255,255,0.10)'); g.addColorStop(0.15, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.5)');
+            ctx.fillStyle = g; ctx.fillRect(p.x, p.y, p.w, p.h);
+        }
+    }
+
+    function drawShadowsHD() {
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        const shadow = (cx, bottom, w) => {
+            const g = groundBelow(cx, bottom);
+            if (g === null) return;
+            const d = g - bottom, s = Math.max(0.2, 1 - d / 80);
+            ctx.globalAlpha = s;
+            ctx.beginPath(); ctx.ellipse(cx, g + 0.5, w * 0.6 * s, 2.2 * s, 0, 0, Math.PI * 2); ctx.fill();
+        };
+        for (const en of enemies) if (en.x + en.w > cameraX - 20 && en.x < cameraX + W + 20) shadow(en.x + en.w / 2, en.y + en.h, en.w);
+        if (player && (state !== 'over' || lives > 0)) shadow(player.x + player.w / 2, player.y + player.h, player.w + 2);
+        ctx.globalAlpha = 1;
+    }
+    // Top of the nearest platform at or below `bottom` under x (null if none within reach)
+    function groundBelow(x, bottom) {
+        let best = null;
+        for (const p of platforms) {
+            if (x < p.x || x > p.x + p.w || p.y < bottom - 2 || p.y - bottom > 100) continue;
+            if (best === null || p.y < best) best = p.y;
+        }
+        return best;
+    }
+
+    function drawLightsHD() {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const p of platforms) {
+            if (p.ground || p.x + p.w < cameraX || p.x > cameraX + W) continue;
+            ctx.globalAlpha = 0.5; ctx.fillStyle = theme.platGlow; ctx.fillRect(p.x + 4, p.y + p.h, p.w - 8, 6);
+        }
+        if (stage.endX && Math.abs(stage.endX - cameraX - W / 2) < W) {
+            const g = groundAt(stage.endX), gy = g ? g.y : 230;
+            light(stage.endX, gy - 41, 26 + Math.sin(frame * 0.1) * 3, '#22c55e', 0.55);
+        }
+        for (const it of items) {
+            const cx = it.x + 5, cy = it.y + 5;
+            light(cx, cy, it.type === 'orb' ? 16 : 11, it.type === 'orb' ? '#facc15' : AMMO_COLORS[it.type === 'ammo' ? 'primary' : it.type], 0.45);
+        }
+        for (const en of enemies) {
+            if (en.x + en.w < cameraX - 20 || en.x > cameraX + W + 20) continue;
+            const ch = (en.aware && en.fireTimer < 18) || en.windup > 0;
+            const eye = ch ? '#f87171' : en.t.ai === 'phantom' ? '#c084fc' : en.t.flying ? '#f87171' : '#facc15';
+            light(en.x + en.w / 2 + en.facing * 3, en.y + 5, ch ? 12 : 7, eye, (ch ? 0.7 : 0.4) * en.alpha);
+            if (en.shield > 0) light(en.x + en.w / 2, en.y + en.h / 2, en.w * 1.1, ELEMENTS[en.shieldEl].color, 0.18 * en.alpha);
+        }
+        if (boss && boss.active && !boss.dead) {
+            const gc = { overseer: '#ef4444', tyrant: '#fb923c', hive: '#67e8f9', herald: '#c084fc' }[boss.type];
+            light(boss.x, boss.y, boss.r + 50, gc, 0.3 * boss.alpha);
+        }
+        for (const h of hazards) {
+            if (h.warn > 0) continue;
+            ctx.globalAlpha = 0.25; ctx.fillStyle = '#a855f7'; ctx.fillRect(h.x - 30, 0, 60, H);
+        }
+        if (player && (state !== 'over' || lives > 0)) {
+            const el = ELEMENTS[selectedElement].color, top = player.crouch ? player.y + 10 : player.y;
+            light(player.x + player.w / 2 + player.facing * 3, top + 4, 9, el, 0.45);
+            if (player.superEnergy >= 100) light(player.x + player.w / 2, player.y + 15, 26 + Math.sin(frame * 0.15) * 3, '#fde047', 0.22);
+        }
+        for (const b of bullets) {
+            if (b.owner === 'enemy') {
+                const col = b.kind === 'wave' ? '#fb923c' : b.snipe ? '#fca5a5' : b.ice ? '#67e8f9' : b.voidOrb ? '#c084fc' : (b.grav || b.big) ? '#fb923c' : '#f87171';
+                light(b.x, b.y, b.kind === 'wave' ? 18 : 9, col, 0.5);
+            } else {
+                const col = b.kind === 'golden' ? '#f59e0b' : ELEMENTS[b.element].color;
+                const r = b.kind === 'nova' ? 34 : b.kind === 'rocket' ? 14 : b.kind === 'golden' ? 14 : 8;
+                light(b.x, b.y, r, col, b.kind === 'nova' ? 0.55 : 0.45);
+            }
+        }
+        for (const r of rings) light(r.x, r.y, r.r * 1.6 + 6, r.color, (r.life / r.max) * 0.5);
+        for (const pt of particles) light(pt.x, pt.y, pt.size * 4, pt.color, Math.min(1, pt.life / (pt.max * 0.5)) * 0.3);
+        ctx.restore();
+    }
+
+    // Cheap bloom: shrink the frame, boost contrast so only bright areas survive, add it back blurred
+    function drawBloomHD() {
+        const bw = bloomCanvas.width, bh = bloomCanvas.height;
+        bloomCtx.globalCompositeOperation = 'copy';
+        bloomCtx.filter = 'brightness(0.9) contrast(2.4) saturate(1.4) blur(1.5px)';
+        bloomCtx.drawImage(canvas, 0, 0, bw, bh);
+        bloomCtx.filter = 'none';
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.28;
+        ctx.drawImage(bloomCanvas, 0, 0, canvas.width, canvas.height);
+        ctx.restore();
+    }
+
     function render() {
         // Reset canvas state every frame so a single bad frame can never leave a stuck transform/alpha
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.setTransform(RES, 0, 0, RES, 0, 0);
+        ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1;
         ctx.setLineDash([]);
         const sx = shake ? (Math.random() - 0.5) * shake * 2 : 0, sy = shake ? (Math.random() - 0.5) * shake * 2 : 0;
         drawBackground();
 
+        if (gfx128) drawShaftsHD();
+
         ctx.save();
-        ctx.translate(Math.round(-cameraX + sx), Math.round(sy));
+        ctx.translate(snap(-cameraX + sx), snap(sy));
         drawPlatforms();
+        if (gfx128) { drawPlatformShadingHD(); drawShadowsHD(); }
         drawBeacon();
         if (boss && boss.active && !boss.dead) {
             ctx.fillStyle = `rgba(56,189,248,${0.25 + 0.15 * Math.sin(frame * 0.1)})`;
@@ -2118,9 +2398,15 @@
         if (state !== 'over' || lives > 0) drawPlayer();
         drawBullets();
         drawFx();
+        if (gfx128) drawLightsHD();
         ctx.restore();
 
         drawWeather();
+        if (gfx128) {
+            drawBloomHD();
+            ctx.globalAlpha = 1;
+            ctx.drawImage(vignetteCanvas, 0, 0, W, H);
+        }
         drawWeaponStrip();
 
         if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash / 16})`; ctx.fillRect(0, 0, W, H); }
@@ -2144,6 +2430,8 @@
     }
 
     renderMenu();
+    updateGfxLabels();
+    if (gfx128) toggleCRT();
     </script>
 </body>
 </html>

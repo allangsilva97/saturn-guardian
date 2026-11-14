@@ -2,11 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Saturn Vanguard</title>
-    <meta http-equiv="refresh" content="0; url=saturn_vanguard.html">
-    <script>location.replace('saturn_vanguard.html' + location.search + location.hash);</script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
+               background: radial-gradient(ellipse at 50% 30%, #1e1b4b 0%, #020617 70%); color: #e2e8f0; font-family: 'Rajdhani', sans-serif; }
+        main { width: 100%; max-width: 760px; text-align: center; }
+        .tag { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #38bdf8; letter-spacing: 2px; }
+        h1 { font-family: 'Press Start 2P', monospace; font-size: clamp(22px, 6vw, 40px); color: #facc15; margin: 12px 0 28px;
+             text-shadow: 0 0 18px rgba(234,179,8,0.55); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        a.card { display: block; text-decoration: none; color: inherit; padding: 22px 18px; border-radius: 10px;
+                 background: linear-gradient(135deg, #0f172a, #1e1b4b); border: 2px solid var(--c); box-shadow: 0 0 14px -4px var(--c);
+                 transition: transform .12s, box-shadow .12s; }
+        a.card:hover, a.card:focus-visible { transform: translateY(-3px); box-shadow: 0 0 26px -2px var(--c); outline: none; }
+        .bits { font-family: 'Press Start 2P', monospace; font-size: 22px; color: var(--c); }
+        .name { font-family: 'Press Start 2P', monospace; font-size: 10px; margin: 10px 0 12px; color: #f8fafc; }
+        .desc { font-size: 16px; color: #94a3b8; line-height: 1.35; }
+        .play { display: inline-block; margin-top: 16px; font-family: 'Press Start 2P', monospace; font-size: 10px; color: #0f172a;
+                background: var(--c); padding: 10px 14px; border-radius: 6px; }
+        footer { margin-top: 26px; font-size: 15px; color: #64748b; }
+        footer a { color: #38bdf8; }
+    </style>
 </head>
-<body style="background:#020617;color:#e2e8f0;font-family:sans-serif">
-    <p><a href="saturn_vanguard.html" style="color:#38bdf8">Play Saturn Vanguard</a></p>
+<body>
+<main>
+    <div class="tag">CHOOSE YOUR ERA</div>
+    <h1>SATURN VANGUARD</h1>
+    <div class="grid">
+        <a class="card" href="saturn_vanguard.html?mode=64" style="--c:#38bdf8">
+            <div class="bits">64-BIT</div>
+            <div class="name">CLASSIC EDITION</div>
+            <div class="desc">Chunky pixel art, CRT scanlines and the original retro look.</div>
+            <span class="play">PLAY</span>
+        </a>
+        <a class="card" href="saturn_vanguard.html?mode=128" style="--c:#facc15">
+            <div class="bits">128-BIT</div>
+            <div class="name">REMASTERED EDITION</div>
+            <div class="desc">3&times; resolution, dynamic lighting, bloom, shadows, richer skies and more particles.</div>
+            <span class="play">PLAY</span>
+        </a>
+    </div>
+    <footer>Keyboard required &bull; Same game, same saves &bull; <a href="https://github.com/allangsilva97/saturn-vanguard/releases/latest">Windows downloads</a></footer>
+</main>
 </body>
 </html>
