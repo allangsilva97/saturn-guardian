@@ -14,9 +14,12 @@ Both editions are the same game with the same saves; switch any time with the **
 - **3 classes:** Ranger (double jump), Sentinel (hover, extra shield), Arcanist (glide, faster super)
 - **3 elements:** Fire, Shock, Void. Match an enemy's shield colour to shatter it
 - **4 worlds, 12 stages:** Iron Yard, Crimson Dunes, Frozen Moon, Void Citadel, each ending in a boss
-- **Champions:** random Barrier, Overload and Unstoppable variants in every run, plus mid-stage warp-ins, each with its own counter
+- **Champions:** random Barrier, Overload and Unstoppable variants (at most 2 types per stage), plus mid-stage warp-ins, each countered by its own weapon: Piercer Rifle, Arc Disruptor, Breacher Slug
+- **Shuffled stages:** every run rebuilds each stage from randomly ordered modules (pits, climbs, lifts across wide gaps, elevator towers, secret bunkers)
+- **Treasure & secrets:** ride elevators to tower-roof chests, find supply caches on lookouts, and walk through cracked false walls for secret stashes
+- **Armor:** upgrade the helmet, gauntlets, chest, legs and class item separately, and paint each piece with colours bought in the Paint Shop
 - **Crouch to dodge:** level enemy shots fly over you while you crouch
-- **7 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher
+- **10 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher, plus the three anti-champion weapons
 - **Armory:** spend credits on weapons and upgrades; progress is saved in the browser
 
 ## Windows desktop app (.exe)
@@ -40,7 +43,7 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | W / S | Aim up / crouch (aim down in the air) |
 | J or Space | Jump (hold for class ability; S + Jump drops through ledges) |
 | K | Fire (hold) |
-| Q / E or 1–7 | Switch weapon |
+| Q / E or 1–9, 0 | Switch weapon |
 | R | Reload |
 | L | Melee |
 | I | Grenade |

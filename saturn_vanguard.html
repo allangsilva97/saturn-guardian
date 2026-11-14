@@ -89,9 +89,9 @@
                         <div class="bg-slate-950 p-2 border border-slate-800 rounded text-[12px] text-slate-300 leading-snug">
                             Match your element to a shield's colour to shatter it. Melee breaks any shield.
                             Shieldbearers block shots from the front, so flank them or use explosives. Crouch to duck under level shots.
-                            <span class="block mt-1"><span style="color:#22d3ee">BARRIER</span> champions: break the barrier with Hand Cannon, Pulse, Sniper or heavy.
-                            <span style="color:#a3e635">OVERLOAD</span>: keep a stream of hits on it to disrupt it.
-                            <span style="color:#fb923c">UNSTOPPABLE</span>: melee, shotgun or explode it mid-charge to stagger it.</span>
+                            <span class="block mt-1">Champions (max 2 types per stage, shown at the start): <span style="color:#22d3ee">BARRIER</span> &rarr; Piercer Rifle;
+                            <span style="color:#a3e635">OVERLOAD</span> &rarr; Arc Disruptor; <span style="color:#fb923c">UNSTOPPABLE</span> &rarr; Breacher Slug (Armory).</span>
+                            <span class="block mt-1">Ride elevators to tower roofs for treasure, and look for cracked walls hiding secret stashes.</span>
                         </div>
                     </div>
                     <div>
@@ -120,7 +120,7 @@
 
             <div class="text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
                 [A/D] Move &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold for class ability, S+Jump drops through ledges)
-                &bull; [K] Fire (hold) &bull; [Q/E or 1-7] Switch weapon &bull; [R] Reload &bull; [L] Melee &bull; [I] Grenade &bull; [O] Super &bull; [P/Esc] Pause
+                &bull; [K] Fire (hold) &bull; [Q/E or 1-9, 0] Switch weapon &bull; [R] Reload &bull; [L] Melee &bull; [I] Grenade &bull; [O] Super &bull; [P/Esc] Pause
             </div>
         </div>
     </div>
@@ -143,6 +143,19 @@
                     <div class="mt-3 text-[12px] text-slate-400 leading-snug">All weapons you own are carried into every stage. Upgrades apply from the next stage you launch.</div>
                 </div>
             </div>
+            <div class="mt-5">
+                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- ARMOR --</div>
+                <div class="grid grid-cols-1 lg:grid-cols-[170px_1fr] gap-4">
+                    <div class="bg-slate-950/70 border border-slate-800 rounded p-3 flex flex-col items-center justify-center">
+                        <canvas id="armor-preview" width="40" height="40" class="w-32 h-32" style="image-rendering:pixelated"></canvas>
+                        <div class="text-[11px] text-slate-400 mt-2 text-center">PREVIEW &bull; <span id="armor-class" class="text-white"></span></div>
+                    </div>
+                    <div id="armory-armor" class="space-y-2"></div>
+                </div>
+                <div class="pixel-font text-[10px] text-yellow-400 mt-4 mb-2">-- PAINT SHOP --</div>
+                <div class="text-[12px] text-slate-400 mb-2">Buy a colour once, then apply it to any armor piece with the swatches above.</div>
+                <div id="armory-paints" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+            </div>
             <div class="flex justify-end mt-5">
                 <button onclick="closeArmory()" class="px-8 py-3 saturn-button pixel-font text-yellow-300 text-xs font-bold uppercase rounded">BACK</button>
             </div>
@@ -157,6 +170,7 @@
             <div class="text-sm text-slate-300 space-y-2 mb-6 text-left bg-black/60 p-4 rounded border border-slate-800">
                 <div class="flex justify-between"><span>SCORE:</span> <span id="final-score" class="text-yellow-400">0</span></div>
                 <div class="flex justify-between"><span>COMBATANTS DEFEATED:</span> <span id="final-kills" class="text-white">0</span></div>
+                <div class="flex justify-between"><span>TREASURES &amp; SECRETS:</span> <span id="final-secrets" class="text-fuchsia-300">0/0</span></div>
                 <div class="flex justify-between"><span>TIME:</span> <span id="final-time" class="text-white">0:00</span></div>
                 <div class="flex justify-between"><span>CREDITS EARNED:</span> <span id="final-credits" class="text-emerald-400">0</span></div>
                 <div class="flex justify-between"><span>TOTAL CREDITS:</span> <span id="final-bank" class="text-emerald-300">0</span></div>
@@ -285,6 +299,10 @@
         shotgun: { name: 'SHOTGUN',         short: 'SHOTGUN', ammo: 'special', mag: 6,  rate: 42, dmg: 15,  speed: 7,   spread: 0.4,  reload: 70, cost: 1000, sfx: 'shotgun', recoil: 3, pellets: 8, life: 24, desc: '8 pellets. Devastating up close.' },
         sniper:  { name: 'SNIPER RIFLE',    short: 'SNIPER',  ammo: 'special', mag: 4,  rate: 50, dmg: 150, speed: 15,  spread: 0,    reload: 80, cost: 1400, sfx: 'sniper',  recoil: 3, pierce: true, kind: 'precision', desc: 'Pierces every target in a line, even shieldbearers.' },
         rocket:  { name: 'ROCKET LAUNCHER', short: 'ROCKET',  ammo: 'heavy',   mag: 1,  rate: 40, dmg: 230, speed: 3,   spread: 0,    reload: 70, cost: 2200, sfx: 'rocket',  recoil: 5, kind: 'rocket', desc: 'Huge blast radius. Uses rare heavy ammo.' },
+        // Anti-champion weapons: each one is the hard counter to one champion type
+        piercer: { name: 'PIERCER RIFLE',   short: 'PIERCE',  ammo: 'primary', mag: 12, rate: 16, dmg: 30,  speed: 11,  spread: 0.01, reload: 55, cost: 900,  sfx: 'hand',    anti: 'barrier',     desc: 'ANTI-BARRIER. Shreds champion barriers 8x faster and stuns longer.' },
+        arc:     { name: 'ARC DISRUPTOR',   short: 'ARC',     ammo: 'primary', mag: 36, rate: 5,  dmg: 9,   speed: 8,   spread: 0.08, reload: 50, cost: 900,  sfx: 'smg',     anti: 'overload',    desc: 'ANTI-OVERLOAD. Each hit jolts an Overload; two hits disrupt it.' },
+        breacher:{ name: 'BREACHER SLUG',   short: 'BREACH',  ammo: 'special', mag: 3,  rate: 45, dmg: 90,  speed: 9,   spread: 0,    reload: 65, cost: 1200, sfx: 'shotgun', recoil: 4, anti: 'unstoppable', desc: 'ANTI-UNSTOPPABLE. Slugs stagger an Unstoppable at any time.' },
     };
     const WEAPON_ORDER = Object.keys(WEAPONS);
     const AMMO_MAX = { primary: 240, special: 16, heavy: 4 };
@@ -300,6 +318,38 @@
     };
     const MAX_UPGRADE = 5;
     const upgradeCost = (id, lvl) => UPGRADES[id].base * (lvl + 1);
+
+    // Armor: every piece has its own upgrade track and can be painted with any colour you own
+    const ARMOR_PIECES = {
+        helmet:    { name: 'HELMET',      desc: 'Shield recharges sooner and faster',        base: 220 },
+        arms:      { name: 'GAUNTLETS',   desc: '+20% melee damage, 6% faster reloads',       base: 220 },
+        chest:     { name: 'CHEST PLATE', desc: '-5% damage taken',                          base: 300 },
+        legs:      { name: 'LEG ARMOR',   desc: '+4% move speed, +2% jump power',            base: 250 },
+        classItem: { name: 'CLASS ITEM',  desc: 'Ranger: stronger double jump • Sentinel: +20% hover • Arcanist: slower glide', base: 250 },
+    };
+    const ARMOR_IDS = Object.keys(ARMOR_PIECES);
+    const armorCost = (id, lvl) => ARMOR_PIECES[id].base * (lvl + 1);
+    const PAINTS = {
+        standard: { name: 'STANDARD', color: null,      cost: 0 },
+        crimson:  { name: 'CRIMSON',  color: '#dc2626', cost: 300 },
+        sunset:   { name: 'SUNSET',   color: '#f97316', cost: 300 },
+        gold:     { name: 'GOLD',     color: '#eab308', cost: 600 },
+        emerald:  { name: 'EMERALD',  color: '#10b981', cost: 400 },
+        arctic:   { name: 'ARCTIC',   color: '#e0f2fe', cost: 400 },
+        cobalt:   { name: 'COBALT',   color: '#2563eb', cost: 350 },
+        royal:    { name: 'ROYAL',    color: '#7c3aed', cost: 450 },
+        rose:     { name: 'ROSE',     color: '#ec4899', cost: 450 },
+        chrome:   { name: 'CHROME',   color: '#94a3b8', cost: 350 },
+        obsidian: { name: 'OBSIDIAN', color: '#111827', cost: 500 },
+    };
+    // Default colour of each piece when painted STANDARD (class item and chest follow the class)
+    function gearColor(piece) {
+        const paint = PAINTS[save.paint[piece]];
+        if (paint && paint.color) return paint.color;
+        return { helmet: '#e2e8f0', arms: '#cbd5e1', legs: '#1e293b',
+                 chest: CLASSES[selectedClass].color,
+                 classItem: { ranger: '#0c4a6e', sentinel: '#7f1d1d', arcanist: '#4c1d95' }[selectedClass] }[piece];
+    }
 
     const ENEMY_TYPES = {
         scav:         { name: 'Scav',         hp: 50,  w: 18, h: 28, speed: 0.6,  fireRate: 110, dmg: 10, score: 100, color: '#0e7490', head: '#94a3b8', ai: 'patrol',  fire: 'single' },
@@ -375,14 +425,15 @@
 
     const GAME_KEYS = new Set(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD',
         'KeyJ','KeyK','KeyL','KeyI','KeyO','KeyZ','KeyX','KeyC','KeyV','KeyR','KeyP','KeyQ','KeyE','Escape',
-        'Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7']);
+        'Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0']);
 
     // =====================================================================
     //  SAVE DATA
     // =====================================================================
     const SAVE_KEY = 'saturn-vanguard-save-v2';
     function defaultSave() {
-        return { credits: 0, unlocked: 0, owned: ['auto'], upgrades: { vitality: 0, shield: 0, damage: 0, superRate: 0, grenade: 0, ammo: 0 }, best: 0, cleared: [] };
+        return { credits: 0, unlocked: 0, owned: ['auto'], upgrades: { vitality: 0, shield: 0, damage: 0, superRate: 0, grenade: 0, ammo: 0 }, best: 0, cleared: [],
+                 armor: Object.fromEntries(ARMOR_IDS.map(k => [k, 0])), paints: ['standard'], paint: Object.fromEntries(ARMOR_IDS.map(k => [k, 'standard'])) };
     }
     function loadSave() {
         const d = defaultSave();
@@ -396,6 +447,12 @@
                     upgrades: Object.fromEntries(Object.keys(UPGRADES).map(k => [k, Math.min(MAX_UPGRADE, Math.max(0, (raw.upgrades && raw.upgrades[k]) | 0))])),
                     best: Math.max(0, raw.best | 0),
                     cleared: Array.isArray(raw.cleared) ? raw.cleared.filter(n => Number.isInteger(n)) : [],
+                    armor: Object.fromEntries(ARMOR_IDS.map(k => [k, Math.min(MAX_UPGRADE, Math.max(0, (raw.armor && raw.armor[k]) | 0))])),
+                    paints: ['standard', ...(Array.isArray(raw.paints) ? raw.paints.filter(id => PAINTS[id] && id !== 'standard') : [])],
+                    paint: Object.fromEntries(ARMOR_IDS.map(k => {
+                        const id = raw.paint && raw.paint[k];
+                        return [k, PAINTS[id] && Array.isArray(raw.paints) && (id === 'standard' || raw.paints.includes(id)) ? id : 'standard'];
+                    })),
                 };
             }
         } catch (e) {}
@@ -412,6 +469,7 @@
     let canvas, ctx, rafId = null, lastTs = 0, acc = 0;
     let score, kills, credits, lives, frame, cameraX, shake, flash, hurtFlash, bossIntro, stageIntro, victoryTimer;
     let player, platforms, enemies, bullets, particles, rings, items, texts, hazards, weather, boss;
+    let structures = [], treasures = [];
     let stage = null, theme = WORLDS[0], diff = { hp: 1, dmg: 1 };
     let armoryReturn = 'menu', lastResult = null;
     const keys = {};
@@ -526,15 +584,54 @@
         persist(); initAudio(); playSound('pickup');
         renderArmory();
     }
+    function buyArmor(id) {
+        const lvl = save.armor[id], cost = armorCost(id, lvl);
+        if (lvl >= MAX_UPGRADE || save.credits < cost) return;
+        save.credits -= cost; save.armor[id]++;
+        persist(); initAudio(); playSound('pickup');
+        renderArmory();
+    }
+    function buyPaint(id) {
+        const pt = PAINTS[id];
+        if (save.paints.includes(id) || save.credits < pt.cost) return;
+        save.credits -= pt.cost; save.paints.push(id);
+        persist(); initAudio(); playSound('pickup');
+        renderArmory();
+    }
+    function setPaint(piece, id) {
+        if (!save.paints.includes(id)) return;
+        save.paint[piece] = id;
+        persist(); initAudio(); playSound('reload');
+        renderArmory();
+    }
+    // Static front view of the Vanguard in its current colours (same layout as the in-game sprite)
+    function drawArmorPreview() {
+        const c = document.getElementById('armor-preview'), g = c.getContext('2d');
+        g.clearRect(0, 0, 40, 40); g.imageSmoothingEnabled = false;
+        const col = Object.fromEntries(ARMOR_IDS.map(k => [k, gearColor(k)])), el = ELEMENTS[selectedElement].color;
+        const x = 12, y = 5;
+        g.fillStyle = col.legs; g.fillRect(x + 3, y + 20, 4, 10); g.fillRect(x + 9, y + 20, 4, 10);
+        if (selectedClass === 'ranger') { g.fillStyle = col.classItem; g.fillRect(x - 2, y + 11, 4, 14); }
+        g.fillStyle = col.chest; g.fillRect(x + 1, y + 10, 14, 11);
+        if (selectedClass === 'sentinel') { g.fillStyle = col.classItem; g.fillRect(x - 1, y + 9, 18, 4); }
+        if (selectedClass === 'arcanist') { g.fillStyle = col.classItem; g.fillRect(x + 1, y + 19, 14, 7); }
+        g.fillStyle = el; g.fillRect(x + 1, y + 18, 14, 2);
+        g.fillStyle = col.helmet; g.fillRect(x + 2, y, 12, 10);
+        g.fillStyle = el; g.fillRect(x + 7, y + 3, 7, 3);
+        g.fillStyle = '#64748b'; g.fillRect(x + 8, y + 11, 14, 4);
+        g.fillStyle = col.arms; g.fillRect(x + 6, y + 10, 6, 6);
+        document.getElementById('armor-class').textContent = CLASSES[selectedClass].label;
+    }
     function renderArmory() {
         document.getElementById('armory-credits').textContent = save.credits;
         document.getElementById('armory-weapons').innerHTML = WEAPON_ORDER.map(id => {
             const w = WEAPONS[id], owned = save.owned.includes(id), afford = save.credits >= w.cost;
             const dps = Math.round(w.dmg * (w.pellets || 1) * (w.burst || 1) * 60 / w.rate);
+            const antiTag = w.anti ? `<span class="text-[10px] px-1 rounded" style="color:${CHAMPIONS[w.anti].color};border:1px solid ${CHAMPIONS[w.anti].color}">ANTI-${CHAMPIONS[w.anti].name}</span>` : '';
             return `<div class="flex items-center justify-between gap-3 bg-slate-950/70 border border-slate-800 rounded p-2">
                 <div class="min-w-0">
-                    <div class="flex items-center gap-2"><span class="pixel-font text-[9px] text-white">${w.name}</span>
-                        <span class="text-[10px] px-1 rounded" style="color:${AMMO_COLORS[w.ammo]};border:1px solid ${AMMO_COLORS[w.ammo]}">${w.ammo.toUpperCase()}</span></div>
+                    <div class="flex items-center gap-2 flex-wrap"><span class="pixel-font text-[9px] text-white">${w.name}</span>
+                        <span class="text-[10px] px-1 rounded" style="color:${AMMO_COLORS[w.ammo]};border:1px solid ${AMMO_COLORS[w.ammo]}">${w.ammo.toUpperCase()}</span>${antiTag}</div>
                     <div class="text-[12px] text-slate-400">${w.desc}</div>
                     <div class="text-[11px] text-slate-500">DMG ${w.dmg}${w.pellets ? '×' + w.pellets : ''} &bull; MAG ${w.mag} &bull; ~${dps} DPS</div>
                 </div>
@@ -555,6 +652,36 @@
                       : `<button onclick="buyUpgrade('${id}')" ${save.credits >= cost ? '' : 'disabled'} class="saturn-button px-3 py-2 text-yellow-300 text-xs font-bold rounded whitespace-nowrap">BUY ${cost}</button>`}
             </div>`;
         }).join('');
+        document.getElementById('armory-armor').innerHTML = ARMOR_IDS.map(id => {
+            const a = ARMOR_PIECES[id], lvl = save.armor[id], max = lvl >= MAX_UPGRADE, cost = armorCost(id, lvl);
+            const pips = Array.from({ length: MAX_UPGRADE }, (_, i) => `<span class="pip ${i < lvl ? 'on' : ''}"></span>`).join('');
+            const swatches = save.paints.map(pid => {
+                const sel = save.paint[id] === pid, color = PAINTS[pid].color;
+                const bg = color || 'linear-gradient(135deg,#e2e8f0 0 50%,#334155 50%)';
+                return `<button onclick="setPaint('${id}','${pid}')" title="${PAINTS[pid].name}" style="background:${bg}"
+                    class="w-5 h-5 rounded-sm ${sel ? 'ring-2 ring-yellow-300 ring-offset-1 ring-offset-slate-950' : 'border border-slate-600'}"></button>`;
+            }).join('');
+            return `<div class="flex items-center justify-between gap-3 bg-slate-950/70 border border-slate-800 rounded p-2">
+                <div class="min-w-0">
+                    <div class="pixel-font text-[9px] text-white mb-1">${a.name} <span class="text-slate-500">LV ${lvl}</span></div>
+                    <div class="text-[12px] text-slate-400">${a.desc}</div>
+                    <div class="mt-1">${pips}</div>
+                    <div class="flex flex-wrap gap-1.5 mt-2 items-center"><span class="text-[10px] text-slate-500 mr-1">COLOUR</span>${swatches}</div>
+                </div>
+                ${max ? '<span class="text-yellow-400 text-xs font-bold px-3">MAX</span>'
+                      : `<button onclick="buyArmor('${id}')" ${save.credits >= cost ? '' : 'disabled'} class="saturn-button px-3 py-2 text-yellow-300 text-xs font-bold rounded whitespace-nowrap">BUY ${cost}</button>`}
+            </div>`;
+        }).join('');
+        document.getElementById('armory-paints').innerHTML = Object.entries(PAINTS).filter(([pid]) => pid !== 'standard').map(([pid, pt]) => {
+            const owned = save.paints.includes(pid);
+            return `<div class="bg-slate-950/70 border border-slate-800 rounded p-2 flex flex-col items-center gap-1">
+                <div class="w-8 h-8 rounded border border-slate-500" style="background:${pt.color};box-shadow:0 0 10px -2px ${pt.color}"></div>
+                <div class="pixel-font text-[8px] text-white">${pt.name}</div>
+                ${owned ? '<span class="text-emerald-400 text-[11px] font-bold">OWNED</span>'
+                        : `<button onclick="buyPaint('${pid}')" ${save.credits >= pt.cost ? '' : 'disabled'} class="saturn-button px-2 py-1 text-yellow-300 text-[11px] font-bold rounded">BUY ${pt.cost}</button>`}
+            </div>`;
+        }).join('');
+        drawArmorPreview();
     }
 
     // =====================================================================
@@ -637,15 +764,19 @@
         return en;
     }
     const championEligible = (type, kind) => kind !== 'unstoppable' || UNSTOPPABLE_BASES.has(type);
+    // Only the stage's (at most 2) champion types; null if this enemy type can't be any of them
     function rollChampionKind(type) {
-        const kinds = CHAMPION_IDS.filter(k => championEligible(type, k));
-        return kinds[Math.floor(Math.random() * kinds.length)];
+        const kinds = stage.champKinds.filter(k => championEligible(type, k));
+        return kinds.length ? kinds[Math.floor(Math.random() * kinds.length)] : null;
     }
+    const canBeChampion = type => stage.champKinds.some(k => championEligible(type, k));
     // Random (not seeded), so champions differ every run
     function seedChampions() {
         const wi = stage.world;
+        const shuffled = CHAMPION_IDS.slice().sort(() => Math.random() - 0.5);
+        stage.champKinds = shuffled.slice(0, Math.random() < 0.35 ? 1 : 2); // never more than 2 types per stage
         const want = stage.isBoss ? (Math.random() < 0.5 ? 1 : 0) : 1 + Math.floor(Math.random() * Math.min(3, wi + 2));
-        const pool = enemies.filter(e => !stage.isBoss || e.x < stage.arenaX - 100);
+        const pool = enemies.filter(e => (!stage.isBoss || e.x < stage.arenaX - 100) && canBeChampion(e.type));
         for (let i = 0; i < want && pool.length; i++) {
             const en = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
             makeChampion(en, rollChampionKind(en.type));
@@ -660,7 +791,8 @@
         const ahead = cameraX + W - 40 - Math.random() * 60;
         const g = groundAt(ahead);
         if (!g || ahead > (stage.endX || stage.arenaX - 150) - 60 || ahead - player.x < 140) { stage.champTimer = 45; return; }
-        const types = Object.keys(theme.pool).filter(t => !ENEMY_TYPES[t].flying);
+        let types = Object.keys(theme.pool).filter(t => !ENEMY_TYPES[t].flying && canBeChampion(t));
+        if (!types.length) types = [...UNSTOPPABLE_BASES]; // e.g. an Unstoppable-only stage in a world without ground troops
         const type = types[Math.floor(Math.random() * types.length)], t = ENEMY_TYPES[type];
         const x = clamp(ahead, g.x + 4, g.x + g.w - t.w - 4);
         const en = makeChampion(makeEnemy(type, x, g.y - t.h - 1, null), rollChampionKind(type));
@@ -680,10 +812,10 @@
         if (en.stun > 0) return dmg * 1.5;
         if (en.champ === 'barrier' && en.barrier > 0) {
             const counter = kind === 'precision' || wid === 'hand' || wid === 'pulse';
-            const m = kind === 'heavy' || kind === 'super' ? 4 : counter ? 3 : kind === 'melee' ? 1.5 : 0.5;
+            const m = wid === 'piercer' ? 8 : kind === 'heavy' || kind === 'super' ? 4 : counter ? 3 : kind === 'melee' ? 1.5 : 0.5;
             en.barrier -= dmg * m;
             if (en.barrier <= 0) {
-                en.barrier = 0; en.stun = 150;
+                en.barrier = 0; en.stun = wid === 'piercer' ? 240 : 150;
                 burst(cx, en.y + en.h / 2, 22, c, 3.5); playSound('shield');
                 rings.push({ x: cx, y: en.y + en.h / 2, r: 6, maxR: 46, life: 16, max: 16, color: c });
                 popText(en.x - 18, en.y - 22, 'BARRIER BROKEN!', c);
@@ -691,10 +823,10 @@
             return null;
         }
         if (en.champ === 'overload') {
-            en.olHits.push(frame);
+            for (let i = wid === 'arc' ? 3 : 1; i > 0; i--) en.olHits.push(frame); // the Arc Disruptor counts triple
             while (en.olHits.length && frame - en.olHits[0] > 50) en.olHits.shift();
             if (en.olHits.length >= 6 && en.disrupt <= 0) {
-                en.disrupt = 300; en.stun = 90; en.olHits.length = 0;
+                en.disrupt = wid === 'arc' ? 420 : 300; en.stun = wid === 'arc' ? 130 : 90; en.olHits.length = 0;
                 burst(cx, en.y + en.h / 2, 18, c, 3); playSound('shield');
                 popText(en.x - 12, en.y - 22, 'DISRUPTED!', c);
             }
@@ -702,7 +834,7 @@
         }
         if (en.champ === 'unstoppable') {
             const staggerHit = kind === 'melee' || kind === 'grenade' || kind === 'heavy' || kind === 'super' || wid === 'shotgun';
-            if (staggerHit && (en.windup > 0 || en.chargeT > 0)) {
+            if ((staggerHit && (en.windup > 0 || en.chargeT > 0)) || wid === 'breacher') { // Breacher staggers any time
                 en.windup = 0; en.chargeT = 0; en.cool = 200; en.stun = 180; en.vx = Math.sign(en.vx || 1) * en.t.speed;
                 shake = Math.max(shake, 5); playSound('shield');
                 burst(cx, en.y + en.h / 2, 18, c, 3.5);
@@ -748,56 +880,18 @@
 
     function generateStage(idx) {
         const wi = Math.floor(idx / 3), si = idx % 3, w = WORLDS[wi];
-        const rnd = mulberry32(7919 * (wi + 1) + 104729 * (si + 1));
+        // A fresh seed every run: the stage is rebuilt from shuffled modules each time you play it
+        const rnd = mulberry32((7919 * (wi + 1) + 104729 * (si + 1)) ^ ((Math.random() * 0x7fffffff) | 0));
         const isBoss = si === 2;
         const levelW = isBoss ? 2300 + wi * 100 : 3200 + si * 500 + wi * 250;
         const arenaX = isBoss ? levelW - 700 : null;
         theme = w;
         diff = { hp: 1 + 0.3 * wi + 0.1 * si, dmg: 1 + 0.15 * wi };
-        stage = { idx, world: wi, sub: si, name: w.stages[si], isBoss, levelW, arenaX, endX: isBoss ? null : levelW - 140 };
-        platforms = [];
-        enemies = [];
+        stage = { idx, world: wi, sub: si, name: w.stages[si], isBoss, levelW, arenaX, endX: isBoss ? null : levelW - 140,
+                  secretsFound: 0, secretsTotal: 0, champKinds: [] };
+        platforms = []; enemies = []; structures = []; treasures = [];
 
-        // Ground with pits (pits <= 92px so every class can clear them)
-        const noPitAfter = isBoss ? arenaX - 300 : levelW - 450;
-        let x = 450, segStart = 0, gy = 230;
-        while (true) {
-            x += 260 + rnd() * 420;
-            if (x >= noPitAfter) break;
-            if (rnd() < w.pitChance) {
-                platforms.push({ x: segStart, y: gy, w: x - segStart, h: H - gy + 10, ground: true });
-                const gap = 58 + rnd() * 34;
-                if (gap > 80 && rnd() < 0.5) platforms.push({ x: x + gap / 2 - 22, y: gy - 50, w: 44, h: 12 });
-                x += gap;
-                segStart = x;
-                if (rnd() < w.heightVar) gy = gy === 230 ? 208 : 230;
-            }
-        }
-        platforms.push({ x: segStart, y: gy, w: levelW - segStart, h: H - gy + 10, ground: true });
-        if (isBoss) { // flat arena floor
-            const last = platforms[platforms.length - 1];
-            last.y = 230; last.h = 50;
-        }
-
-        // Floating ledges
-        let px = 300;
-        const ledgeEnd = isBoss ? arenaX - 180 : levelW - 320;
-        while (px < ledgeEnd) {
-            px += 110 + rnd() * 160;
-            if (px < ledgeEnd && rnd() < w.platDensity) {
-                const g = groundAt(px), base = g ? g.y : 230, lw = 80 + rnd() * 80;
-                let ly = Math.max(95, base - 55 - rnd() * 50);
-                // A held jump rises ~64px; anything taller gets a stepping ledge halfway up,
-                // so every class (not just double-jump/hover) can reach it
-                if (base - ly > MAX_REACH) {
-                    const step = placeStep(px, lw, ly);
-                    if (step) { ly = Math.max(ly, step.groundY - 2 * MAX_REACH); step.p.y = Math.round((step.groundY + ly) / 2); platforms.push(step.p); }
-                    else ly = base - MAX_REACH;
-                }
-                platforms.push({ x: px, y: ly, w: lw, h: 12 });
-                px += lw;
-            }
-        }
+        buildModules(rnd, w, isBoss, levelW, arenaX);
         if (isBoss) {
             platforms.push({ x: arenaX + 110, y: 230 - MAX_REACH, w: 90, h: 12 }, { x: arenaX + 500, y: 230 - MAX_REACH, w: 90, h: 12 });
         }
@@ -812,7 +906,7 @@
             let ey;
             if (t.flying) ey = 50 + rnd() * 90;
             else {
-                const ledge = rnd() < 0.45 && platforms.find(p => !p.ground && ex >= p.x && ex + t.w <= p.x + p.w);
+                const ledge = rnd() < 0.45 && platforms.find(p => !p.ground && !p.move && ex >= p.x && ex + t.w <= p.x + p.w);
                 if (ledge) ey = ledge.y - t.h - 1;
                 else {
                     let g = groundAt(ex) || groundAt(ex + 100);
@@ -840,6 +934,138 @@
         return null;
     }
 
+    // ---------------- LEVEL MODULES ----------------
+    // A stage is a random sequence of modules. An elevator tower (treasure on the roof) and a secret
+    // bunker are always placed, at random points, so module positions change between stages and runs.
+    // Height changes only happen across pits: the engine has no walls, only one-way platforms.
+    function addTreasure(x, surfaceY, kind) {
+        treasures.push({ x, y: surfaceY - 10, w: 14, h: 10, kind, opened: false });
+        stage.secretsTotal++;
+    }
+    function buildModules(rnd, w, isBoss, levelW, arenaX) {
+        const endZone = isBoss ? arenaX - 260 : levelW - 420;
+        const ground = (x0, x1, y) => { if (x1 - x0 > 1) platforms.push({ x: x0, y, w: x1 - x0, h: H - y + 10, ground: true }); };
+        const ledge = (x, y, lw, extra) => platforms.push(Object.assign({ x: Math.round(x), y: Math.round(y), w: Math.round(lw), h: 12 }, extra));
+        const M = {
+            flat(x, gy) {
+                const len = 240 + rnd() * 160;
+                ground(x, x + len, gy);
+                if (rnd() < w.platDensity) ledge(x + 60 + rnd() * (len - 190), gy - 40 - rnd() * 14, 70 + rnd() * 50);
+                return [x + len, gy];
+            },
+            pit(x, gy) { // jumpable gap (<= 92px), may change ground height on the far side
+                const len = 160 + rnd() * 120, gap = 58 + rnd() * 34;
+                ground(x, x + len, gy);
+                if (gap > 80 && rnd() < 0.6) ledge(x + len + gap / 2 - 22, gy - 46, 44);
+                return [x + len + gap, rnd() < w.heightVar ? (gy === 230 ? 208 : 230) : gy];
+            },
+            climb(x, gy) { // staircase of ledges up to a lookout, often with a supply cache on top
+                const len = 320, top = Math.max(95, gy - 132), s1 = gy - 44;
+                ground(x, x + len, gy);
+                ledge(x + 40, s1, 64); ledge(x + 120, (s1 + top) / 2, 64); ledge(x + 200, top, 90);
+                if (rnd() < 0.6) addTreasure(x + 240, top, 'cache');
+                return [x + len, gy];
+            },
+            ledges(x, gy) { // a tall ledge with a stepping stone where needed
+                const len = 300 + rnd() * 120, lw = 80 + rnd() * 60, px = x + 60 + rnd() * (len - lw - 100);
+                ground(x, x + len, gy);
+                let ly = Math.max(95, gy - 55 - rnd() * 50);
+                if (gy - ly > MAX_REACH) {
+                    const step = placeStep(px, lw, ly);
+                    if (step) { ly = Math.max(ly, step.groundY - 2 * MAX_REACH); step.p.y = Math.round((step.groundY + ly) / 2); platforms.push(step.p); }
+                    else ly = gy - MAX_REACH;
+                }
+                ledge(px, ly, lw);
+                return [x + len, gy];
+            },
+            lift(x, gy) { // a pit too wide to jump, crossed on a shuttling platform
+                const lead = 120, gap = 150 + rnd() * 50, y = gy - 8, x0 = x + lead + 2;
+                ground(x, x + lead, gy);
+                platforms.push({ x: x0, y, w: 46, h: 10, move: { x0, x1: x + lead + gap - 48, y0: y, y1: y, speed: 0.9, t: 0, dir: 1, wait: 40, hold: 40 } });
+                return [x + lead + gap, gy];
+            },
+            tower(x, gy) { // elevated structure: the roof is only reachable by elevator and hides a treasure chest
+                const len = 330, bx = x + 120, bw = 130, roofY = Math.max(88, gy - 122), ex = bx - 36;
+                ground(x, x + len, gy);
+                structures.push({ kind: 'tower', x: bx, y: roofY, w: bw, h: gy - roofY, ex });
+                ledge(bx, roofY, bw, { h: 8, roof: true });
+                platforms.push({ x: ex, y: gy - 10, w: 34, h: 8, elevator: true,
+                    move: { x0: ex, x1: ex, y0: gy - 10, y1: roofY, speed: 0.75, t: 0, dir: 1, wait: 70, hold: 70 } });
+                addTreasure(bx + bw - 30, roofY, 'chest');
+                return [x + len, gy];
+            },
+            bunker(x, gy) { // a sealed structure; its false wall hides a secret stash inside
+                const len = 280, bx = x + 90, bw = 96, bh = 46;
+                ground(x, x + len, gy);
+                structures.push({ kind: 'bunker', x: bx, y: gy - bh, w: bw, h: bh, reveal: 0, found: false });
+                ledge(bx - 4, gy - bh, bw + 8, { h: 8 }); // the roof is an ordinary ledge
+                addTreasure(bx + bw / 2 - 7, gy, 'secret');
+                return [x + len, gy];
+            },
+        };
+        const weights = { flat: 2, pit: 1 + w.pitChance * 3, climb: 0.9, ledges: 2.6 * w.platDensity, lift: 0.6 };
+        const forced = [['tower', 0.15 + rnd() * 0.55], ['bunker', 0.1 + rnd() * 0.65]];
+        if (!isBoss && levelW > 3800) forced.push(['bunker', 0.1 + rnd() * 0.8]);
+        let x = 450, gy = 230, last = '';
+        ground(0, 450, 230);
+        while (x < endZone - 200 || forced.length) { // the tower and bunker are always placed
+            let id;
+            const due = forced.findIndex(([, at]) => x >= at * endZone);
+            const lastChance = forced.length && endZone - x < 420 * forced.length + 220; // 420 = widest module
+            if (due >= 0 || lastChance) id = forced.splice(due >= 0 ? due : 0, 1)[0][0];
+            else { do { id = pickWeighted(weights, rnd); } while (id === last && id !== 'flat'); }
+            if (id === 'lift' && x + 380 > endZone) id = 'flat';
+            last = id;
+            [x, gy] = M[id](x, gy);
+        }
+        // drop to the arena floor across a small gap (no walls); a pit module already ends in a gap
+        if (isBoss && gy !== 230 && last !== 'pit') x += 64;
+        ground(x, levelW, isBoss ? 230 : gy);
+    }
+
+    // Moving platforms (lifts and elevators) carry whoever stands on them
+    function updateMovers() {
+        for (const p of platforms) {
+            const m = p.move;
+            if (!m) continue;
+            const ox = p.x, oy = p.y;
+            if (m.hold > 0) m.hold--;
+            else {
+                m.t += m.dir * m.speed / (Math.hypot(m.x1 - m.x0, m.y1 - m.y0) || 1);
+                if (m.t >= 1) { m.t = 1; m.dir = -1; m.hold = m.wait; }
+                else if (m.t <= 0) { m.t = 0; m.dir = 1; m.hold = m.wait; }
+            }
+            p.x = m.x0 + (m.x1 - m.x0) * m.t; p.y = m.y0 + (m.y1 - m.y0) * m.t;
+            if (player.grounded && player.ground === p) { player.x += p.x - ox; player.y += p.y - oy; }
+        }
+    }
+    // Opening chests and revealing secret bunkers
+    function updateTreasures() {
+        const pb = playerBox();
+        for (const s of structures) {
+            if (s.kind !== 'bunker') continue;
+            const inside = overlap(pb, s);
+            s.reveal += ((inside ? 1 : 0) - s.reveal) * 0.15;
+            if (inside && !s.found) { s.found = true; popText(s.x + s.w / 2 - 34, s.y - 8, 'SECRET AREA!', '#e879f9'); playSound('pickup'); }
+        }
+        for (const t of treasures) {
+            if (t.opened || !overlap(pb, t)) continue;
+            t.opened = true; stage.secretsFound++;
+            const cx = t.x + 7, cy = t.y;
+            const reward = t.kind === 'secret' ? 250 + Math.round(Math.random() * 150) : t.kind === 'chest' ? 150 + Math.round(Math.random() * 100) : 60 + Math.round(Math.random() * 60);
+            credits += reward; score += reward * 2;
+            spawnItem(cx, cy - 4, 'orb'); spawnItem(cx + 6, cy - 4, 'ammo');
+            if (t.kind !== 'cache') spawnItem(cx - 6, cy - 4, 'special');
+            if (t.kind === 'secret' || (t.kind === 'chest' && player.owned.includes('rocket'))) spawnItem(cx, cy - 8, 'heavy');
+            if (t.kind === 'secret') addSuper(40);
+            const color = t.kind === 'secret' ? '#e879f9' : t.kind === 'chest' ? '#facc15' : '#4ade80';
+            burst(cx, cy, 24, color, 3, 30);
+            rings.push({ x: cx, y: cy, r: 4, maxR: 34, life: 18, max: 18, color });
+            popText(cx - 34, cy - 14, `${t.kind === 'secret' ? 'SECRET STASH' : t.kind === 'chest' ? 'TREASURE' : 'CACHE'} +${reward}`, color);
+            playSound('clear');
+        }
+    }
+
     function makeBoss(type) {
         const d = BOSSES[type], ax = stage.arenaX;
         return {
@@ -860,10 +1086,17 @@
         const maxAmmo = { primary: Math.round(AMMO_MAX.primary * ammoMult), special: Math.round(AMMO_MAX.special * ammoMult), heavy: Math.round(AMMO_MAX.heavy * ammoMult) };
         const maxShield = Math.round(cls.maxShield * (1 + 0.15 * u.shield));
         const maxHp = 100 + 20 * u.vitality;
+        const a = save.armor, liftMax = Math.round(50 * (1 + (selectedClass === 'sentinel' ? 0.2 * a.classItem : 0)));
         return {
-            x: 60, y: 190, w: 16, h: 30, vx: 0, vy: 0, speed: cls.speed, jumpForce: -7.2,
+            x: 60, y: 190, w: 16, h: 30, vx: 0, vy: 0, speed: cls.speed * (1 + 0.04 * a.legs), jumpForce: -7.2 * (1 + 0.02 * a.legs),
             grounded: false, ground: null, jumpsUsed: 0, coyote: 0, jumpBuffer: 0, dropTimer: 0,
-            liftFuel: 50, gliding: false, facing: 1, crouch: false,
+            liftFuel: liftMax, liftMax, gliding: false, facing: 1, crouch: false,
+            // armor piece effects
+            regenDelayMax: Math.round(180 * (1 - 0.12 * a.helmet)), shieldRegen: 0.5 * (1 + 0.15 * a.helmet),
+            meleeMult: 1 + 0.2 * a.arms, reloadMult: 1 - 0.06 * a.arms, dmgTaken: 1 - 0.05 * a.chest,
+            doubleJump: 0.92 + (selectedClass === 'ranger' ? 0.03 * a.classItem : 0),
+            glideFall: 1.1 * (1 - (selectedClass === 'arcanist' ? 0.1 * a.classItem : 0)),
+            gear: Object.fromEntries(ARMOR_IDS.map(k => [k, gearColor(k)])),
             hp: maxHp, maxHp, shield: maxShield, maxShield, regenDelay: 0,
             superEnergy: 0, superRate: cls.superRate * (1 + 0.15 * u.superRate), dmgMult: 1 + 0.1 * u.damage,
             grenadeMax: Math.round(240 * (1 - 0.12 * u.grenade)),
@@ -938,7 +1171,7 @@
         if (e.code === 'KeyR') startReload();
         if (e.code === 'KeyQ') switchWeapon((player.weaponIdx - 1 + player.owned.length) % player.owned.length);
         if (e.code === 'KeyE') switchWeapon((player.weaponIdx + 1) % player.owned.length);
-        if (e.code.startsWith('Digit')) switchWeapon(parseInt(e.code.slice(5), 10) - 1);
+        if (e.code.startsWith('Digit')) { const n = parseInt(e.code.slice(5), 10); switchWeapon(n === 0 ? 9 : n - 1); }
     });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
     window.addEventListener('blur', () => {
@@ -981,7 +1214,7 @@
     function startReload() {
         const p = player, w = WEAPONS[p.weapon];
         if (p.reloadTimer > 0 || p.mags[p.weapon] >= w.mag || p.ammo[w.ammo] <= 0) return;
-        p.reloadTimer = w.reload; p.reloadFor = p.weapon; p.burstLeft = 0;
+        p.reloadTimer = Math.round(w.reload * p.reloadMult); p.reloadFor = p.weapon; p.burstLeft = 0;
     }
 
     function spawnShot(w) {
@@ -1032,11 +1265,11 @@
         let hit = false;
         for (const en of enemies) {
             if (en.dead || !overlap(hb, en)) continue;
-            damageEnemy(en, 45 * p.dmgMult, null, 'melee');
+            damageEnemy(en, 45 * p.dmgMult * p.meleeMult, null, 'melee');
             if (!en.t.flying) en.x += p.facing * 8;
             hit = true;
         }
-        if (bossHittable() && circleRect(boss.x, boss.y, boss.r, hb)) { damageBoss(45 * p.dmgMult); hit = true; }
+        if (bossHittable() && circleRect(boss.x, boss.y, boss.r, hb)) { damageBoss(45 * p.dmgMult * p.meleeMult); hit = true; }
         if (hit) shake = Math.max(shake, 2);
     }
 
@@ -1187,7 +1420,8 @@
         const p = player;
         if (state !== 'playing' || (boss && boss.dead)) return;
         if (p.invuln > 0 && !force) return;
-        p.invuln = 45; p.regenDelay = 180;
+        p.invuln = 45; p.regenDelay = p.regenDelayMax;
+        amt *= p.dmgTaken;
         playSound('hurt');
         shake = Math.max(shake, 3); hurtFlash = 12;
         if (p.shield > 0) {
@@ -1237,7 +1471,7 @@
         save.credits += earned;
         save.best = Math.max(save.best, score);
         persist();
-        lastResult = { won, sub, earned, score, kills, secs: Math.floor(frame / 60), idx };
+        lastResult = { won, sub, earned, score, kills, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}` };
         setTimeout(() => { if (state === 'over') showResults(lastResult); }, won ? 600 : 900);
     }
 
@@ -1249,6 +1483,7 @@
         document.getElementById('end-sub').textContent = r.sub;
         document.getElementById('final-score').textContent = r.score;
         document.getElementById('final-kills').textContent = r.kills;
+        document.getElementById('final-secrets').textContent = r.secrets || '0/0';
         document.getElementById('final-time').textContent = `${Math.floor(r.secs / 60)}:${String(r.secs % 60).padStart(2, '0')}`;
         document.getElementById('final-credits').textContent = '+' + r.earned;
         document.getElementById('final-bank').textContent = save.credits;
@@ -1264,7 +1499,9 @@
     // =====================================================================
     function update() {
         frame++;
+        updateMovers();
         updatePlayer();
+        updateTreasures();
         updateEnemies();
         updateChampionWarps();
         updateBoss();
@@ -1308,7 +1545,7 @@
             if (p.burstLeft === 0 && p.mags[p.weapon] === 0) startReload();
         }
         if (p.regenDelay > 0) p.regenDelay--;
-        else if (p.shield < p.maxShield) p.shield = Math.min(p.maxShield, p.shield + 0.5);
+        else if (p.shield < p.maxShield) p.shield = Math.min(p.maxShield, p.shield + p.shieldRegen);
 
         const down = held.down(), jumpHeld = held.jump();
         let dir = (held.right() ? 1 : 0) - (held.left() ? 1 : 0);
@@ -1326,7 +1563,7 @@
                 p.vy = p.jumpForce; p.coyote = 0; p.jumpBuffer = 0; p.jumpsUsed = 1; p.grounded = false;
                 playSound('jump');
             } else if (selectedClass === 'ranger' && p.jumpsUsed < 2) {
-                p.vy = p.jumpForce * 0.92; p.jumpsUsed = 2; p.jumpBuffer = 0;
+                p.vy = p.jumpForce * p.doubleJump; p.jumpsUsed = 2; p.jumpBuffer = 0;
                 playSound('jump');
                 burst(p.x + p.w / 2, p.y + p.h, 6, '#38bdf8', 2);
             }
@@ -1336,7 +1573,7 @@
         let g = GRAVITY * theme.gravity;
         p.gliding = false;
         if (!p.grounded && jumpHeld && p.vy > -0.5) {
-            if (selectedClass === 'arcanist' && p.vy > 0) { g = 0.08; p.vy = Math.min(p.vy, 1.1); p.gliding = true; }
+            if (selectedClass === 'arcanist' && p.vy > 0) { g = 0.08; p.vy = Math.min(p.vy, p.glideFall); p.gliding = true; }
             else if (selectedClass === 'sentinel' && p.liftFuel > 0) { g = -0.1; p.liftFuel--; p.gliding = true; }
             if (p.gliding && frame % 3 === 0) {
                 particles.push({ x: p.x + 4 + Math.random() * 8, y: p.y + p.h, vx: 0, vy: 1.2, life: 14, max: 14, color: ELEMENTS[selectedElement].color, size: 2 });
@@ -1352,9 +1589,11 @@
         const plat = landOnPlatforms(p, prevBottom, p.dropTimer > 0);
         p.ground = plat;
         if (plat) {
-            p.jumpsUsed = 0; p.liftFuel = 50;
-            p.safeX = clamp(p.x, plat.x + 6, plat.x + plat.w - p.w - 6);
-            p.safeY = plat.y - p.h;
+            p.jumpsUsed = 0; p.liftFuel = p.liftMax;
+            if (!plat.move) { // never respawn onto a moving platform's old position
+                p.safeX = clamp(p.x, plat.x + 6, plat.x + plat.w - p.w - 6);
+                p.safeY = plat.y - p.h;
+            }
         }
         if (p.y > H + 20) {
             hurtPlayer(35, true);
@@ -1838,7 +2077,7 @@
                 'pixel-font text-center text-[9px] tracking-widest hidden md:block ' + (left ? 'text-white' : 'text-emerald-400'));
         }
         setHud('hud-credits', credits);
-        setHud('hud-reserves', `PRIMARY ${p.ammo.primary} • SPECIAL ${p.ammo.special} • HEAVY ${p.ammo.heavy}`);
+        setHud('hud-reserves', `PRIMARY ${p.ammo.primary} • SPECIAL ${p.ammo.special} • HEAVY ${p.ammo.heavy} • TREASURE ${stage.secretsFound}/${stage.secretsTotal}`);
         if (boss && boss.active) {
             const pct = Math.max(0, boss.hp / boss.maxHp * 100).toFixed(1);
             if (hudCache.bossbar !== pct) { hudCache.bossbar = pct; document.getElementById('boss-hp-bar').style.width = pct + '%'; }
@@ -1961,6 +2200,14 @@
                 if (p.x > 0) edges.push(p.x);
                 if (p.x + p.w < stage.levelW) edges.push(p.x + p.w - 16);
                 for (const ex of edges) for (let i = 0; i < 4; i++) { ctx.fillStyle = i % 2 ? '#0f172a' : '#facc15'; ctx.fillRect(ex + i * 4, p.y, 4, 4); }
+            } else if (p.move) { // lift / elevator: hazard-striped plate
+                if (p.elevator) { // cables up to the top of the shaft
+                    ctx.fillStyle = 'rgba(148,163,184,0.6)';
+                    ctx.fillRect(p.x + 4, p.move.y1 - 14, 1, p.y - p.move.y1 + 14); ctx.fillRect(p.x + p.w - 5, p.move.y1 - 14, 1, p.y - p.move.y1 + 14);
+                }
+                ctx.fillStyle = '#334155'; ctx.fillRect(p.x, p.y, p.w, p.h);
+                for (let i = 0; i < p.w; i += 6) { ctx.fillStyle = (i / 6) % 2 ? '#0f172a' : '#facc15'; ctx.fillRect(p.x + i, p.y, Math.min(6, p.w - i), 2); }
+                ctx.fillStyle = p.move.hold > 0 && frame % 20 < 10 ? '#22c55e' : '#16a34a'; ctx.fillRect(p.x + p.w / 2 - 2, p.y + 4, 4, 3);
             } else {
                 ctx.fillStyle = theme.plat; ctx.fillRect(p.x, p.y, p.w, p.h);
                 ctx.fillStyle = theme.platTop; ctx.fillRect(p.x, p.y, p.w, 2);
@@ -1968,6 +2215,61 @@
                 for (let i = p.x + 6; i < p.x + p.w - 6; i += 14) ctx.fillRect(i, p.y + 4, 6, 4);
                 ctx.fillStyle = theme.platGlow; ctx.fillRect(p.x + 4, p.y + p.h, p.w - 8, 2);
             }
+        }
+    }
+
+    // Towers (behind everything in the play layer): body, lit windows, elevator shaft frame
+    function drawTowers() {
+        for (const s of structures) {
+            if (s.kind !== 'tower' || s.x + s.w < cameraX - 50 || s.ex > cameraX + W) continue;
+            ctx.fillStyle = theme.mid; ctx.fillRect(s.x, s.y, s.w, s.h);
+            ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(s.x + s.w - 10, s.y, 10, s.h);
+            ctx.fillStyle = theme.midTop; ctx.fillRect(s.x, s.y + 8, s.w, 2);
+            for (let wy = s.y + 18; wy < s.y + s.h - 12; wy += 16)
+                for (let wx = s.x + 10; wx < s.x + s.w - 16; wx += 18) {
+                    ctx.fillStyle = ((wx * 7 + wy * 3) % 5 === 0) ? (theme.lights || '#fde68a') : 'rgba(15,23,42,0.7)';
+                    ctx.fillRect(wx, wy, 8, 6);
+                }
+            // shaft frame
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(s.ex - 3, s.y - 16, 2, s.h + 16); ctx.fillRect(s.ex + 35, s.y - 16, 2, s.h + 16);
+            ctx.fillRect(s.ex - 3, s.y - 16, 40, 3);
+            ctx.fillStyle = frame % 60 < 30 ? '#facc15' : '#a16207'; ctx.fillRect(s.ex + 15, s.y - 20, 4, 4);
+        }
+    }
+    // Bunker facades are drawn in front of the player and fade out while you are inside
+    function drawBunkers() {
+        for (const s of structures) {
+            if (s.kind !== 'bunker' || s.x + s.w < cameraX || s.x > cameraX + W) continue;
+            ctx.globalAlpha = 1 - 0.8 * s.reveal;
+            ctx.fillStyle = theme.plat; ctx.fillRect(s.x, s.y, s.w, s.h);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            for (let by = s.y + 4; by < s.y + s.h; by += 8)
+                for (let bx = s.x + ((by / 8) % 2 ? 0 : 8); bx < s.x + s.w - 4; bx += 16) ctx.fillRect(bx, by, 14, 1);
+            // the hint: a cracked, slightly off-colour panel marks the false wall
+            ctx.fillStyle = 'rgba(232,121,249,0.18)'; ctx.fillRect(s.x + s.w / 2 - 12, s.y + 14, 24, s.h - 14);
+            ctx.strokeStyle = 'rgba(15,23,42,0.8)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(s.x + s.w / 2 - 6, s.y + 16); ctx.lineTo(s.x + s.w / 2 + 2, s.y + 26); ctx.lineTo(s.x + s.w / 2 - 3, s.y + 34); ctx.lineTo(s.x + s.w / 2 + 5, s.y + s.h); ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+    }
+    function drawTreasures() {
+        for (const t of treasures) {
+            if (t.x + t.w < cameraX || t.x > cameraX + W) continue;
+            const c = t.kind === 'secret' ? '#c026d3' : t.kind === 'chest' ? '#b45309' : '#15803d';
+            const trim = t.kind === 'secret' ? '#f0abfc' : t.kind === 'chest' ? '#facc15' : '#86efac';
+            if (t.opened) {
+                ctx.globalAlpha = 0.5;
+                ctx.fillStyle = c; ctx.fillRect(t.x, t.y + 4, t.w, 6);
+                ctx.fillStyle = trim; ctx.fillRect(t.x, t.y - 3, t.w, 2);
+                ctx.globalAlpha = 1;
+                continue;
+            }
+            const bob = Math.sin(frame * 0.08 + t.x) * 0.6;
+            ctx.fillStyle = c; ctx.fillRect(t.x, t.y + bob, t.w, t.h);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(t.x, t.y + 4 + bob, t.w, 1);
+            ctx.fillStyle = trim; ctx.fillRect(t.x, t.y + bob, t.w, 2); ctx.fillRect(t.x + t.w / 2 - 1.5, t.y + 3 + bob, 3, 3);
+            if (frame % 50 < 4) { ctx.fillStyle = '#fff'; ctx.fillRect(t.x + 3 + (frame % 50) * 2, t.y + 1 + bob, 2, 2); } // glint
         }
     }
 
@@ -2258,28 +2560,32 @@
         const cls = CLASSES[selectedClass], el = ELEMENTS[selectedElement];
         const x = snap(p.x), y = snap(p.y), f = p.facing, top = p.crouch ? y + 13 : y;
 
-        ctx.fillStyle = '#1e293b';
+        const gear = p.gear;
+        ctx.fillStyle = gear.legs;
         if (p.crouch) { ctx.fillRect(x + 1, y + 26, 6, 4); ctx.fillRect(x + 9, y + 26, 6, 4); }
         else if (!p.grounded) { ctx.fillRect(x + 3, y + 20, 4, 8); ctx.fillRect(x + 9, y + 19, 4, 7); }
         else { const s = [0, 2, 0, -2][p.legFrame]; ctx.fillRect(x + 3 + s, y + 20, 4, 10); ctx.fillRect(x + 9 - s, y + 20, 4, 10); }
 
         const bodyH = p.crouch ? 7 : 11, beltY = p.crouch ? top + 14 : top + 18;
-        if (selectedClass === 'ranger') { ctx.fillStyle = '#0c4a6e'; ctx.fillRect(f > 0 ? x - 2 : x + 14, top + 11, 4, p.crouch ? 6 : 14); }
-        ctx.fillStyle = cls.color; ctx.fillRect(x + 1, top + 10, 14, bodyH);
-        if (selectedClass === 'sentinel') { ctx.fillStyle = '#7f1d1d'; ctx.fillRect(x - 1, top + 9, 18, 4); }
-        if (selectedClass === 'arcanist' && !p.crouch) { ctx.fillStyle = '#4c1d95'; ctx.fillRect(x + 1, top + 19, 14, 7); }
+        if (selectedClass === 'ranger') { ctx.fillStyle = gear.classItem; ctx.fillRect(f > 0 ? x - 2 : x + 14, top + 11, 4, p.crouch ? 6 : 14); }
+        ctx.fillStyle = gear.chest; ctx.fillRect(x + 1, top + 10, 14, bodyH);
+        if (selectedClass === 'sentinel') { ctx.fillStyle = gear.classItem; ctx.fillRect(x - 1, top + 9, 18, 4); }
+        if (selectedClass === 'arcanist' && !p.crouch) { ctx.fillStyle = gear.classItem; ctx.fillRect(x + 1, top + 19, 14, 7); }
         ctx.fillStyle = el.color; ctx.fillRect(x + 1, beltY, 14, 2);
-        ctx.fillStyle = '#e2e8f0'; ctx.fillRect(x + 2, top, 12, 10);
+        ctx.fillStyle = gear.helmet; ctx.fillRect(x + 2, top, 12, 10);
         ctx.fillStyle = el.color; ctx.fillRect(f > 0 ? x + 7 : x + 2, top + 3, 7, 3);
 
         // Weapon silhouette changes with the equipped gun
         const [ax, ay] = getAim(), wid = p.weapon;
-        const len = { auto: 14, smg: 10, pulse: 15, hand: 9, shotgun: 15, sniper: 20, rocket: 18 }[wid] || 14;
+        const len = { auto: 14, smg: 10, pulse: 15, hand: 9, shotgun: 15, sniper: 20, rocket: 18, piercer: 18, arc: 12, breacher: 14 }[wid] || 14;
         const thick = wid === 'rocket' ? 6 : wid === 'shotgun' ? 5 : 4;
         ctx.save(); ctx.translate(x + p.w / 2, top + 13); ctx.rotate(Math.atan2(ay, ax));
         ctx.fillStyle = wid === 'rocket' ? '#4b5563' : '#64748b'; ctx.fillRect(0, -thick / 2, len, thick);
         ctx.fillStyle = AMMO_COLORS[WEAPONS[wid].ammo]; ctx.fillRect(2, -thick / 2 - 1, 5, 2);
         if (wid === 'sniper') { ctx.fillStyle = '#94a3b8'; ctx.fillRect(5, -5, 6, 2); }
+        const anti = WEAPONS[wid].anti;
+        if (anti) { ctx.fillStyle = CHAMPIONS[anti].color; ctx.fillRect(len - 5, -thick / 2, 3, thick); } // anti-champion weapons glow in their champion's colour
+        ctx.fillStyle = gear.arms; ctx.fillRect(-2, -3, 6, 6); // gauntlet on the grip
         ctx.restore();
 
         if (p.meleeAnim > 0) {
@@ -2403,7 +2709,7 @@
         ctx.font = '5px "Press Start 2P", monospace';
         p.owned.forEach((id, i) => {
             const w = WEAPONS[id], cur = i === p.weaponIdx, empty = p.mags[id] <= 0 && p.ammo[w.ammo] <= 0;
-            const label = `${i + 1} ${w.short}`, wd = ctx.measureText(label).width + 6;
+            const label = `${(i + 1) % 10} ${w.short}`, wd = ctx.measureText(label).width + 6;
             ctx.fillStyle = cur ? 'rgba(15,23,42,0.9)' : 'rgba(15,23,42,0.55)';
             ctx.fillRect(x, y, wd, 9);
             ctx.strokeStyle = cur ? AMMO_COLORS[w.ammo] : 'rgba(100,116,139,0.6)'; ctx.lineWidth = 1;
@@ -2577,6 +2883,12 @@
             const g = groundAt(stage.endX), gy = g ? g.y : 230;
             light(stage.endX, gy - 41, 26 + Math.sin(frame * 0.1) * 3, beaconUnlocked() ? '#22c55e' : '#ef4444', 0.55);
         }
+        for (const t of treasures) {
+            if (t.opened || t.x < cameraX - 30 || t.x > cameraX + W + 30) continue;
+            const hidden = t.kind === 'secret' && !structures.some(s => s.kind === 'bunker' && s.reveal > 0.5 && t.x >= s.x && t.x <= s.x + s.w);
+            if (!hidden) light(t.x + 7, t.y + 5, 18, t.kind === 'secret' ? '#e879f9' : t.kind === 'chest' ? '#facc15' : '#4ade80', 0.4 + 0.1 * Math.sin(frame * 0.1));
+        }
+        for (const s of structures) if (s.kind === 'tower' && Math.abs(s.ex - cameraX - W / 2) < W) light(s.ex + 17, s.y - 18, 12, '#facc15', frame % 60 < 30 ? 0.5 : 0.2);
         for (const it of items) {
             const cx = it.x + 5, cy = it.y + 5;
             light(cx, cy, it.type === 'orb' ? 16 : 11, it.type === 'orb' ? '#facc15' : AMMO_COLORS[it.type === 'ammo' ? 'primary' : it.type], 0.45);
@@ -2645,8 +2957,10 @@
 
         ctx.save();
         ctx.translate(snap(-cameraX + sx), snap(sy));
+        drawTowers();
         drawPlatforms();
         if (gfx128) { drawPlatformShadingHD(); drawShadowsHD(); }
+        drawTreasures();
         drawBeacon();
         if (boss && boss.active && !boss.dead) {
             ctx.fillStyle = `rgba(56,189,248,${0.25 + 0.15 * Math.sin(frame * 0.1)})`;
@@ -2658,6 +2972,7 @@
         drawHazards();
         if (state !== 'over' || lives > 0) drawPlayer();
         drawBullets();
+        drawBunkers();
         drawFx();
         if (gfx128) drawLightsHD();
         ctx.restore();
@@ -2677,6 +2992,7 @@
             centerText(`WORLD ${stage.world + 1}: ${theme.name}`, 92, 7, WORLDS[stage.world].color);
             centerText(`${stageLabel(stage.idx)}  ${stage.name}`, 112, 11, '#facc15');
             centerText(stage.isBoss ? 'DEFEAT THE GUARDIAN BOSS' : `DEFEAT ${stage.killsNeeded} HOSTILES, THEN EXTRACT`, 132, 6, '#e2e8f0');
+            if (stage.champKinds.length) centerText('CHAMPIONS: ' + stage.champKinds.map(k => CHAMPIONS[k].name).join(' + '), 148, 5, CHAMPIONS[stage.champKinds[0]].color);
             ctx.globalAlpha = 1;
         }
         if (bossIntro > 0 && Math.floor(bossIntro / 15) % 2 === 0) {
