@@ -1,7 +1,7 @@
 {
   "name": "saturn-vanguard",
   "productName": "Saturn Vanguard",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Retro 2D run-and-gun platformer",
   "main": "main.js",
   "private": true,
