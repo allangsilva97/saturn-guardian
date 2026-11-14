@@ -9,6 +9,18 @@ A retro 2D run-and-gun platformer in a single HTML file. No build step: open `sa
 - **7 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher
 - **Armory:** spend credits on weapons and upgrades; progress is saved in the browser
 
+## Windows desktop app (.exe)
+The `desktop/` folder wraps the game in Electron as a portable, fully offline `SaturnVanguard.exe`:
+
+```bash
+cd desktop
+npm install
+node node_modules/electron/install.js
+npm run dist
+```
+
+The exe is written to `desktop/dist/SaturnVanguard.exe`. `npm start` runs the app without packaging it. F11 toggles fullscreen.
+
 ## Controls
 | Key | Action |
 |---|---|
