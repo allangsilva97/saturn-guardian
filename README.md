@@ -2,6 +2,10 @@
 
 A retro 2D run-and-gun platformer in a single HTML file. No build step: open `saturn_vanguard.html` in a browser.
 
+**▶ Play in your browser:** https://allangsilva97.github.io/saturn-vanguard/ (keyboard required)
+
+**⬇ Windows download:** [latest release](https://github.com/allangsilva97/saturn-vanguard/releases/latest)
+
 ## Features
 - **3 classes:** Ranger (double jump), Sentinel (hover, extra shield), Arcanist (glide, faster super)
 - **3 elements:** Fire, Shock, Void. Match an enemy's shield colour to shatter it
