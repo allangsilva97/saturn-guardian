@@ -88,7 +88,10 @@
                         </div>
                         <div class="bg-slate-950 p-2 border border-slate-800 rounded text-[12px] text-slate-300 leading-snug">
                             Match your element to a shield's colour to shatter it. Melee breaks any shield.
-                            Shieldbearers block shots from the front, so flank them or use explosives.
+                            Shieldbearers block shots from the front, so flank them or use explosives. Crouch to duck under level shots.
+                            <span class="block mt-1"><span style="color:#22d3ee">BARRIER</span> champions: break the barrier with Hand Cannon, Pulse, Sniper or heavy.
+                            <span style="color:#a3e635">OVERLOAD</span>: keep a stream of hits on it to disrupt it.
+                            <span style="color:#fb923c">UNSTOPPABLE</span>: melee, shotgun or explode it mid-charge to stagger it.</span>
                         </div>
                     </div>
                     <div>
@@ -319,6 +322,19 @@
         herald:   { name: 'VOID HERALD',   hp: 4800, r: 28 },
     };
 
+    // Champions: tougher variants of normal enemies, rolled randomly each run and warped in mid-stage.
+    // Each one has a counter:
+    //  BARRIER     raises a healing barrier at 66%/33% HP; precision hits (hand cannon, pulse, sniper), heavy and supers break it fast
+    //  OVERLOAD    regenerates and fires faster; a rapid stream of hits disrupts it (stuns, stops regen)
+    //  UNSTOPPABLE resists 70% damage and charges; hit it mid-charge with melee, shotgun or an explosion to stagger it
+    const CHAMPIONS = {
+        barrier:     { name: 'BARRIER',     color: '#22d3ee' },
+        overload:    { name: 'OVERLOAD',    color: '#a3e635' },
+        unstoppable: { name: 'UNSTOPPABLE', color: '#fb923c' },
+    };
+    const CHAMPION_IDS = Object.keys(CHAMPIONS);
+    const UNSTOPPABLE_BASES = new Set(['scav', 'raider', 'brute', 'juggernaut', 'charger', 'shieldbearer']);
+
     const WORLDS = [
         {
             name: 'IRON YARD', stages: ['OUTER DOCKS', 'RUST LINES', "OVERSEER'S NEST"], boss: 'overseer', color: '#38bdf8',
@@ -354,6 +370,7 @@
         },
     ];
     const TOTAL_STAGES = WORLDS.length * 3;
+    const MAX_REACH = 54; // tallest ledge rise generated, kept under a held single jump (~64px)
     const EXTRACT_KILL_SHARE = 0.7; // share of a stage's hostiles to defeat before extraction unlocks
 
     const GAME_KEYS = new Set(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD',
@@ -574,7 +591,8 @@
     }
     function playerBox() {
         const p = player;
-        return p.crouch ? { x: p.x, y: p.y + 12, w: p.w, h: p.h - 12 } : p;
+        // Crouching drops the hitbox below chest height, so level shots fly overhead
+        return p.crouch ? { x: p.x, y: p.y + 14, w: p.w, h: p.h - 14 } : p;
     }
     function burst(x, y, n, color, spd = 3, life = 22) {
         if (gfx128) n = Math.round(n * 1.6);
@@ -603,7 +621,129 @@
             fireTimer: 60 + Math.random() * 60, hurt: 0, facing: -1, anim: 0, leg: 0, aware: false, dead: false, grounded: false,
             homeX: x, homeY: y, seed: Math.random() * 10, aim: 0, burstLeft: 0, burstT: 0,
             chargeT: 0, windup: 0, cool: 0, tp: 0, tpT: 0, tpTimer: 120, alpha: 1, minion: false,
+            champ: null, stun: 0,
         };
+    }
+
+    // ---------------- CHAMPIONS ----------------
+    function makeChampion(en, kind) {
+        en.champ = kind;
+        en.hp = en.maxHp = Math.round(en.maxHp * 2.6);
+        en.shieldEl = null; en.shield = 0; // champion mechanics replace elemental shields
+        en.stun = 0;
+        if (kind === 'barrier') { en.barrier = 0; en.barrierMax = Math.round(en.maxHp * 0.3); en.nextBarrier = 0.66; }
+        if (kind === 'overload') { en.olHits = []; en.disrupt = 0; }
+        if (kind === 'unstoppable') en.cool = 90;
+        return en;
+    }
+    const championEligible = (type, kind) => kind !== 'unstoppable' || UNSTOPPABLE_BASES.has(type);
+    function rollChampionKind(type) {
+        const kinds = CHAMPION_IDS.filter(k => championEligible(type, k));
+        return kinds[Math.floor(Math.random() * kinds.length)];
+    }
+    // Random (not seeded), so champions differ every run
+    function seedChampions() {
+        const wi = stage.world;
+        const want = stage.isBoss ? (Math.random() < 0.5 ? 1 : 0) : 1 + Math.floor(Math.random() * Math.min(3, wi + 2));
+        const pool = enemies.filter(e => !stage.isBoss || e.x < stage.arenaX - 100);
+        for (let i = 0; i < want && pool.length; i++) {
+            const en = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+            makeChampion(en, rollChampionKind(en.type));
+        }
+        stage.champWarps = stage.isBoss ? 0 : 1 + Math.floor(Math.random() * (wi + 1));
+        stage.champTimer = 900 + Math.random() * 1200;
+    }
+    // Warps a champion in just ahead of the player every so often
+    function updateChampionWarps() {
+        if (!stage.champWarps || stageIntro > 0 || (boss && boss.active)) return;
+        if (--stage.champTimer > 0) return;
+        const ahead = cameraX + W - 40 - Math.random() * 60;
+        const g = groundAt(ahead);
+        if (!g || ahead > (stage.endX || stage.arenaX - 150) - 60 || ahead - player.x < 140) { stage.champTimer = 45; return; }
+        const types = Object.keys(theme.pool).filter(t => !ENEMY_TYPES[t].flying);
+        const type = types[Math.floor(Math.random() * types.length)], t = ENEMY_TYPES[type];
+        const x = clamp(ahead, g.x + 4, g.x + g.w - t.w - 4);
+        const en = makeChampion(makeEnemy(type, x, g.y - t.h - 1, null), rollChampionKind(type));
+        en.aware = true; en.fireTimer = 90;
+        enemies.push(en);
+        const c = CHAMPIONS[en.champ].color;
+        rings.push({ x: x + t.w / 2, y: g.y - t.h / 2, r: 4, maxR: 40, life: 20, max: 20, color: c });
+        burst(x + t.w / 2, g.y - t.h / 2, 20, c, 3, 26);
+        popText(player.x - 30, player.y - 26, `${CHAMPIONS[en.champ].name} INBOUND!`, c);
+        playSound('beam');
+        stage.champWarps--;
+        stage.champTimer = 1200 + Math.random() * 1200;
+    }
+    // Applies a champion's defences to incoming damage. Returns the damage to deal, or null if absorbed.
+    function championHit(en, dmg, kind, wid) {
+        const c = CHAMPIONS[en.champ].color, cx = en.x + en.w / 2;
+        if (en.stun > 0) return dmg * 1.5;
+        if (en.champ === 'barrier' && en.barrier > 0) {
+            const counter = kind === 'precision' || wid === 'hand' || wid === 'pulse';
+            const m = kind === 'heavy' || kind === 'super' ? 4 : counter ? 3 : kind === 'melee' ? 1.5 : 0.5;
+            en.barrier -= dmg * m;
+            if (en.barrier <= 0) {
+                en.barrier = 0; en.stun = 150;
+                burst(cx, en.y + en.h / 2, 22, c, 3.5); playSound('shield');
+                rings.push({ x: cx, y: en.y + en.h / 2, r: 6, maxR: 46, life: 16, max: 16, color: c });
+                popText(en.x - 18, en.y - 22, 'BARRIER BROKEN!', c);
+            } else playSound('immune');
+            return null;
+        }
+        if (en.champ === 'overload') {
+            en.olHits.push(frame);
+            while (en.olHits.length && frame - en.olHits[0] > 50) en.olHits.shift();
+            if (en.olHits.length >= 6 && en.disrupt <= 0) {
+                en.disrupt = 300; en.stun = 90; en.olHits.length = 0;
+                burst(cx, en.y + en.h / 2, 18, c, 3); playSound('shield');
+                popText(en.x - 12, en.y - 22, 'DISRUPTED!', c);
+            }
+            return dmg;
+        }
+        if (en.champ === 'unstoppable') {
+            const staggerHit = kind === 'melee' || kind === 'grenade' || kind === 'heavy' || kind === 'super' || wid === 'shotgun';
+            if (staggerHit && (en.windup > 0 || en.chargeT > 0)) {
+                en.windup = 0; en.chargeT = 0; en.cool = 200; en.stun = 180; en.vx = Math.sign(en.vx || 1) * en.t.speed;
+                shake = Math.max(shake, 5); playSound('shield');
+                burst(cx, en.y + en.h / 2, 18, c, 3.5);
+                popText(en.x - 12, en.y - 22, 'STAGGERED!', c);
+                return dmg * 1.5;
+            }
+            return dmg * 0.3;
+        }
+        return dmg;
+    }
+    // Per-frame champion behaviour. Returns 'stun' (skip AI), 'charge' (moving, skip AI) or null.
+    function updateChampion(en, plat, dx, dy) {
+        if (en.stun > 0) { en.stun--; en.windup = 0; en.chargeT = 0; return 'stun'; }
+        if (en.champ === 'barrier') {
+            if (en.barrier > 0) en.hp = Math.min(en.maxHp, en.hp + en.maxHp * 0.0025);
+            else if (en.hp < en.maxHp * en.nextBarrier) {
+                en.barrier = en.barrierMax; en.nextBarrier -= 0.33;
+                popText(en.x - 14, en.y - 22, 'BARRIER UP', CHAMPIONS.barrier.color);
+                playSound('shield');
+            }
+        } else if (en.champ === 'overload') {
+            if (en.disrupt > 0) en.disrupt--;
+            else en.hp = Math.min(en.maxHp, en.hp + en.maxHp * 0.0018);
+        } else if (en.champ === 'unstoppable' && en.t.ai !== 'charger') {
+            if (en.chargeT > 0) {
+                en.chargeT--;
+                const nx = en.x + en.vx, foot = en.vx > 0 ? nx + en.w + 1 : nx - 1;
+                if (!plat || foot < plat.x || foot > plat.x + plat.w || nx < minArenaX()) en.chargeT = 0; else en.x = nx;
+                if (frame % 3 === 0) particles.push({ x: en.x + en.w / 2, y: en.y + en.h, vx: -en.vx * 0.3, vy: -0.5, life: 12, max: 12, color: '#fdba74', size: 2 });
+                if (en.chargeT === 0) { en.cool = 150; en.vx = Math.sign(en.vx) * en.t.speed; }
+                en.facing = Math.sign(en.vx) || 1;
+                return 'charge';
+            }
+            if (en.windup > 0) {
+                if (--en.windup === 0) { en.chargeT = 70; en.vx = en.facing * 3.2; }
+                return 'charge';
+            }
+            if (en.cool > 0) en.cool--;
+            else if (en.aware && Math.abs(dy) < 30 && Math.abs(dx) < 220 && plat) { en.windup = 40; en.facing = Math.sign(dx) || 1; return 'charge'; }
+        }
+        return null;
     }
 
     function generateStage(idx) {
@@ -646,12 +786,20 @@
             px += 110 + rnd() * 160;
             if (px < ledgeEnd && rnd() < w.platDensity) {
                 const g = groundAt(px), base = g ? g.y : 230, lw = 80 + rnd() * 80;
-                platforms.push({ x: px, y: Math.max(95, base - 55 - rnd() * 50), w: lw, h: 12 });
+                let ly = Math.max(95, base - 55 - rnd() * 50);
+                // A held jump rises ~64px; anything taller gets a stepping ledge halfway up,
+                // so every class (not just double-jump/hover) can reach it
+                if (base - ly > MAX_REACH) {
+                    const step = placeStep(px, lw, ly);
+                    if (step) { ly = Math.max(ly, step.groundY - 2 * MAX_REACH); step.p.y = Math.round((step.groundY + ly) / 2); platforms.push(step.p); }
+                    else ly = base - MAX_REACH;
+                }
+                platforms.push({ x: px, y: ly, w: lw, h: 12 });
                 px += lw;
             }
         }
         if (isBoss) {
-            platforms.push({ x: arenaX + 110, y: 165, w: 90, h: 12 }, { x: arenaX + 500, y: 165, w: 90, h: 12 });
+            platforms.push({ x: arenaX + 110, y: 230 - MAX_REACH, w: 90, h: 12 }, { x: arenaX + 500, y: 230 - MAX_REACH, w: 90, h: 12 });
         }
 
         // Enemies
@@ -680,8 +828,17 @@
         boss = isBoss ? makeBoss(w.boss) : null;
         // The extraction beacon stays locked until this many hostiles are defeated
         stage.killsNeeded = isBoss ? 0 : Math.ceil(enemies.length * EXTRACT_KILL_SHARE);
+        seedChampions();
     }
     const beaconUnlocked = () => kills >= stage.killsNeeded;
+    // A 46px stepping ledge beside a tall ledge, only where solid ground lies under the whole step
+    function placeStep(px, lw, ly) {
+        for (const sx of [px - 40, px + lw - 6]) {
+            const g = groundAt(sx + 2);
+            if (g && g === groundAt(sx + 44)) return { groundY: g.y, p: { x: sx, y: 0, w: 46, h: 10, step: true } };
+        }
+        return null;
+    }
 
     function makeBoss(type) {
         const d = BOSSES[type], ax = stage.arenaX;
@@ -809,7 +966,7 @@
     }
     function muzzle(ax, ay) {
         const p = player;
-        return [p.x + p.w / 2 + ax * 13, p.y + (p.crouch ? 23 : 13) + ay * 13];
+        return [p.x + p.w / 2 + ax * 13, p.y + (p.crouch ? 26 : 13) + ay * 13];
     }
 
     function switchWeapon(idx) {
@@ -916,10 +1073,14 @@
     // =====================================================================
     //  DAMAGE
     // =====================================================================
-    function damageEnemy(en, dmg, element, kind) {
+    function damageEnemy(en, dmg, element, kind, wid) {
         if (en.dead) return;
         en.hurt = 6;
         en.aware = true;
+        if (en.champ) {
+            dmg = championHit(en, dmg, kind, wid);
+            if (dmg === null) return;
+        }
         if (en.shield > 0) {
             const match = element && element === en.shieldEl;
             const mult = kind === 'melee' ? 1.2
@@ -957,6 +1118,13 @@
         explosionFx(cx, cy, 10 + en.w / 2, '#f97316');
         popText(cx - 10, en.y - 6, '+' + en.t.score);
         const p = player;
+        if (en.champ) {
+            const bonus = 500;
+            score += bonus; credits += 80;
+            popText(cx - 30, en.y - 18, `${CHAMPIONS[en.champ].name} DOWN +${bonus}`, CHAMPIONS[en.champ].color);
+            spawnItem(cx - 8, cy, 'orb'); spawnItem(cx + 8, cy, 'ammo');
+            rings.push({ x: cx, y: cy, r: 6, maxR: 50, life: 18, max: 18, color: CHAMPIONS[en.champ].color });
+        }
         if (Math.random() < 0.4) spawnItem(cx, cy, 'orb');
         if (Math.random() < (p.ammo.primary < 60 ? 0.7 : 0.25)) spawnItem(cx + 6, cy, 'ammo');
         const hasSpecial = p.owned.some(id => WEAPONS[id].ammo === 'special'), hasHeavy = p.owned.includes('rocket');
@@ -1098,6 +1266,7 @@
         frame++;
         updatePlayer();
         updateEnemies();
+        updateChampionWarps();
         updateBoss();
         updateHazards();
         updateBullets();
@@ -1225,7 +1394,8 @@
     }
 
     function updateEnemies() {
-        const pb = playerBox(), pcx = player.x + player.w / 2, pcy = player.y + player.h / 2;
+        // Enemies aim at head height while you crouch, so their shots pass over you
+        const pb = playerBox(), pcx = player.x + player.w / 2, pcy = player.crouch ? player.y + 8 : player.y + player.h / 2;
         for (const en of enemies) {
             if (en.dead) continue;
             const t = en.t;
@@ -1246,6 +1416,14 @@
 
             const dx = pcx - (en.x + en.w / 2), dy = pcy - (en.y + en.h / 2);
             en.aware = en.minion || (Math.abs(dx) < (t.range || 260) && Math.abs(dy) < (t.flying ? 220 : 150));
+            if (en.champ) {
+                const mode = updateChampion(en, plat, dx, dy);
+                if (mode === 'stun') continue; // stunned: no movement, firing or contact damage
+                if (mode === 'charge') {
+                    if (overlap(pb, en)) hurtPlayer(en.chargeT > 0 ? t.dmg * en.dmgMult * 1.5 : 10);
+                    continue;
+                }
+            }
             const charging = en.aware && en.fireTimer < 18;
             let faceSet = false;
 
@@ -1309,7 +1487,7 @@
                 en.fireTimer--;
                 const ready = en.fireTimer <= 0 && (t.fire !== 'bomb' || Math.abs(dx) < 24);
                 if (ready) {
-                    en.fireTimer = t.fireRate * (0.8 + Math.random() * 0.4);
+                    en.fireTimer = t.fireRate * (0.8 + Math.random() * 0.4) * (en.champ === 'overload' && en.disrupt <= 0 ? 0.6 : 1);
                     enemyFire(en, pcx, pcy);
                 }
             }
@@ -1535,7 +1713,7 @@
                         playSound('immune');
                         break;
                     }
-                    damageEnemy(en, b.dmg, b.element, b.kind === 'golden' ? 'super' : b.kind);
+                    damageEnemy(en, b.dmg, b.element, b.kind === 'golden' ? 'super' : b.kind, b.wid);
                     burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
                     if (pierce) b.hit.add(en); else { b.dead = true; break; }
                 }
@@ -1904,6 +2082,7 @@
                 }
             }
         }
+        if (en.champ) drawChampionMarks(en, x, y);
         if (en.shield > 0) {
             const c = ELEMENTS[en.shieldEl].color;
             ctx.globalAlpha = 0.14 * en.alpha; ctx.fillStyle = c;
@@ -1912,13 +2091,71 @@
             ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.stroke();
         }
         ctx.globalAlpha = en.alpha;
-        if (en.hp < en.maxHp || (en.shieldEl && en.shield < en.maxShield)) {
+        if (en.champ || en.hp < en.maxHp || (en.shieldEl && en.shield < en.maxShield)) {
             const bw = en.w + 8, bx = x - 4, by = y - 11;
             ctx.fillStyle = '#0f172a'; ctx.fillRect(bx - 1, by - 1, bw + 2, 7);
             if (en.shieldEl) { ctx.fillStyle = ELEMENTS[en.shieldEl].color; ctx.fillRect(bx, by, bw * Math.max(0, en.shield / en.maxShield), 2); }
+            else if (en.barrier > 0) { ctx.fillStyle = CHAMPIONS.barrier.color; ctx.fillRect(bx, by, bw * en.barrier / en.barrierMax, 2); }
             ctx.fillStyle = '#ef4444'; ctx.fillRect(bx, by + 3, bw * Math.max(0, en.hp / en.maxHp), 2);
         }
         ctx.restore();
+    }
+
+    function drawChampionMarks(en, x, y) {
+        const c = CHAMPIONS[en.champ].color, cx = x + en.w / 2;
+        // pulsing outline
+        ctx.globalAlpha = (0.45 + 0.3 * Math.sin(frame * 0.12 + en.seed)) * en.alpha;
+        ctx.strokeStyle = c; ctx.lineWidth = 1.5;
+        roundRectPath(x - 3, y - 3, en.w + 6, en.h + 6, 3); ctx.stroke();
+        ctx.globalAlpha = en.alpha;
+        // type icon above the health bar
+        const iy = y - 21;
+        ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(cx, iy, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = c; ctx.beginPath();
+        if (en.champ === 'barrier') { // shield
+            ctx.moveTo(cx - 3.5, iy - 3.5); ctx.lineTo(cx + 3.5, iy - 3.5); ctx.lineTo(cx + 3.5, iy); ctx.lineTo(cx, iy + 4); ctx.lineTo(cx - 3.5, iy);
+        } else if (en.champ === 'overload') { // lightning bolt
+            ctx.moveTo(cx + 1, iy - 4.5); ctx.lineTo(cx - 3, iy + 0.5); ctx.lineTo(cx - 0.5, iy + 0.5); ctx.lineTo(cx - 1.5, iy + 4.5); ctx.lineTo(cx + 3, iy - 1); ctx.lineTo(cx + 0.5, iy - 1);
+        } else { // arrowhead
+            ctx.moveTo(cx - 4, iy - 3.5); ctx.lineTo(cx + 4, iy); ctx.lineTo(cx - 4, iy + 3.5); ctx.lineTo(cx - 1.5, iy);
+        }
+        ctx.fill();
+        if (gfx128) { // 4px text is only legible at 128-bit resolution; 64-bit relies on the icon + colour
+            ctx.font = '4px "Press Start 2P", monospace';
+            const name = CHAMPIONS[en.champ].name, nw = ctx.measureText(name).width;
+            ctx.fillStyle = '#000'; ctx.fillText(name, cx - nw / 2 + 0.5, iy - 8.5);
+            ctx.fillStyle = c; ctx.fillText(name, cx - nw / 2, iy - 9);
+        }
+
+        if (en.champ === 'barrier' && en.barrier > 0) {
+            const r = Math.max(en.w, en.h) * 0.75, cy = y + en.h / 2;
+            ctx.globalAlpha = 0.18 * en.alpha; ctx.fillStyle = c;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = (0.7 + 0.2 * Math.sin(frame * 0.2)) * en.alpha;
+            ctx.strokeStyle = c; ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i <= 6; i++) { const a = i * Math.PI / 3 + frame * 0.01; ctx[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+            ctx.stroke();
+        }
+        if (en.champ === 'overload' && en.disrupt <= 0 && en.stun <= 0 && frame % 8 < 4) { // crackle
+            ctx.strokeStyle = c; ctx.lineWidth = 1; ctx.beginPath();
+            const sx = x + Math.random() * en.w, sy = y + Math.random() * en.h;
+            ctx.moveTo(sx, sy); ctx.lineTo(sx + (Math.random() - 0.5) * 10, sy + (Math.random() - 0.5) * 10); ctx.stroke();
+        }
+        if (en.champ === 'unstoppable' && en.windup > 0) { // wind-up warning: the window to stagger it
+            ctx.globalAlpha = (frame % 6 < 3 ? 0.55 : 0.25) * en.alpha; ctx.fillStyle = c;
+            ctx.fillRect(x - 2, y - 2, en.w + 4, en.h + 4);
+            ctx.globalAlpha = en.alpha;
+        }
+        if (en.stun > 0) { // dizzy stars
+            ctx.fillStyle = '#fde047';
+            for (let i = 0; i < 3; i++) {
+                const a = frame * 0.15 + i * 2.1;
+                ctx.fillRect(cx + Math.cos(a) * 9 - 1, y - 4 + Math.sin(a) * 2.5 - 1, 2, 2);
+            }
+        }
+        ctx.globalAlpha = en.alpha;
     }
 
     function drawBoss() {
@@ -2019,18 +2256,19 @@
         const p = player;
         if (p.invuln > 0 && p.invuln < 9000 && Math.floor(p.invuln / 3) % 2 === 0) return;
         const cls = CLASSES[selectedClass], el = ELEMENTS[selectedElement];
-        const x = snap(p.x), y = snap(p.y), f = p.facing, top = p.crouch ? y + 10 : y;
+        const x = snap(p.x), y = snap(p.y), f = p.facing, top = p.crouch ? y + 13 : y;
 
         ctx.fillStyle = '#1e293b';
-        if (p.crouch) { ctx.fillRect(x + 2, y + 24, 5, 6); ctx.fillRect(x + 10, y + 24, 5, 6); }
+        if (p.crouch) { ctx.fillRect(x + 1, y + 26, 6, 4); ctx.fillRect(x + 9, y + 26, 6, 4); }
         else if (!p.grounded) { ctx.fillRect(x + 3, y + 20, 4, 8); ctx.fillRect(x + 9, y + 19, 4, 7); }
         else { const s = [0, 2, 0, -2][p.legFrame]; ctx.fillRect(x + 3 + s, y + 20, 4, 10); ctx.fillRect(x + 9 - s, y + 20, 4, 10); }
 
-        if (selectedClass === 'ranger') { ctx.fillStyle = '#0c4a6e'; ctx.fillRect(f > 0 ? x - 2 : x + 14, top + 11, 4, p.crouch ? 9 : 14); }
-        ctx.fillStyle = cls.color; ctx.fillRect(x + 1, top + 10, 14, 11);
+        const bodyH = p.crouch ? 7 : 11, beltY = p.crouch ? top + 14 : top + 18;
+        if (selectedClass === 'ranger') { ctx.fillStyle = '#0c4a6e'; ctx.fillRect(f > 0 ? x - 2 : x + 14, top + 11, 4, p.crouch ? 6 : 14); }
+        ctx.fillStyle = cls.color; ctx.fillRect(x + 1, top + 10, 14, bodyH);
         if (selectedClass === 'sentinel') { ctx.fillStyle = '#7f1d1d'; ctx.fillRect(x - 1, top + 9, 18, 4); }
-        if (selectedClass === 'arcanist') { ctx.fillStyle = '#4c1d95'; ctx.fillRect(x + 1, top + 19, 14, p.crouch ? 2 : 7); }
-        ctx.fillStyle = el.color; ctx.fillRect(x + 1, top + 18, 14, 2);
+        if (selectedClass === 'arcanist' && !p.crouch) { ctx.fillStyle = '#4c1d95'; ctx.fillRect(x + 1, top + 19, 14, 7); }
+        ctx.fillStyle = el.color; ctx.fillRect(x + 1, beltY, 14, 2);
         ctx.fillStyle = '#e2e8f0'; ctx.fillRect(x + 2, top, 12, 10);
         ctx.fillStyle = el.color; ctx.fillRect(f > 0 ? x + 7 : x + 2, top + 3, 7, 3);
 
@@ -2349,6 +2587,7 @@
             const eye = ch ? '#f87171' : en.t.ai === 'phantom' ? '#c084fc' : en.t.flying ? '#f87171' : '#facc15';
             light(en.x + en.w / 2 + en.facing * 3, en.y + 5, ch ? 12 : 7, eye, (ch ? 0.7 : 0.4) * en.alpha);
             if (en.shield > 0) light(en.x + en.w / 2, en.y + en.h / 2, en.w * 1.1, ELEMENTS[en.shieldEl].color, 0.18 * en.alpha);
+            if (en.champ) light(en.x + en.w / 2, en.y + en.h / 2, en.w * 1.6 + (en.barrier > 0 ? 10 : 0), CHAMPIONS[en.champ].color, (en.barrier > 0 ? 0.35 : 0.22) * en.alpha);
         }
         if (boss && boss.active && !boss.dead) {
             const gc = { overseer: '#ef4444', tyrant: '#fb923c', hive: '#67e8f9', herald: '#c084fc' }[boss.type];
@@ -2359,7 +2598,7 @@
             ctx.globalAlpha = 0.25; ctx.fillStyle = '#a855f7'; ctx.fillRect(h.x - 30, 0, 60, H);
         }
         if (player && (state !== 'over' || lives > 0)) {
-            const el = ELEMENTS[selectedElement].color, top = player.crouch ? player.y + 10 : player.y;
+            const el = ELEMENTS[selectedElement].color, top = player.crouch ? player.y + 13 : player.y;
             light(player.x + player.w / 2 + player.facing * 3, top + 4, 9, el, 0.45);
             if (player.superEnergy >= 100) light(player.x + player.w / 2, player.y + 15, 26 + Math.sin(frame * 0.15) * 3, '#fde047', 0.22);
         }

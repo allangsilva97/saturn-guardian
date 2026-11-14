@@ -14,6 +14,8 @@ Both editions are the same game with the same saves; switch any time with the **
 - **3 classes:** Ranger (double jump), Sentinel (hover, extra shield), Arcanist (glide, faster super)
 - **3 elements:** Fire, Shock, Void. Match an enemy's shield colour to shatter it
 - **4 worlds, 12 stages:** Iron Yard, Crimson Dunes, Frozen Moon, Void Citadel, each ending in a boss
+- **Champions:** random Barrier, Overload and Unstoppable variants in every run, plus mid-stage warp-ins, each with its own counter
+- **Crouch to dodge:** level enemy shots fly over you while you crouch
 - **7 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher
 - **Armory:** spend credits on weapons and upgrades; progress is saved in the browser
 
