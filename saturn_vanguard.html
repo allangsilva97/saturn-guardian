@@ -354,6 +354,7 @@
         },
     ];
     const TOTAL_STAGES = WORLDS.length * 3;
+    const EXTRACT_KILL_SHARE = 0.7; // share of a stage's hostiles to defeat before extraction unlocks
 
     const GAME_KEYS = new Set(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD',
         'KeyJ','KeyK','KeyL','KeyI','KeyO','KeyZ','KeyX','KeyC','KeyV','KeyR','KeyP','KeyQ','KeyE','Escape',
@@ -677,7 +678,10 @@
         }
 
         boss = isBoss ? makeBoss(w.boss) : null;
+        // The extraction beacon stays locked until this many hostiles are defeated
+        stage.killsNeeded = isBoss ? 0 : Math.ceil(enemies.length * EXTRACT_KILL_SHARE);
     }
+    const beaconUnlocked = () => kills >= stage.killsNeeded;
 
     function makeBoss(type) {
         const d = BOSSES[type], ax = stage.arenaX;
@@ -1108,9 +1112,15 @@
         if (bossIntro > 0) bossIntro--;
         if (stageIntro > 0) stageIntro--;
         if (stage.endX && state === 'playing' && player.x + player.w > stage.endX) {
-            score += 1000;
-            explosionFx(stage.endX, 180, 40, '#22c55e');
-            endStage(true);
+            if (beaconUnlocked()) {
+                score += 1000;
+                explosionFx(stage.endX, 180, 40, '#22c55e');
+                endStage(true);
+            } else if (frame - (stage.lockedMsgAt || -999) > 90) {
+                stage.lockedMsgAt = frame;
+                popText(player.x - 40, player.y - 14, `BEACON LOCKED: DEFEAT ${stage.killsNeeded - kills} MORE`, '#f87171');
+                playSound('immune');
+            }
         }
     }
 
@@ -1644,6 +1654,11 @@
         setHud('hud-ammo', ammo, ammoCls);
         setHud('hud-grenade', p.grenadeCd > 0 ? Math.ceil(p.grenadeCd / 60) + 's' : 'READY', p.grenadeCd > 0 ? 'text-slate-400 font-bold' : 'text-emerald-400 font-bold');
         setHud('hud-score', String(score).padStart(6, '0'));
+        if (!stage.isBoss) {
+            const left = Math.max(0, stage.killsNeeded - kills);
+            setHud('hud-stage', `${stageLabel(stage.idx)} ${stage.name} • ${left ? `HOSTILES ${kills}/${stage.killsNeeded}` : 'EXTRACT!'}`,
+                'pixel-font text-center text-[9px] tracking-widest hidden md:block ' + (left ? 'text-white' : 'text-emerald-400'));
+        }
         setHud('hud-credits', credits);
         setHud('hud-reserves', `PRIMARY ${p.ammo.primary} • SPECIAL ${p.ammo.special} • HEAVY ${p.ammo.heavy}`);
         if (boss && boss.active) {
@@ -1783,12 +1798,19 @@
         const x = stage.endX, g = groundAt(x), gy = g ? g.y : 230;
         const grd = ctx.createLinearGradient(0, 0, 0, gy);
         grd.addColorStop(0, 'rgba(34,197,94,0)'); grd.addColorStop(1, 'rgba(34,197,94,0.35)');
-        ctx.fillStyle = grd;
-        ctx.fillRect(x - 10 - Math.sin(frame * 0.1) * 2, 0, 20 + Math.sin(frame * 0.1) * 4, gy);
+        const open = beaconUnlocked();
         ctx.fillStyle = '#334155'; ctx.fillRect(x - 6, gy - 40, 12, 40);
-        ctx.fillStyle = frame % 30 < 15 ? '#22c55e' : '#86efac'; ctx.fillRect(x - 4, gy - 44, 8, 6);
         ctx.font = '6px "Press Start 2P", monospace';
-        ctx.fillStyle = '#86efac'; ctx.fillText('EXTRACT', x - 21, gy - 52);
+        if (open) {
+            ctx.fillStyle = grd;
+            ctx.fillRect(x - 10 - Math.sin(frame * 0.1) * 2, 0, 20 + Math.sin(frame * 0.1) * 4, gy);
+            ctx.fillStyle = frame % 30 < 15 ? '#22c55e' : '#86efac'; ctx.fillRect(x - 4, gy - 44, 8, 6);
+            ctx.fillStyle = '#86efac'; ctx.fillText('EXTRACT', x - 21, gy - 52);
+        } else {
+            ctx.fillStyle = frame % 60 < 30 ? '#ef4444' : '#7f1d1d'; ctx.fillRect(x - 4, gy - 44, 8, 6);
+            const label = `LOCKED ${kills}/${stage.killsNeeded}`;
+            ctx.fillStyle = '#fca5a5'; ctx.fillText(label, x - ctx.measureText(label).width / 2, gy - 52);
+        }
     }
 
     function drawItems() {
@@ -2315,7 +2337,7 @@
         }
         if (stage.endX && Math.abs(stage.endX - cameraX - W / 2) < W) {
             const g = groundAt(stage.endX), gy = g ? g.y : 230;
-            light(stage.endX, gy - 41, 26 + Math.sin(frame * 0.1) * 3, '#22c55e', 0.55);
+            light(stage.endX, gy - 41, 26 + Math.sin(frame * 0.1) * 3, beaconUnlocked() ? '#22c55e' : '#ef4444', 0.55);
         }
         for (const it of items) {
             const cx = it.x + 5, cy = it.y + 5;
@@ -2415,7 +2437,7 @@
             ctx.globalAlpha = Math.min(1, stageIntro / 30);
             centerText(`WORLD ${stage.world + 1}: ${theme.name}`, 92, 7, WORLDS[stage.world].color);
             centerText(`${stageLabel(stage.idx)}  ${stage.name}`, 112, 11, '#facc15');
-            centerText(stage.isBoss ? 'DEFEAT THE GUARDIAN BOSS' : 'REACH THE EXTRACTION BEACON', 132, 6, '#e2e8f0');
+            centerText(stage.isBoss ? 'DEFEAT THE GUARDIAN BOSS' : `DEFEAT ${stage.killsNeeded} HOSTILES, THEN EXTRACT`, 132, 6, '#e2e8f0');
             ctx.globalAlpha = 1;
         }
         if (bossIntro > 0 && Math.floor(bossIntro / 15) % 2 === 0) {
