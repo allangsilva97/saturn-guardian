@@ -19,6 +19,8 @@ Both editions are the same game with the same saves; switch any time with the **
 - **Treasure & secrets:** ride elevators to tower-roof chests, find supply caches on lookouts, and walk through cracked false walls for secret stashes
 - **Armor:** upgrade the helmet, gauntlets, chest, legs and class item separately, and paint each piece with colours bought in the Paint Shop
 - **Crouch to dodge:** level enemy shots fly over you while you crouch
+- **Loot & gear levels:** chests drop weapons as Common (74%), Rare (20%), Legendary (5%) or Exotic (1%) items with perks; kills level them up to LV 20 for more damage, stronger perks and extra perk slots
+- **Loadout:** start each stage with 3 weapons, either 2 primaries + 1 heavy or one of each ammo type. Primary ammo is infinite; special and heavy refill every stage and drop from enemies (15% / 9%)
 - **10 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher, plus the three anti-champion weapons
 - **Armory:** spend credits on weapons and upgrades; progress is saved in the browser
 
@@ -43,7 +45,7 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | W / S | Aim up / crouch (aim down in the air) |
 | J or Space | Jump (hold for class ability; S + Jump drops through ledges) |
 | K | Fire (hold) |
-| Q / E or 1–9, 0 | Switch weapon |
+| Q / E or 1–3 | Switch between your 3 loadout weapons |
 | R | Reload |
 | L | Melee |
 | I | Grenade |

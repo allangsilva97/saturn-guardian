@@ -103,6 +103,14 @@
                     </div>
                 </div>
 
+                <div class="mt-5">
+                    <div class="flex flex-wrap justify-between items-baseline gap-2 mb-2">
+                        <div class="pixel-font text-[10px] text-yellow-400">-- LOADOUT --</div>
+                        <div class="text-[11px] text-slate-400">2 primaries + 1 heavy, or one of each ammo type &bull; primary ammo is infinite</div>
+                    </div>
+                    <div id="loadout" class="grid grid-cols-1 md:grid-cols-3 gap-2"></div>
+                </div>
+
                 <div class="flex flex-wrap gap-3 justify-between items-center mt-5">
                     <div class="flex flex-wrap gap-2">
                         <button onclick="toggleGfx()" id="gfx-btn" class="px-3 py-2 bg-slate-800 border border-sky-700 text-xs text-sky-300 rounded hover:bg-slate-700">GFX: 64-BIT</button>
@@ -120,7 +128,7 @@
 
             <div class="text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
                 [A/D] Move &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold for class ability, S+Jump drops through ledges)
-                &bull; [K] Fire (hold) &bull; [Q/E or 1-9, 0] Switch weapon &bull; [R] Reload &bull; [L] Melee &bull; [I] Grenade &bull; [O] Super &bull; [P/Esc] Pause
+                &bull; [K] Fire (hold) &bull; [Q/E or 1-3] Switch weapon &bull; [R] Reload &bull; [L] Melee &bull; [I] Grenade &bull; [O] Super &bull; [P/Esc] Pause
             </div>
         </div>
     </div>
@@ -156,6 +164,11 @@
                 <div class="text-[12px] text-slate-400 mb-2">Buy a colour once, then apply it to any armor piece with the swatches above.</div>
                 <div id="armory-paints" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
             </div>
+            <div class="mt-5">
+                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- INVENTORY (<span id="inventory-count">0</span>) --</div>
+                <div class="text-[12px] text-slate-400 mb-2">Weapons level up from kills (max LV 20): more damage, stronger perks, perk slots unlock at LV 5 and 10. Chests drop new gear. Equip in the LOADOUT on the main menu.</div>
+                <div id="armory-inventory" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+            </div>
             <div class="flex justify-end mt-5">
                 <button onclick="closeArmory()" class="px-8 py-3 saturn-button pixel-font text-yellow-300 text-xs font-bold uppercase rounded">BACK</button>
             </div>
@@ -175,6 +188,8 @@
                 <div class="flex justify-between"><span>CREDITS EARNED:</span> <span id="final-credits" class="text-emerald-400">0</span></div>
                 <div class="flex justify-between"><span>TOTAL CREDITS:</span> <span id="final-bank" class="text-emerald-300">0</span></div>
             </div>
+            <div id="end-loot" class="text-left text-[12px] mb-4 hidden"></div>
+            <div class="text-[11px] text-emerald-400 mb-3">AMMO RESERVES REFILLED FOR THE NEXT STAGE</div>
             <div id="end-buttons" class="flex gap-2"></div>
         </div>
     </div>
@@ -305,8 +320,47 @@
         breacher:{ name: 'BREACHER SLUG',   short: 'BREACH',  ammo: 'special', mag: 3,  rate: 45, dmg: 90,  speed: 9,   spread: 0,    reload: 65, cost: 1200, sfx: 'shotgun', recoil: 4, anti: 'unstoppable', desc: 'ANTI-UNSTOPPABLE. Slugs stagger an Unstoppable at any time.' },
     };
     const WEAPON_ORDER = Object.keys(WEAPONS);
-    const AMMO_MAX = { primary: 240, special: 16, heavy: 4 };
+    const AMMO_MAX = { primary: Infinity, special: 16, heavy: 4 }; // primary ammo is infinite
     const AMMO_COLORS = { primary: '#e2e8f0', special: '#22c55e', heavy: '#a855f7' };
+
+    // ---- Gear items: every weapon you own is an item with a rarity, a level (1-20) and perks ----
+    // Higher level = more damage, stronger perks, and more perk slots unlocked (Lv 1 / 5 / 10).
+    const RARITIES = {
+        common:    { name: 'COMMON',    color: '#e2e8f0', mult: 1.00, slots: 1, scrap: 20 },
+        rare:      { name: 'RARE',      color: '#3b82f6', mult: 1.10, slots: 2, scrap: 60 },
+        legendary: { name: 'LEGENDARY', color: '#a855f7', mult: 1.25, slots: 3, scrap: 200 },
+        exotic:    { name: 'EXOTIC',    color: '#facc15', mult: 1.40, slots: 3, scrap: 500 },
+    };
+    const RARITY_ORDER = Object.keys(RARITIES);
+    const DROP_TABLE = [['exotic', 0.01], ['legendary', 0.05], ['rare', 0.20], ['common', 0.74]]; // chest loot odds
+    const MAX_ITEM_LEVEL = 20;
+    const PERK_UNLOCK = [1, 5, 10]; // item level that unlocks perk slot 1, 2, 3
+    const PERKS = {
+        rampage: { name: 'RAMPAGE',       desc: s => `Kills stack +${Math.round(8 * s)}% damage (x3)` },
+        vampire: { name: 'VAMPIRIC',      desc: s => `Kills restore ${Math.round(10 * s)} shield` },
+        deepmag: { name: 'EXTENDED MAG',  desc: s => `+${Math.round(25 * s)}% magazine`, ok: w => w.mag > 3 },
+        quick:   { name: 'QUICKLOAD',     desc: s => `${Math.round(20 * s)}% faster reloads` },
+        impact:  { name: 'IMPACT ROUNDS', desc: s => `${Math.round(12 * s)}% chance hits explode`, ok: w => !w.kind || w.kind === 'precision' },
+        pen:     { name: 'PENETRATOR',    desc: () => 'Shots pierce one extra target', ok: w => !w.kind && !w.pierce },
+    };
+    const EXOTIC_TRAIT = { name: 'SUPERNOVA', desc: s => `Kills detonate for ${Math.round(60 * s)} damage` };
+    const perkStrength = lvl => 1 + (lvl - 1) / (MAX_ITEM_LEVEL - 1); // 1x at Lv 1, 2x at Lv 20
+    const xpToNext = lvl => 60 * lvl;
+    function makeItem(wid, rarity, level) {
+        const w = WEAPONS[wid];
+        const pool = Object.keys(PERKS).filter(k => !PERKS[k].ok || PERKS[k].ok(w)).sort(() => Math.random() - 0.5);
+        return { uid: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), wid, rarity, level, xp: 0, perks: pool.slice(0, RARITIES[rarity].slots) };
+    }
+    const itemName = it => `${RARITIES[it.rarity].name} ${WEAPONS[it.wid].name}`;
+    const activePerks = it => it.perks.filter((_, i) => it.level >= PERK_UNLOCK[i]);
+    const hasPerk = (it, k) => !!it && activePerks(it).includes(k);
+    const itemDmgMult = it => RARITIES[it.rarity].mult * (1 + 0.03 * (it.level - 1));
+    const magSizeOf = it => Math.max(1, Math.round(WEAPONS[it.wid].mag * (hasPerk(it, 'deepmag') ? 1 + 0.25 * perkStrength(it.level) : 1)));
+    function rollRarity() {
+        let r = Math.random();
+        for (const [k, p] of DROP_TABLE) if ((r -= p) < 0) return k;
+        return 'common';
+    }
 
     const UPGRADES = {
         vitality:  { name: 'VITALITY',         desc: '+20 max health',        base: 250 },
@@ -314,7 +368,7 @@
         damage:    { name: 'WEAPON TUNING',    desc: '+10% all damage',       base: 350 },
         superRate: { name: 'LIGHT ATTUNEMENT', desc: '+15% super charge rate', base: 300 },
         grenade:   { name: 'GRENADE KIT',      desc: '-12% grenade cooldown', base: 200 },
-        ammo:      { name: 'AMMO RIG',         desc: '+20% ammo reserves',    base: 200 },
+        ammo:      { name: 'AMMO RIG',         desc: '+20% special & heavy reserves', base: 200 },
     };
     const MAX_UPGRADE = 5;
     const upgradeCost = (id, lvl) => UPGRADES[id].base * (lvl + 1);
@@ -432,18 +486,32 @@
     // =====================================================================
     const SAVE_KEY = 'saturn-vanguard-save-v2';
     function defaultSave() {
-        return { credits: 0, unlocked: 0, owned: ['auto'], upgrades: { vitality: 0, shield: 0, damage: 0, superRate: 0, grenade: 0, ammo: 0 }, best: 0, cleared: [],
-                 armor: Object.fromEntries(ARMOR_IDS.map(k => [k, 0])), paints: ['standard'], paint: Object.fromEntries(ARMOR_IDS.map(k => [k, 'standard'])) };
+        const starter = makeItem('auto', 'common', 1);
+        return { credits: 0, unlocked: 0, upgrades: { vitality: 0, shield: 0, damage: 0, superRate: 0, grenade: 0, ammo: 0 }, best: 0, cleared: [],
+                 armor: Object.fromEntries(ARMOR_IDS.map(k => [k, 0])), paints: ['standard'], paint: Object.fromEntries(ARMOR_IDS.map(k => [k, 'standard'])),
+                 inventory: [starter], loadout: [starter.uid, null, null] };
+    }
+    // Validates stored items; older saves (a plain list of owned weapon types) become Common Lv 1 items
+    function loadInventory(raw) {
+        let inv = Array.isArray(raw.inventory) ? raw.inventory.filter(it => it && typeof it.uid === 'string' && WEAPONS[it.wid] && RARITIES[it.rarity]).map(it => ({
+            uid: it.uid, wid: it.wid, rarity: it.rarity,
+            level: Math.min(MAX_ITEM_LEVEL, Math.max(1, it.level | 0)), xp: Math.max(0, +it.xp || 0),
+            perks: Array.isArray(it.perks) ? it.perks.filter(k => PERKS[k]).slice(0, RARITIES[it.rarity].slots) : [],
+        })) : null;
+        if (!inv || !inv.length) inv = (Array.isArray(raw.owned) ? raw.owned : []).filter(id => WEAPONS[id]).map(id => makeItem(id, 'common', 1));
+        if (!inv.some(it => WEAPONS[it.wid].ammo === 'primary')) inv.unshift(makeItem('auto', 'common', 1));
+        return inv;
     }
     function loadSave() {
         const d = defaultSave();
         try {
             const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
             if (raw && typeof raw === 'object') {
-                return {
+                const s = {
                     credits: Math.max(0, raw.credits | 0),
                     unlocked: Math.min(TOTAL_STAGES - 1, Math.max(0, raw.unlocked | 0)),
-                    owned: Array.isArray(raw.owned) ? ['auto', ...raw.owned.filter(id => WEAPONS[id] && id !== 'auto')] : d.owned,
+                    inventory: loadInventory(raw),
+                    loadout: Array.isArray(raw.loadout) ? raw.loadout.slice(0, 3) : [],
                     upgrades: Object.fromEntries(Object.keys(UPGRADES).map(k => [k, Math.min(MAX_UPGRADE, Math.max(0, (raw.upgrades && raw.upgrades[k]) | 0))])),
                     best: Math.max(0, raw.best | 0),
                     cleared: Array.isArray(raw.cleared) ? raw.cleared.filter(n => Number.isInteger(n)) : [],
@@ -454,11 +522,31 @@
                         return [k, PAINTS[id] && Array.isArray(raw.paints) && (id === 'standard' || raw.paints.includes(id)) ? id : 'standard'];
                     })),
                 };
+                fixLoadout(s);
+                return s;
             }
         } catch (e) {}
         return d;
     }
     function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+
+    // ---- Loadout: 3 slots. Slot 1 primary, slot 2 primary OR special (a different weapon), slot 3 heavy.
+    // That allows "2 primaries + 1 heavy" or "one of each ammo type". Slots 2 and 3 may be empty.
+    const LOADOUT_SLOTS = [
+        { label: 'PRIMARY',           ammo: ['primary'] },
+        { label: 'PRIMARY / SPECIAL', ammo: ['primary', 'special'] },
+        { label: 'HEAVY',             ammo: ['heavy'] },
+    ];
+    const ammoOf = it => it && WEAPONS[it.wid].ammo;
+    const itemPower = it => itemDmgMult(it) * WEAPONS[it.wid].dmg;
+    function fixLoadout(s) {
+        const get = uid => s.inventory.find(i => i.uid === uid);
+        let [a, b, c] = [0, 1, 2].map(i => get(s.loadout[i]));
+        if (ammoOf(a) !== 'primary') a = s.inventory.filter(i => ammoOf(i) === 'primary').sort((x, y) => itemPower(y) - itemPower(x))[0];
+        if (b && (!LOADOUT_SLOTS[1].ammo.includes(ammoOf(b)) || b.wid === a.wid)) b = null;
+        if (c && ammoOf(c) !== 'heavy') c = null;
+        s.loadout = [a.uid, b ? b.uid : null, c ? c.uid : null];
+    }
     let save = loadSave();
 
     // =====================================================================
@@ -549,6 +637,50 @@
         document.getElementById('menu-credits').textContent = save.credits;
         document.getElementById('best-score').textContent = save.best;
         document.getElementById('menu-progress').textContent = `${save.cleared.length}/${TOTAL_STAGES}`;
+        renderLoadout();
+    }
+
+    // Perk list for an item: locked slots show the level that unlocks them
+    function perkHtml(it) {
+        const s = perkStrength(it.level);
+        const rows = it.perks.map((k, i) => {
+            const on = it.level >= PERK_UNLOCK[i];
+            return `<div class="${on ? 'text-slate-200' : 'text-slate-600'}">${on ? '◆' : '🔒'} ${PERKS[k].name}${on ? ` <span class="text-slate-400">${PERKS[k].desc(s)}</span>` : ` (LV ${PERK_UNLOCK[i]})`}</div>`;
+        });
+        if (it.rarity === 'exotic') rows.push(`<div style="color:${RARITIES.exotic.color}">★ ${EXOTIC_TRAIT.name} <span class="text-slate-400">${EXOTIC_TRAIT.desc(s)}</span></div>`);
+        return rows.join('');
+    }
+    function xpBarHtml(it) {
+        const pct = it.level >= MAX_ITEM_LEVEL ? 100 : Math.round(100 * it.xp / xpToNext(it.level));
+        return `<div class="h-1 bg-slate-800 rounded mt-1"><div class="h-1 rounded bg-yellow-400" style="width:${pct}%"></div></div>`;
+    }
+    function itemLabel(it) {
+        return `${RARITIES[it.rarity].name} ${WEAPONS[it.wid].name} · LV ${it.level} · +${Math.round((itemDmgMult(it) - 1) * 100)}% DMG`;
+    }
+    function renderLoadout() {
+        fixLoadout(save);
+        const box = document.getElementById('loadout');
+        box.innerHTML = LOADOUT_SLOTS.map((slot, i) => {
+            const otherWid = i === 1 ? (save.inventory.find(it => it.uid === save.loadout[0]) || {}).wid : null;
+            const eligible = save.inventory.filter(it => slot.ammo.includes(ammoOf(it)) && it.wid !== otherWid)
+                .sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) || b.level - a.level);
+            const cur = save.inventory.find(it => it.uid === save.loadout[i]);
+            const opts = (i ? [`<option value="">— EMPTY —</option>`] : [])
+                .concat(eligible.map(it => `<option value="${it.uid}" ${cur && cur.uid === it.uid ? 'selected' : ''}>${itemLabel(it)}</option>`)).join('');
+            const c = cur ? RARITIES[cur.rarity].color : '#334155';
+            return `<div class="bg-slate-950/70 border rounded p-2" style="border-color:${c}">
+                <div class="pixel-font text-[8px] mb-1" style="color:${c}">${i + 1}. ${slot.label}</div>
+                <select onchange="setLoadout(${i}, this.value)" ${eligible.length ? '' : 'disabled'}
+                    class="w-full bg-slate-900 border border-slate-700 rounded text-[12px] text-white px-1 py-1">${eligible.length ? opts : '<option>No weapon owned for this slot</option>'}</select>
+                ${cur ? `<div class="text-[11px] mt-1 leading-snug">${perkHtml(cur)}</div>${xpBarHtml(cur)}` : ''}
+            </div>`;
+        }).join('');
+    }
+    function setLoadout(i, uid) {
+        save.loadout[i] = uid || null;
+        fixLoadout(save);
+        persist(); initAudio(); playSound('reload');
+        renderLoadout();
     }
     function resetProgress() {
         if (!confirm('Erase all progress, credits, weapons and upgrades?')) return;
@@ -570,9 +702,9 @@
     }
     function buyWeapon(id) {
         const w = WEAPONS[id];
-        if (save.owned.includes(id) || save.credits < w.cost) return;
+        if (save.inventory.some(it => it.wid === id) || save.credits < w.cost) return;
         save.credits -= w.cost;
-        save.owned.push(id);
+        save.inventory.push(makeItem(id, 'common', 1)); // bought weapons start as Common Lv 1
         persist(); initAudio(); playSound('pickup');
         renderArmory();
     }
@@ -625,7 +757,7 @@
     function renderArmory() {
         document.getElementById('armory-credits').textContent = save.credits;
         document.getElementById('armory-weapons').innerHTML = WEAPON_ORDER.map(id => {
-            const w = WEAPONS[id], owned = save.owned.includes(id), afford = save.credits >= w.cost;
+            const w = WEAPONS[id], owned = save.inventory.some(it => it.wid === id), afford = save.credits >= w.cost;
             const dps = Math.round(w.dmg * (w.pellets || 1) * (w.burst || 1) * 60 / w.rate);
             const antiTag = w.anti ? `<span class="text-[10px] px-1 rounded" style="color:${CHAMPIONS[w.anti].color};border:1px solid ${CHAMPIONS[w.anti].color}">ANTI-${CHAMPIONS[w.anti].name}</span>` : '';
             return `<div class="flex items-center justify-between gap-3 bg-slate-950/70 border border-slate-800 rounded p-2">
@@ -682,6 +814,36 @@
             </div>`;
         }).join('');
         drawArmorPreview();
+        renderInventory();
+    }
+    const scrapValue = it => Math.round(RARITIES[it.rarity].scrap * (1 + it.level / 10));
+    function scrapItem(uid) {
+        const it = save.inventory.find(i => i.uid === uid);
+        if (!it || save.loadout.includes(uid)) return; // equipped items can't be scrapped
+        save.credits += scrapValue(it);
+        save.inventory = save.inventory.filter(i => i.uid !== uid);
+        persist(); initAudio(); playSound('pickup');
+        renderArmory();
+    }
+    function renderInventory() {
+        const items = save.inventory.slice().sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) || b.level - a.level);
+        document.getElementById('inventory-count').textContent = items.length;
+        document.getElementById('armory-inventory').innerHTML = items.map(it => {
+            const r = RARITIES[it.rarity], w = WEAPONS[it.wid], equipped = save.loadout.includes(it.uid);
+            return `<div class="bg-slate-950/70 border rounded p-2 flex justify-between gap-2" style="border-color:${r.color}55">
+                <div class="min-w-0 flex-1">
+                    <div class="pixel-font text-[8px]" style="color:${r.color}">${r.name} &bull; LV ${it.level}</div>
+                    <div class="pixel-font text-[9px] text-white my-1">${w.name} <span class="text-[10px]" style="color:${AMMO_COLORS[w.ammo]}">${w.ammo.toUpperCase()}</span></div>
+                    <div class="text-[11px] leading-snug">${perkHtml(it)}</div>
+                    ${xpBarHtml(it)}
+                </div>
+                <div class="flex flex-col items-end justify-between">
+                    <span class="text-[11px] text-slate-400">+${Math.round((itemDmgMult(it) - 1) * 100)}% DMG</span>
+                    ${equipped ? '<span class="text-emerald-400 text-[11px] font-bold">EQUIPPED</span>'
+                               : `<button onclick="scrapItem('${it.uid}')" class="px-2 py-1 bg-slate-900 border border-red-900 text-[11px] text-red-300 rounded hover:bg-red-950 whitespace-nowrap">SCRAP +${scrapValue(it)}</button>`}
+                </div>
+            </div>`;
+        }).join('');
     }
 
     // =====================================================================
@@ -888,7 +1050,7 @@
         theme = w;
         diff = { hp: 1 + 0.3 * wi + 0.1 * si, dmg: 1 + 0.15 * wi };
         stage = { idx, world: wi, sub: si, name: w.stages[si], isBoss, levelW, arenaX, endX: isBoss ? null : levelW - 140,
-                  secretsFound: 0, secretsTotal: 0, champKinds: [] };
+                  secretsFound: 0, secretsTotal: 0, champKinds: [], loot: [] };
         platforms = []; enemies = []; structures = []; treasures = [];
 
         buildModules(rnd, w, isBoss, levelW, arenaX);
@@ -1054,16 +1216,29 @@
             const cx = t.x + 7, cy = t.y;
             const reward = t.kind === 'secret' ? 250 + Math.round(Math.random() * 150) : t.kind === 'chest' ? 150 + Math.round(Math.random() * 100) : 60 + Math.round(Math.random() * 60);
             credits += reward; score += reward * 2;
-            spawnItem(cx, cy - 4, 'orb'); spawnItem(cx + 6, cy - 4, 'ammo');
-            if (t.kind !== 'cache') spawnItem(cx - 6, cy - 4, 'special');
-            if (t.kind === 'secret' || (t.kind === 'chest' && player.owned.includes('rocket'))) spawnItem(cx, cy - 8, 'heavy');
+            spawnItem(cx, cy - 4, 'orb'); spawnItem(cx + 6, cy - 4, 'special');
+            if (t.kind !== 'cache') spawnItem(cx, cy - 8, 'heavy');
             if (t.kind === 'secret') addSuper(40);
             const color = t.kind === 'secret' ? '#e879f9' : t.kind === 'chest' ? '#facc15' : '#4ade80';
             burst(cx, cy, 24, color, 3, 30);
             rings.push({ x: cx, y: cy, r: 4, maxR: 34, life: 18, max: 18, color });
             popText(cx - 34, cy - 14, `${t.kind === 'secret' ? 'SECRET STASH' : t.kind === 'chest' ? 'TREASURE' : 'CACHE'} +${reward}`, color);
             playSound('clear');
+            dropLoot(cx, cy);
         }
+    }
+    // Every chest drops one gear item: Common 74%, Rare 20%, Legendary 5%, Exotic 1%.
+    // Its level scales with how far into the campaign the stage is.
+    function dropLoot(x, y) {
+        const rarity = rollRarity(), wid = WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)];
+        const level = clamp(1 + stage.world * 4 + stage.sub * 2 + Math.floor(Math.random() * 3), 1, MAX_ITEM_LEVEL);
+        const item = makeItem(wid, rarity, level);
+        save.inventory.push(item); stage.loot.push(item);
+        const c = RARITIES[rarity].color;
+        rings.push({ x, y, r: 4, maxR: rarity === 'exotic' ? 90 : rarity === 'legendary' ? 60 : 40, life: 30, max: 30, color: c });
+        burst(x, y, rarity === 'common' ? 10 : 30, c, 3.5, 40);
+        popText(x - 50, y - 26, `${itemName(item)} LV ${level}`, c);
+        if (rarity === 'exotic' || rarity === 'legendary') { flash = 6; playSound('super'); }
     }
 
     function makeBoss(type) {
@@ -1081,9 +1256,11 @@
     // =====================================================================
     function makePlayer() {
         const cls = CLASSES[selectedClass], u = save.upgrades;
-        const owned = WEAPON_ORDER.filter(id => save.owned.includes(id));
+        fixLoadout(save);
+        const gearItems = save.loadout.map(uid => save.inventory.find(i => i.uid === uid)).filter(Boolean);
+        const owned = gearItems.map(it => it.wid);
         const ammoMult = 1 + 0.2 * u.ammo;
-        const maxAmmo = { primary: Math.round(AMMO_MAX.primary * ammoMult), special: Math.round(AMMO_MAX.special * ammoMult), heavy: Math.round(AMMO_MAX.heavy * ammoMult) };
+        const maxAmmo = { primary: Infinity, special: Math.round(AMMO_MAX.special * ammoMult), heavy: Math.round(AMMO_MAX.heavy * ammoMult) };
         const maxShield = Math.round(cls.maxShield * (1 + 0.15 * u.shield));
         const maxHp = 100 + 20 * u.vitality;
         const a = save.armor, liftMax = Math.round(50 * (1 + (selectedClass === 'sentinel' ? 0.2 * a.classItem : 0)));
@@ -1101,8 +1278,12 @@
             superEnergy: 0, superRate: cls.superRate * (1 + 0.15 * u.superRate), dmgMult: 1 + 0.1 * u.damage,
             grenadeMax: Math.round(240 * (1 - 0.12 * u.grenade)),
             owned, weaponIdx: 0, weapon: owned[0],
-            mags: Object.fromEntries(owned.map(id => [id, WEAPONS[id].mag])),
-            ammo: { primary: Math.round(180 * ammoMult), special: Math.round(8 * ammoMult), heavy: Math.min(2, maxAmmo.heavy) }, maxAmmo,
+            items: Object.fromEntries(gearItems.map(it => [it.wid, it])),
+            magSize: Object.fromEntries(gearItems.map(it => [it.wid, magSizeOf(it)])),
+            mags: Object.fromEntries(gearItems.map(it => [it.wid, magSizeOf(it)])),
+            // every stage starts with full reserves; primary never runs out
+            ammo: { primary: Infinity, special: maxAmmo.special, heavy: maxAmmo.heavy }, maxAmmo,
+            rampage: 0, rampageT: 0,
             reloadTimer: 0, reloadFor: null, fireTimer: 0, burstLeft: 0, burstTimer: 0, switchTimer: 0,
             anim: 0, legFrame: 0, invuln: 60, meleeCd: 0, meleeAnim: 0, grenadeCd: 0,
             safeX: 60, safeY: 190,
@@ -1213,18 +1394,23 @@
 
     function startReload() {
         const p = player, w = WEAPONS[p.weapon];
-        if (p.reloadTimer > 0 || p.mags[p.weapon] >= w.mag || p.ammo[w.ammo] <= 0) return;
-        p.reloadTimer = Math.round(w.reload * p.reloadMult); p.reloadFor = p.weapon; p.burstLeft = 0;
+        if (p.reloadTimer > 0 || p.mags[p.weapon] >= p.magSize[p.weapon] || p.ammo[w.ammo] <= 0) return;
+        const it = p.items[p.weapon], quick = hasPerk(it, 'quick') ? 1 - 0.2 * perkStrength(it.level) : 1;
+        p.reloadTimer = Math.max(8, Math.round(w.reload * p.reloadMult * quick)); p.reloadFor = p.weapon; p.burstLeft = 0;
     }
 
     function spawnShot(w) {
         const p = player, [ax, ay] = getAim(), [mx, my] = muzzle(ax, ay);
-        const n = w.pellets || 1;
+        const n = w.pellets || 1, it = p.items[p.weapon];
+        // item rarity + level, plus a Rampage bonus while kill stacks are active
+        let dmg = w.dmg * p.dmgMult * (it ? itemDmgMult(it) : 1);
+        if (hasPerk(it, 'rampage') && p.rampageT > 0) dmg *= 1 + 0.08 * perkStrength(it.level) * p.rampage;
         for (let i = 0; i < n; i++) {
             const spread = (Math.random() - 0.5) * w.spread, sp = w.speed * (w.pellets ? 0.85 + Math.random() * 0.3 : 1);
             const b = { x: mx, y: my, vx: sp * (ax - ay * spread), vy: sp * (ay + ax * spread), owner: 'player',
-                kind: w.kind || 'bullet', element: selectedElement, dmg: w.dmg * p.dmgMult, life: w.life || 80, wid: p.weapon };
+                kind: w.kind || 'bullet', element: selectedElement, dmg, life: w.life || 80, wid: p.weapon };
             if (w.pierce) b.hit = new Set();
+            if (hasPerk(it, 'pen')) b.pen = 1;
             bullets.push(b);
         }
         particles.push({ x: mx, y: my, vx: ax * 1.5, vy: ay * 1.5, life: 4, max: 4, color: '#fde047', size: w.recoil ? 6 : 4 });
@@ -1338,11 +1524,35 @@
             en.hp -= dmg;
             playSound('hit');
         }
-        if (en.hp <= 0) killEnemy(en);
+        if (en.hp <= 0) killEnemy(en, wid);
     }
 
-    function killEnemy(en) {
+    // Kills with a weapon level it up; leveling raises damage, perk strength and unlocks perk slots
+    function gainXp(it, xp, x, y) {
+        if (it.level >= MAX_ITEM_LEVEL) return;
+        it.xp += xp;
+        while (it.level < MAX_ITEM_LEVEL && it.xp >= xpToNext(it.level)) {
+            it.xp -= xpToNext(it.level); it.level++;
+            const c = RARITIES[it.rarity].color;
+            popText(x - 20, y - 24, `${WEAPONS[it.wid].short} LV ${it.level}!`, c);
+            const slot = PERK_UNLOCK.indexOf(it.level);
+            if (slot > 0 && it.perks[slot]) popText(x - 30, y - 34, `PERK UNLOCKED: ${PERKS[it.perks[slot]].name}`, c);
+            if (player.items[it.wid] === it) player.magSize[it.wid] = magSizeOf(it);
+            playSound('clear');
+        }
+        if (it.level >= MAX_ITEM_LEVEL) it.xp = 0;
+    }
+    function killEnemy(en, wid) {
         en.dead = true;
+        const it = wid && player.items[wid];
+        if (it) {
+            gainXp(it, en.t.score / 5 * (en.champ ? 3 : 1), en.x, en.y);
+            const s = perkStrength(it.level);
+            if (hasPerk(it, 'rampage')) { player.rampage = Math.min(3, (player.rampageT > 0 ? player.rampage : 0) + 1); player.rampageT = 240; }
+            if (hasPerk(it, 'vampire')) player.shield = Math.min(player.maxShield, player.shield + 10 * s);
+            // Supernova: passes no weapon id, so its own kills can't chain-trigger it again
+            if (it.rarity === 'exotic') explode(en.x + en.w / 2, en.y + en.h / 2, 45, 60 * s * player.dmgMult, selectedElement, 'heavy');
+        }
         kills++;
         score += en.t.score;
         credits += Math.round(en.t.score / 5);
@@ -1355,14 +1565,13 @@
             const bonus = 500;
             score += bonus; credits += 80;
             popText(cx - 30, en.y - 18, `${CHAMPIONS[en.champ].name} DOWN +${bonus}`, CHAMPIONS[en.champ].color);
-            spawnItem(cx - 8, cy, 'orb'); spawnItem(cx + 8, cy, 'ammo');
+            spawnItem(cx - 8, cy, 'orb'); spawnItem(cx + 8, cy, 'special');
             rings.push({ x: cx, y: cy, r: 6, maxR: 50, life: 18, max: 18, color: CHAMPIONS[en.champ].color });
         }
+        // primary ammo is infinite, so enemies only drop special (15%) and heavy (9%)
         if (Math.random() < 0.4) spawnItem(cx, cy, 'orb');
-        if (Math.random() < (p.ammo.primary < 60 ? 0.7 : 0.25)) spawnItem(cx + 6, cy, 'ammo');
-        const hasSpecial = p.owned.some(id => WEAPONS[id].ammo === 'special'), hasHeavy = p.owned.includes('rocket');
-        if (hasSpecial && Math.random() < 0.14) spawnItem(cx - 6, cy, 'special');
-        if (hasHeavy && Math.random() < (en.t.score >= 250 ? 0.12 : 0.04)) spawnItem(cx, cy - 6, 'heavy');
+        if (Math.random() < 0.15) spawnItem(cx - 6, cy, 'special');
+        if (Math.random() < 0.09) spawnItem(cx + 6, cy - 6, 'heavy');
     }
 
     function bossHittable() { return boss && boss.active && !boss.dead && boss.alpha > 0.3; }
@@ -1398,11 +1607,11 @@
         return true;
     }
 
-    function explode(x, y, r, dmg, element, kind) {
+    function explode(x, y, r, dmg, element, kind, wid) {
         for (const en of enemies) {
             if (en.dead) continue;
             const d = Math.hypot(en.x + en.w / 2 - x, en.y + en.h / 2 - y), reach = r + en.w / 2;
-            if (d < reach) damageEnemy(en, dmg * (1 - 0.5 * d / reach), element, kind);
+            if (d < reach) damageEnemy(en, dmg * (1 - 0.5 * d / reach), element, kind, wid);
         }
         if (bossHittable() && Math.hypot(boss.x - x, boss.y - y) < r + boss.r) damageBoss(dmg);
         explosionFx(x, y, r, element ? ELEMENTS[element].color : '#f97316');
@@ -1471,7 +1680,8 @@
         save.credits += earned;
         save.best = Math.max(save.best, score);
         persist();
-        lastResult = { won, sub, earned, score, kills, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}` };
+        lastResult = { won, sub, earned, score, kills, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}`,
+                       loot: stage.loot.map(it => ({ name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
         setTimeout(() => { if (state === 'over') showResults(lastResult); }, won ? 600 : 900);
     }
 
@@ -1484,6 +1694,10 @@
         document.getElementById('final-score').textContent = r.score;
         document.getElementById('final-kills').textContent = r.kills;
         document.getElementById('final-secrets').textContent = r.secrets || '0/0';
+        const lootEl = document.getElementById('end-loot');
+        lootEl.classList.toggle('hidden', !(r.loot && r.loot.length));
+        lootEl.innerHTML = r.loot && r.loot.length ? '<div class="pixel-font text-[9px] text-yellow-400 mb-1">LOOT ACQUIRED</div>' +
+            r.loot.map(l => `<div style="color:${l.color}">◆ ${l.name} · LV ${l.level}</div>`).join('') : '';
         document.getElementById('final-time').textContent = `${Math.floor(r.secs / 60)}:${String(r.secs % 60).padStart(2, '0')}`;
         document.getElementById('final-credits').textContent = '+' + r.earned;
         document.getElementById('final-bank').textContent = save.credits;
@@ -1532,10 +1746,10 @@
 
     function updatePlayer() {
         const p = player, w = WEAPONS[p.weapon];
-        for (const k of ['meleeCd', 'meleeAnim', 'grenadeCd', 'invuln', 'fireTimer', 'dropTimer', 'jumpBuffer', 'switchTimer']) if (p[k] > 0) p[k]--;
+        for (const k of ['meleeCd', 'meleeAnim', 'grenadeCd', 'invuln', 'fireTimer', 'dropTimer', 'jumpBuffer', 'switchTimer', 'rampageT']) if (p[k] > 0) p[k]--;
 
         if (p.reloadTimer > 0 && --p.reloadTimer === 0 && p.reloadFor === p.weapon) {
-            const n = Math.min(w.mag - p.mags[p.weapon], p.ammo[w.ammo]);
+            const n = Math.min(p.magSize[p.weapon] - p.mags[p.weapon], p.ammo[w.ammo]);
             p.mags[p.weapon] += n; p.ammo[w.ammo] -= n;
             playSound('reload');
         }
@@ -1753,7 +1967,7 @@
         b.phaseTimer++;
         if (!b.immune && b.phaseTimer > vuln) {
             b.immune = true; b.phaseTimer = 0; setBossStatus();
-            spawnItem(stage.arenaX + 120 + Math.random() * 400, 150, Math.random() < 0.5 ? 'orb' : (player.owned.includes('rocket') && Math.random() < 0.4 ? 'heavy' : 'ammo'));
+            spawnItem(stage.arenaX + 120 + Math.random() * 400, 150, Math.random() < 0.5 ? 'orb' : (Math.random() < 0.4 ? 'heavy' : 'special'));
         } else if (b.immune && b.phaseTimer > imm) { b.immune = false; b.phaseTimer = 0; setBossStatus(); }
     }
 
@@ -1904,7 +2118,7 @@
     function detonate(b) {
         b.dead = true;
         if (b.kind === 'grenade') explode(b.x, b.y, 48, b.dmg, b.element, 'grenade');
-        else if (b.kind === 'rocket') explode(b.x, b.y, 62, b.dmg, b.element, 'heavy');
+        else if (b.kind === 'rocket') explode(b.x, b.y, 62, b.dmg, b.element, 'heavy', b.wid);
         else explode(b.x, b.y, 85, b.dmg, b.element, 'super');
     }
     const isExplosive = b => b.kind === 'grenade' || b.kind === 'nova' || b.kind === 'rocket';
@@ -1944,7 +2158,7 @@
                 }
                 const pierce = !!b.hit;
                 for (const en of enemies) {
-                    if (en.dead || en.alpha < 0.3 || (pierce && b.hit.has(en)) || !overlap(box, en)) continue;
+                    if (en.dead || en.alpha < 0.3 || (pierce && b.hit.has(en)) || (b.seen && b.seen.has(en)) || !overlap(box, en)) continue;
                     // Shieldbearer: frontal barrier blocks normal bullets (lowered while it fires)
                     if (en.t.frontShield && b.kind === 'bullet' && Math.sign(b.vx) === -en.facing && Math.abs(b.vx) > 0.5 && !(en.aware && en.fireTimer < 18)) {
                         b.dead = true;
@@ -1954,7 +2168,11 @@
                     }
                     damageEnemy(en, b.dmg, b.element, b.kind === 'golden' ? 'super' : b.kind, b.wid);
                     burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
-                    if (pierce) b.hit.add(en); else { b.dead = true; break; }
+                    const it = b.wid && player.items[b.wid];
+                    if (hasPerk(it, 'impact') && Math.random() < 0.12 * perkStrength(it.level)) explode(b.x, b.y, 22, b.dmg * 0.4, b.element, 'impact', b.wid);
+                    if (pierce) b.hit.add(en);
+                    else if (b.pen > 0) { b.pen--; (b.seen || (b.seen = new Set())).add(en); } // Penetrator: one extra target
+                    else { b.dead = true; break; }
                 }
                 if (!b.dead && bossHittable() && !(pierce && b.hit.has(boss)) && Math.hypot(b.x - boss.x, b.y - boss.y) < boss.r) {
                     damageBoss(b.dmg);
@@ -2067,7 +2285,7 @@
         let ammo, ammoCls = 'text-white font-bold';
         if (p.reloadTimer > 0) { ammo = 'RELOADING'; ammoCls = 'text-amber-400 font-bold'; }
         else if (sidearm) { ammo = '∞'; ammoCls = 'text-red-400 font-bold'; }
-        else { ammo = `${mag}/${res}`; if (mag <= Math.ceil(w.mag * 0.25)) ammoCls = 'text-amber-400 font-bold'; }
+        else { ammo = `${mag}/${res === Infinity ? '∞' : res}`; if (mag <= Math.ceil(p.magSize[p.weapon] * 0.25)) ammoCls = 'text-amber-400 font-bold'; }
         setHud('hud-ammo', ammo, ammoCls);
         setHud('hud-grenade', p.grenadeCd > 0 ? Math.ceil(p.grenadeCd / 60) + 's' : 'READY', p.grenadeCd > 0 ? 'text-slate-400 font-bold' : 'text-emerald-400 font-bold');
         setHud('hud-score', String(score).padStart(6, '0'));
@@ -2077,7 +2295,7 @@
                 'pixel-font text-center text-[9px] tracking-widest hidden md:block ' + (left ? 'text-white' : 'text-emerald-400'));
         }
         setHud('hud-credits', credits);
-        setHud('hud-reserves', `PRIMARY ${p.ammo.primary} • SPECIAL ${p.ammo.special} • HEAVY ${p.ammo.heavy} • TREASURE ${stage.secretsFound}/${stage.secretsTotal}`);
+        setHud('hud-reserves', `PRIMARY ∞ • SPECIAL ${p.ammo.special}/${p.maxAmmo.special} • HEAVY ${p.ammo.heavy}/${p.maxAmmo.heavy} • TREASURE ${stage.secretsFound}/${stage.secretsTotal}`);
         if (boss && boss.active) {
             const pct = Math.max(0, boss.hp / boss.maxHp * 100).toFixed(1);
             if (hudCache.bossbar !== pct) { hudCache.bossbar = pct; document.getElementById('boss-hp-bar').style.width = pct + '%'; }
@@ -2708,14 +2926,18 @@
         const y = H - 14;
         ctx.font = '5px "Press Start 2P", monospace';
         p.owned.forEach((id, i) => {
-            const w = WEAPONS[id], cur = i === p.weaponIdx, empty = p.mags[id] <= 0 && p.ammo[w.ammo] <= 0;
-            const label = `${(i + 1) % 10} ${w.short}`, wd = ctx.measureText(label).width + 6;
+            const w = WEAPONS[id], it = p.items[id], cur = i === p.weaponIdx, empty = p.mags[id] <= 0 && p.ammo[w.ammo] <= 0;
+            const label = `${i + 1} ${w.short} L${it ? it.level : 1}`, wd = ctx.measureText(label).width + 6;
             ctx.fillStyle = cur ? 'rgba(15,23,42,0.9)' : 'rgba(15,23,42,0.55)';
             ctx.fillRect(x, y, wd, 9);
             ctx.strokeStyle = cur ? AMMO_COLORS[w.ammo] : 'rgba(100,116,139,0.6)'; ctx.lineWidth = 1;
             ctx.strokeRect(x + 0.5, y + 0.5, wd - 1, 8);
-            ctx.fillStyle = empty ? '#64748b' : (cur ? '#fff' : '#94a3b8');
+            // text in the item's rarity colour; XP bar along the bottom edge
+            ctx.fillStyle = empty ? '#64748b' : (it ? RARITIES[it.rarity].color : '#fff');
+            if (!cur && !empty) ctx.globalAlpha = 0.6;
             ctx.fillText(label, x + 3, y + 7);
+            ctx.globalAlpha = 1;
+            if (it && it.level < MAX_ITEM_LEVEL) { ctx.fillStyle = '#facc15'; ctx.fillRect(x + 1, y + 8, (wd - 2) * it.xp / xpToNext(it.level), 1); }
             x += wd + 3;
         });
     }
