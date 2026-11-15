@@ -21,6 +21,7 @@ Both editions are the same game with the same saves; switch any time with the **
 - **Crouch to dodge:** level enemy shots fly over you while you crouch
 - **Loot & gear levels:** chests drop weapons as Common (74%), Rare (20%), Legendary (5%) or Exotic (1%) items with perks; kills level them up to LV 20 for more damage, stronger perks and extra perk slots
 - **Loadout:** start each stage with 3 weapons, either 2 primaries + 1 heavy or one of each ammo type. Primary ammo is infinite; special and heavy refill every stage and drop from enemies (15% / 9%)
+- **Epic soundtrack:** an original score synthesized live (no audio files): a faster, heavier arrangement for boss fights and a different key per world. Toggle with MUSIC on the menu
 - **10 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher, plus the three anti-champion weapons
 - **Armory:** spend credits on weapons and upgrades; progress is saved in the browser
 
@@ -44,10 +45,12 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | A / D | Move |
 | W / S | Aim up / crouch (aim down in the air) |
 | J or Space | Jump (hold for class ability; S + Jump drops through ledges) |
-| K | Fire (hold) |
+| Mouse | Aim in any direction (crosshair) |
+| Left click or K | Fire (hold) |
+| Right click or I | Grenade |
+| Mouse wheel | Switch weapon |
 | Q / E or 1–3 | Switch between your 3 loadout weapons |
 | R | Reload |
 | L | Melee |
-| I | Grenade |
 | O | Super |
 | P / Esc | Pause |

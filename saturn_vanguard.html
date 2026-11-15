@@ -115,6 +115,7 @@
                     <div class="flex flex-wrap gap-2">
                         <button onclick="toggleGfx()" id="gfx-btn" class="px-3 py-2 bg-slate-800 border border-sky-700 text-xs text-sky-300 rounded hover:bg-slate-700">GFX: 64-BIT</button>
                         <button onclick="toggleCRT()" id="crt-toggle-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">CRT: ON</button>
+                        <button onclick="toggleMusic()" id="music-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">MUSIC: ON</button>
                         <button onclick="toggleMute()" id="mute-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">SOUND: ON</button>
                         <button onclick="resetProgress()" class="px-3 py-2 bg-slate-900 border border-red-900 text-xs text-red-400 rounded hover:bg-red-950">RESET SAVE</button>
                     </div>
@@ -128,7 +129,7 @@
 
             <div class="text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
                 [A/D] Move &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold for class ability, S+Jump drops through ledges)
-                &bull; [K] Fire (hold) &bull; [Q/E or 1-3] Switch weapon &bull; [R] Reload &bull; [L] Melee &bull; [I] Grenade &bull; [O] Super &bull; [P/Esc] Pause
+                &bull; [Mouse] Aim &bull; [Left click / K] Fire (hold) &bull; [Right click / I] Grenade &bull; [Wheel] Swap &bull; [Q/E or 1-3] Switch weapon &bull; [R] Reload &bull; [L] Melee &bull; [I] Grenade &bull; [O] Super &bull; [P/Esc] Pause
             </div>
         </div>
     </div>
@@ -227,7 +228,7 @@
 
         <div class="bg-slate-950/90 px-3 py-1.5 border-t border-sky-900/60 flex justify-between items-center text-[10px] text-slate-400 gap-2">
             <div>RESERVES: <span id="hud-reserves" class="text-white">-</span> &bull; CREDITS <span id="hud-credits" class="text-emerald-400 font-bold">0</span></div>
-            <div class="hidden md:block">[Q/E] SWAP &bull; [K] FIRE &bull; [J] JUMP &bull; [L] MELEE &bull; [I] GRENADE &bull; [O] SUPER &bull; [R] RELOAD &bull; [P] PAUSE</div>
+            <div class="hidden md:block">[MOUSE] AIM &bull; [CLICK/K] FIRE &bull; [RMB] GRENADE &bull; [Q/E/WHEEL] SWAP &bull; [J] JUMP &bull; [L] MELEE &bull; [I] GRENADE &bull; [O] SUPER &bull; [R] RELOAD &bull; [P] PAUSE</div>
         </div>
     </div>
 
@@ -287,6 +288,138 @@
             o.connect(g); g.connect(audioCtx.destination);
             o.start(now); o.stop(now + s.dur + 0.02);
         } catch (e) {}
+    }
+
+    // =====================================================================
+    //  MUSIC: an original epic score, synthesized live with Web Audio (no audio files)
+    //  8-bar loop in D minor (Dm Bb F C | Dm Bb Gm A): driving bass, string-like pads,
+    //  arpeggios, a heroic lead, drums and timpani. Boss fights switch to a faster,
+    //  heavier arrangement; each world plays in its own key.
+    // =====================================================================
+    const MUSIC_KEY = 'saturn-vanguard-music';
+    let musicOn = (() => { try { return localStorage.getItem(MUSIC_KEY) !== 'off'; } catch (e) { return true; } })();
+    const MUSIC_VOL = 0.55;
+    const WORLD_KEYS = [0, 2, -2, 3]; // semitones: D minor, E minor, C minor, F minor
+    const CHORDS = [[50, 53, 57], [46, 50, 53], [53, 57, 60], [48, 52, 55], [50, 53, 57], [46, 50, 53], [43, 46, 50], [45, 49, 52]];
+    const MELODY = new Map([ // 16th-note step in the 128-step loop -> [midi note, length in 16ths]
+        [0, [69, 4]], [4, [74, 4]], [8, [77, 6]], [14, [76, 2]],
+        [16, [74, 6]], [22, [72, 2]], [24, [70, 8]],
+        [32, [72, 4]], [36, [77, 4]], [40, [81, 6]], [46, [79, 2]],
+        [48, [76, 8]], [56, [72, 4]], [60, [74, 4]],
+        [64, [77, 4]], [68, [81, 4]], [72, [86, 6]], [78, [84, 2]],
+        [80, [82, 6]], [86, [81, 2]], [88, [77, 8]],
+        [96, [79, 4]], [100, [82, 4]], [104, [86, 4]], [108, [84, 4]],
+        [112, [85, 8]], [120, [81, 4]], [124, [76, 4]],
+    ]);
+    const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+    const music = { playing: false, timer: null, step: 0, loop: 0, nextTime: 0, transpose: 0, graph: null, boss: false };
+
+    // Output chain for a context: music bus -> compressor -> speakers, plus an echo send for lead/arp
+    function buildMusicGraph(ac) {
+        const out = ac.createGain(); out.gain.value = 0;
+        const comp = ac.createDynamicsCompressor();
+        comp.threshold.value = -16; comp.ratio.value = 4;
+        out.connect(comp); comp.connect(ac.destination);
+        const echo = ac.createDelay(1), fb = ac.createGain(), wet = ac.createGain();
+        echo.delayTime.value = 0.28; fb.gain.value = 0.32; wet.gain.value = 0.28;
+        echo.connect(fb); fb.connect(echo); echo.connect(wet); wet.connect(out);
+        const noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = noise.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        return { ac, out, echo, noise };
+    }
+    function voice(g, type, freq, t, dur, vol, cutoff, attack = 0.005, echo = false) {
+        const ac = g.ac, o = ac.createOscillator(), f = ac.createBiquadFilter(), v = ac.createGain();
+        o.type = type; o.frequency.setValueAtTime(freq, t);
+        f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff, t);
+        v.gain.setValueAtTime(0.0001, t);
+        v.gain.linearRampToValueAtTime(vol, t + attack);
+        v.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(f); f.connect(v); v.connect(g.out);
+        if (echo) v.connect(g.echo);
+        o.start(t); o.stop(t + dur + 0.05);
+        return o;
+    }
+    function noiseHit(g, t, dur, vol, type, freq) {
+        const ac = g.ac, s = ac.createBufferSource(), f = ac.createBiquadFilter(), v = ac.createGain();
+        s.buffer = g.noise; f.type = type; f.frequency.value = freq;
+        v.gain.setValueAtTime(vol, t); v.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        s.connect(f); f.connect(v); v.connect(g.out);
+        s.start(t); s.stop(t + dur + 0.05);
+    }
+    function drum(g, t, f0, f1, dur, vol) {
+        const ac = g.ac, o = ac.createOscillator(), v = ac.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.6);
+        v.gain.setValueAtTime(vol, t); v.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(v); v.connect(g.out);
+        o.start(t); o.stop(t + dur + 0.05);
+    }
+    const musicBpm = boss => boss ? 148 : 128;
+    // Schedules one 16th-note step of the score at time t
+    function scheduleMusicStep(g, step, loop, t, tr, boss) {
+        const sixteenth = 60 / musicBpm(boss) / 4, bar = step >> 4, s = step & 15;
+        const chord = CHORDS[bar].map(n => n + tr), root = chord[0];
+        // bass: pulsing 8ths, octave jumps on the off-beats (16ths in boss fights)
+        if (boss || s % 2 === 0) voice(g, 'sawtooth', mtof(root - 12 + (s % 4 === 2 ? 12 : 0)), t, sixteenth * 1.8, boss ? 0.16 : 0.14, boss ? 700 : 500);
+        // string pad: detuned saw pairs holding the bar's chord
+        if (s === 0) for (const n of chord) for (const det of [-0.06, 0.06]) {
+            voice(g, 'sawtooth', mtof(n + det), t, sixteenth * 16, 0.022, boss ? 2200 : 1400, sixteenth * 3);
+        }
+        // arpeggio climbing the chord
+        const arp = chord[[0, 1, 2, 1][s % 4]] + (s >= 8 ? 24 : 12);
+        voice(g, 'square', mtof(arp), t, sixteenth * 0.9, boss ? 0.035 : 0.022, 2600, 0.003, true);
+        // heroic lead: every other loop, always during boss fights
+        const m = MELODY.get(step);
+        if (m && (boss || loop % 2 === 1)) {
+            const o = voice(g, 'sawtooth', mtof(m[0] + tr), t, sixteenth * m[1] + 0.12, 0.065, 3200, 0.02, true);
+            const lfo = g.ac.createOscillator(), depth = g.ac.createGain(); // vibrato
+            lfo.frequency.value = 5.5; depth.gain.value = mtof(m[0] + tr) * 0.006;
+            lfo.connect(depth); depth.connect(o.frequency); lfo.start(t + 0.1); lfo.stop(t + sixteenth * m[1] + 0.2);
+        }
+        // drums
+        const kicks = boss ? [0, 4, 8, 12, 14] : (bar % 2 ? [0, 8, 10] : [0, 8]);
+        if (kicks.includes(s)) drum(g, t, 150, 42, 0.3, 0.55);
+        if (s === 4 || s === 12) { noiseHit(g, t, 0.16, 0.22, 'bandpass', 1800); drum(g, t, 220, 160, 0.08, 0.12); }
+        if (boss || s % 2 === 0) noiseHit(g, t, 0.04, s % 4 === 2 ? 0.07 : 0.045, 'highpass', 7000);
+        if (step === 0) noiseHit(g, t, 1.4, 0.12, 'highpass', 4000); // crash at the top of the loop
+        if ((bar === 7 || (boss && bar === 3)) && s >= 8 && s % 2 === 0) drum(g, t, 95, 70, 0.45, 0.35); // timpani roll
+    }
+    function musicTick() {
+        const ac = audioCtx;
+        if (!ac || !music.playing) return;
+        if (music.nextTime < ac.currentTime - 0.1) music.nextTime = ac.currentTime + 0.05; // tab was throttled: skip, don't burst
+        const bossFight = !!(boss && boss.active && !boss.dead);
+        while (music.nextTime < ac.currentTime + 0.15) {
+            scheduleMusicStep(music.graph, music.step, music.loop, music.nextTime, music.transpose, bossFight);
+            music.nextTime += 60 / musicBpm(bossFight) / 4;
+            music.step = (music.step + 1) & 127;
+            if (music.step === 0) music.loop++;
+        }
+    }
+    function musicVolume(v, secs = 0.4) {
+        if (!music.graph) return;
+        const g = music.graph.out.gain, now = audioCtx.currentTime;
+        g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(v, now + secs);
+    }
+    function startMusic(world) {
+        if (!audioCtx) return;
+        if (!music.graph) music.graph = buildMusicGraph(audioCtx);
+        music.transpose = WORLD_KEYS[world] || 0;
+        music.step = 0; music.loop = 0; music.nextTime = audioCtx.currentTime + 0.1;
+        music.playing = true;
+        clearInterval(music.timer); music.timer = setInterval(musicTick, 25);
+        musicVolume(musicOn ? MUSIC_VOL : 0, 0.6);
+    }
+    function stopMusic(secs = 0.4) {
+        if (!music.playing) return;
+        musicVolume(0, secs);
+        music.playing = false;
+        clearInterval(music.timer); music.timer = null;
+    }
+    function toggleMusic() {
+        musicOn = !musicOn;
+        try { localStorage.setItem(MUSIC_KEY, musicOn ? 'on' : 'off'); } catch (e) {}
+        document.getElementById('music-btn').textContent = 'MUSIC: ' + (musicOn ? 'ON' : 'OFF');
+        if (music.playing) musicVolume(musicOn ? (state === 'paused' ? MUSIC_VOL * 0.3 : MUSIC_VOL) : 0);
     }
 
     // =====================================================================
@@ -1317,12 +1450,14 @@
         state = 'playing';
         lastTs = 0; acc = 0;
         if (!rafId) rafId = requestAnimationFrame(loop);
+        startMusic(stage.world);
     }
     function nextStage() {
         if (selectedStage < TOTAL_STAGES - 1) selectedStage++;
         startGame();
     }
     function returnToMenu() {
+        stopMusic();
         state = 'menu';
         if (rafId) cancelAnimationFrame(rafId);
         rafId = null;
@@ -1333,6 +1468,7 @@
     function togglePause() {
         if (state === 'playing') state = 'paused';
         else if (state === 'paused') { state = 'playing'; lastTs = 0; }
+        if (music.playing && musicOn) musicVolume(state === 'paused' ? MUSIC_VOL * 0.3 : MUSIC_VOL, 0.25); // duck while paused
     }
 
     // =====================================================================
@@ -1345,6 +1481,7 @@
         if (e.repeat) return;
         if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
         if (state !== 'playing') return;
+        if (e.code === 'KeyK' || e.code === 'KeyZ' || e.code === 'KeyW' || e.code === 'ArrowUp') mouse.active = false; // back to keyboard aim
         if (e.code === 'Space' || e.code === 'KeyJ') player.jumpBuffer = 8;
         if (e.code === 'KeyL' || e.code === 'KeyX') performMelee();
         if (e.code === 'KeyI' || e.code === 'KeyC') throwGrenade();
@@ -1357,21 +1494,52 @@
     window.addEventListener('keyup', e => { keys[e.code] = false; });
     window.addEventListener('blur', () => {
         for (const k in keys) keys[k] = false;
+        mouse.down = false;
         if (state === 'playing') togglePause();
     });
+
+    // Mouse: aim anywhere with the cursor, hold left button to fire, right button = grenade, wheel = swap.
+    // Moving the mouse over the game switches to mouse aim; K / W go back to keyboard aim.
+    const mouse = { x: W / 2, y: H / 2, active: false, down: false };
+    (() => {
+        const cv = document.getElementById('gameCanvas');
+        const toGame = e => { const r = cv.getBoundingClientRect(); mouse.x = (e.clientX - r.left) / r.width * W; mouse.y = (e.clientY - r.top) / r.height * H; };
+        cv.addEventListener('mousemove', e => { toGame(e); if (state === 'playing') mouse.active = true; });
+        cv.addEventListener('mousedown', e => {
+            e.preventDefault(); toGame(e);
+            if (state !== 'playing') return;
+            initAudio(); mouse.active = true;
+            if (e.button === 0) mouse.down = true;
+            if (e.button === 2) throwGrenade();
+        });
+        window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
+        cv.addEventListener('contextmenu', e => e.preventDefault());
+        cv.addEventListener('wheel', e => {
+            e.preventDefault();
+            if (state !== 'playing' || player.owned.length < 2) return;
+            const n = player.owned.length;
+            switchWeapon((player.weaponIdx + (e.deltaY > 0 ? 1 : -1) + n) % n);
+        }, { passive: false });
+    })();
+
     const held = {
         left:  () => keys.KeyA || keys.ArrowLeft,
         right: () => keys.KeyD || keys.ArrowRight,
         up:    () => keys.KeyW || keys.ArrowUp,
         down:  () => keys.KeyS || keys.ArrowDown,
         jump:  () => keys.Space || keys.KeyJ,
-        fire:  () => keys.KeyK || keys.KeyZ,
+        fire:  () => keys.KeyK || keys.KeyZ || mouse.down,
     };
 
     // =====================================================================
     //  WEAPONS & PLAYER ACTIONS
     // =====================================================================
     function getAim() {
+        if (mouse.active && player) { // free 360° aim toward the cursor
+            const p = player, dx = mouse.x + cameraX - (p.x + p.w / 2), dy = mouse.y - (p.y + (p.crouch ? 26 : 13));
+            const d = Math.hypot(dx, dy) || 1;
+            return [dx / d, dy / d];
+        }
         const up = held.up(), down = held.down(), moving = held.left() || held.right();
         if (up && moving) return [player.facing * 0.7071, -0.7071];
         if (up) return [0, -1];
@@ -1662,6 +1830,7 @@
     function endStage(won) {
         if (state === 'over') return;
         state = 'over';
+        stopMusic(1.5); // fade out over the results
         const idx = stage.idx;
         let bonus = 0, sub = '';
         if (won) {
@@ -1768,6 +1937,7 @@
         p.vx += (dir * p.speed - p.vx) * (p.grounded ? 0.35 * theme.friction : 0.2);
         if (Math.abs(p.vx) < 0.05) p.vx = 0;
         if (dir !== 0) p.facing = dir;
+        if (mouse.active) p.facing = mouse.x + cameraX >= p.x + p.w / 2 ? 1 : -1; // face the cursor
 
         if (p.grounded) p.coyote = 6; else if (p.coyote > 0) p.coyote--;
         if (p.jumpBuffer > 0) {
@@ -3206,6 +3376,19 @@
             ctx.drawImage(vignetteCanvas, 0, 0, W, H);
         }
         drawWeaponStrip();
+        // crosshair (the system cursor is hidden over the canvas while mouse-aiming)
+        canvas.style.cursor = mouse.active && state === 'playing' ? 'none' : '';
+        if (mouse.active && state === 'playing') {
+            const mx = mouse.x, my = mouse.y, c = ELEMENTS[selectedElement].color;
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = c; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI * 2);
+            ctx.moveTo(mx - 9, my); ctx.lineTo(mx - 3, my); ctx.moveTo(mx + 3, my); ctx.lineTo(mx + 9, my);
+            ctx.moveTo(mx, my - 9); ctx.lineTo(mx, my - 3); ctx.moveTo(mx, my + 3); ctx.lineTo(mx, my + 9);
+            ctx.stroke();
+            ctx.fillStyle = '#fff'; ctx.fillRect(mx - 0.5, my - 0.5, 1, 1);
+        }
 
         if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash / 16})`; ctx.fillRect(0, 0, W, H); }
         if (hurtFlash > 0) { ctx.strokeStyle = `rgba(239,68,68,${hurtFlash / 20})`; ctx.lineWidth = 10; ctx.strokeRect(0, 0, W, H); }
@@ -3230,6 +3413,7 @@
 
     renderMenu();
     updateGfxLabels();
+    document.getElementById('music-btn').textContent = 'MUSIC: ' + (musicOn ? 'ON' : 'OFF');
     if (gfx128) toggleCRT();
     </script>
 </body>
