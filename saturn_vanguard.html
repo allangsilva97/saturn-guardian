@@ -87,6 +87,9 @@
                             <button onclick="selectElement('void')" id="elem-void" style="--c:#a855f7" class="pick flex-1 py-2 text-xs font-bold rounded">VOID</button>
                         </div>
                         <div class="bg-slate-950 p-2 border border-slate-800 rounded text-[12px] text-slate-300 leading-snug">
+                            <span class="block mb-1"><span class="text-yellow-300">Skill wins fights.</span> Headshots are critical hits (+75%, sniper +150%).
+                            <span class="text-sky-300">[Shift]</span> dashes through shots; dodging a hit that way is a PERFECT DODGE: +25% damage for 3s and the dash is refunded.
+                            Dying sends you back to the last checkpoint and costs score and credits.</span>
                             Match your element to a shield's colour to shatter it. Melee breaks any shield.
                             Shieldbearers block shots from the front, so flank them or use explosives. Crouch to duck under level shots.
                             <span class="block mt-1">Champions (max 2 types per stage, shown at the start): <span style="color:#22d3ee">BARRIER</span> &rarr; Piercer Rifle;
@@ -100,6 +103,9 @@
                             <div class="text-[11px] text-slate-400">CLEARED <span id="menu-progress" class="text-white">0/12</span></div>
                         </div>
                         <div id="stage-select" class="grid grid-cols-2 gap-2"></div>
+                        <div class="pixel-font text-[10px] text-yellow-400 mt-4 mb-2">-- DIFFICULTY --</div>
+                        <div id="difficulty" class="flex space-x-2 mb-2"></div>
+                        <div id="difficulty-desc" class="text-[11px] text-slate-400 leading-snug"></div>
                     </div>
                 </div>
 
@@ -119,16 +125,18 @@
                         <button onclick="toggleMute()" id="mute-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">SOUND: ON</button>
                         <button onclick="resetProgress()" class="px-3 py-2 bg-slate-900 border border-red-900 text-xs text-red-400 rounded hover:bg-red-950">RESET SAVE</button>
                     </div>
-                    <div class="text-xs text-slate-400">CREDITS <span id="menu-credits" class="text-emerald-400 font-bold">0</span> &bull; BEST <span id="best-score" class="text-yellow-400">0</span></div>
+                    <div class="text-xs text-slate-400">CREDITS <span id="menu-credits" class="text-emerald-400 font-bold">0</span> &bull; BEST <span id="best-score" class="text-yellow-400">0</span>
+                        <div id="refund-note" class="text-[11px] text-emerald-300 hidden"></div></div>
                     <div class="flex gap-2">
                         <button onclick="openArmory('menu')" class="px-5 py-3 saturn-button pixel-font text-sky-300 text-xs font-bold uppercase rounded">ARMORY</button>
+                        <button onclick="startGame(true)" id="horde-btn" class="px-4 py-3 saturn-button pixel-font text-fuchsia-300 text-xs font-bold uppercase rounded">HORDE</button>
                         <button onclick="startGame()" id="launch-btn" class="px-6 py-3 saturn-button pixel-font text-yellow-300 text-xs font-bold tracking-widest uppercase rounded">LAUNCH 1-1</button>
                     </div>
                 </div>
             </div>
 
             <div class="text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
-                [A/D] Move &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold for class ability, S+Jump drops through ledges)
+                [A/D] Move &bull; [Shift] Dash &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold for class ability, S+Jump drops through ledges)
                 &bull; [Mouse] Aim &bull; [Left click / K] Fire (hold) &bull; [Right click / I] Grenade &bull; [Wheel] Swap &bull; [Q/E or 1-3] Switch weapon &bull; [R] Reload &bull; [L] Melee &bull; [I] Grenade &bull; [O] Super &bull; [P/Esc] Pause
             </div>
         </div>
@@ -141,16 +149,9 @@
                 <h2 class="pixel-font text-lg text-sky-300">ARMORY</h2>
                 <div class="text-sm text-slate-300">CREDITS <span id="armory-credits" class="text-emerald-400 font-bold text-lg">0</span></div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <div>
-                    <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- WEAPONS --</div>
-                    <div id="armory-weapons" class="space-y-2"></div>
-                </div>
-                <div>
-                    <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- UPGRADES --</div>
-                    <div id="armory-upgrades" class="space-y-2"></div>
-                    <div class="mt-3 text-[12px] text-slate-400 leading-snug">All weapons you own are carried into every stage. Upgrades apply from the next stage you launch.</div>
-                </div>
+            <div>
+                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- WEAPONS --</div>
+                <div id="armory-weapons" class="grid grid-cols-1 lg:grid-cols-2 gap-2"></div>
             </div>
             <div class="mt-5">
                 <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- ARMOR --</div>
@@ -185,10 +186,12 @@
                 <div class="flex justify-between"><span>SCORE:</span> <span id="final-score" class="text-yellow-400">0</span></div>
                 <div class="flex justify-between"><span>COMBATANTS DEFEATED:</span> <span id="final-kills" class="text-white">0</span></div>
                 <div class="flex justify-between"><span>TREASURES &amp; SECRETS:</span> <span id="final-secrets" class="text-fuchsia-300">0/0</span></div>
+                <div class="flex justify-between"><span>DEATHS:</span> <span id="final-deaths" class="text-white">0</span></div>
                 <div class="flex justify-between"><span>TIME:</span> <span id="final-time" class="text-white">0:00</span></div>
                 <div class="flex justify-between"><span>CREDITS EARNED:</span> <span id="final-credits" class="text-emerald-400">0</span></div>
                 <div class="flex justify-between"><span>TOTAL CREDITS:</span> <span id="final-bank" class="text-emerald-300">0</span></div>
             </div>
+            <div id="end-contracts" class="text-left text-[12px] mb-4 hidden"></div>
             <div id="end-loot" class="text-left text-[12px] mb-4 hidden"></div>
             <div class="text-[11px] text-emerald-400 mb-3">AMMO RESERVES REFILLED FOR THE NEXT STAGE</div>
             <div id="end-buttons" class="flex gap-2"></div>
@@ -202,7 +205,7 @@
             <div class="flex items-center gap-3">
                 <div>HP <span id="hud-hp" class="text-emerald-400 font-bold">100</span></div>
                 <div>SHIELD <span id="hud-shield" class="text-sky-400 font-bold">100</span></div>
-                <div>LIVES <span id="hud-lives" class="text-sky-400 font-bold">3</span></div>
+                <div>DEATHS <span id="hud-lives" class="text-sky-400 font-bold">0</span></div>
                 <div>SUPER <span id="hud-super" class="text-yellow-400 font-bold">0%</span></div>
             </div>
             <div id="hud-stage" class="pixel-font text-center text-[9px] text-white tracking-widest hidden md:block">1-1</div>
@@ -228,7 +231,7 @@
 
         <div class="bg-slate-950/90 px-3 py-1.5 border-t border-sky-900/60 flex justify-between items-center text-[10px] text-slate-400 gap-2">
             <div>RESERVES: <span id="hud-reserves" class="text-white">-</span> &bull; CREDITS <span id="hud-credits" class="text-emerald-400 font-bold">0</span></div>
-            <div class="hidden md:block">[MOUSE] AIM &bull; [CLICK/K] FIRE &bull; [RMB] GRENADE &bull; [Q/E/WHEEL] SWAP &bull; [J] JUMP &bull; [L] MELEE &bull; [I] GRENADE &bull; [O] SUPER &bull; [R] RELOAD &bull; [P] PAUSE</div>
+            <div class="hidden md:block">[MOUSE] AIM &bull; [CLICK/K] FIRE &bull; [SHIFT] DASH &bull; [RMB] GRENADE &bull; [Q/E/WHEEL] SWAP &bull; [J] JUMP &bull; [L] MELEE &bull; [I] GRENADE &bull; [O] SUPER &bull; [R] RELOAD &bull; [P] PAUSE</div>
         </div>
     </div>
 
@@ -269,6 +272,8 @@
         snipe:     { type: 'sawtooth', f0: 900, f1: 100, dur: 0.20, vol: 0.06, exp: true },
         beam:      { type: 'sawtooth', f0: 80,  f1: 160, dur: 0.30, vol: 0.10 },
         clear:     { type: 'triangle', f0: 400, f1: 1200, dur: 0.60, vol: 0.14, exp: true },
+        dash:      { type: 'sawtooth', f0: 900, f1: 180, dur: 0.12, vol: 0.07, exp: true },
+        crit:      { type: 'triangle', f0: 1500, f1: 900, dur: 0.07, vol: 0.09, exp: true },
     };
     function playSound(name) {
         if (!audioCtx || muted) return;
@@ -387,7 +392,8 @@
         const ac = audioCtx;
         if (!ac || !music.playing) return;
         if (music.nextTime < ac.currentTime - 0.1) music.nextTime = ac.currentTime + 0.05; // tab was throttled: skip, don't burst
-        const bossFight = !!(boss && boss.active && !boss.dead);
+        // the heavy arrangement plays for boss fights and for elite horde waves
+        const bossFight = !!((boss && boss.active && !boss.dead) || (stage && stage.horde && stage.elite && stage.phase === 'fight'));
         while (music.nextTime < ac.currentTime + 0.15) {
             scheduleMusicStep(music.graph, music.step, music.loop, music.nextTime, music.transpose, bossFight);
             music.nextTime += 60 / musicBpm(bossFight) / 4;
@@ -459,11 +465,13 @@
     // ---- Gear items: every weapon you own is an item with a rarity, a level (1-20) and perks ----
     // Higher level = more damage, stronger perks, and more perk slots unlocked (Lv 1 / 5 / 10).
     const RARITIES = {
+        // Stat bonuses are deliberately small: rarity mostly buys perk slots, and skill (crits, dodges) does the rest
         common:    { name: 'COMMON',    color: '#e2e8f0', mult: 1.00, slots: 1, scrap: 20 },
-        rare:      { name: 'RARE',      color: '#3b82f6', mult: 1.10, slots: 2, scrap: 60 },
-        legendary: { name: 'LEGENDARY', color: '#a855f7', mult: 1.25, slots: 3, scrap: 200 },
-        exotic:    { name: 'EXOTIC',    color: '#facc15', mult: 1.40, slots: 3, scrap: 500 },
+        rare:      { name: 'RARE',      color: '#3b82f6', mult: 1.05, slots: 2, scrap: 60 },
+        legendary: { name: 'LEGENDARY', color: '#a855f7', mult: 1.12, slots: 3, scrap: 200 },
+        exotic:    { name: 'EXOTIC',    color: '#facc15', mult: 1.20, slots: 3, scrap: 500 },
     };
+    const CRIT_MULT = 1.75, CRIT_MULT_PRECISION = 2.5, BOSS_CRIT_MULT = 1.5; // headshots / boss core hits
     const RARITY_ORDER = Object.keys(RARITIES);
     const DROP_TABLE = [['exotic', 0.01], ['legendary', 0.05], ['rare', 0.20], ['common', 0.74]]; // chest loot odds
     const MAX_ITEM_LEVEL = 20;
@@ -487,31 +495,35 @@
     const itemName = it => `${RARITIES[it.rarity].name} ${WEAPONS[it.wid].name}`;
     const activePerks = it => it.perks.filter((_, i) => it.level >= PERK_UNLOCK[i]);
     const hasPerk = (it, k) => !!it && activePerks(it).includes(k);
-    const itemDmgMult = it => RARITIES[it.rarity].mult * (1 + 0.03 * (it.level - 1));
+    const itemDmgMult = it => RARITIES[it.rarity].mult * (1 + 0.015 * (it.level - 1));
     const magSizeOf = it => Math.max(1, Math.round(WEAPONS[it.wid].mag * (hasPerk(it, 'deepmag') ? 1 + 0.25 * perkStrength(it.level) : 1)));
-    function rollRarity() {
+    // ---- Difficulty: scales enemy toughness, credits, champion count and chest loot odds ----
+    const DIFFICULTIES = {
+        easy:   { name: 'EASY',   color: '#4ade80', hp: 0.75, dmg: 0.7,  credits: 0.8, champs: -1, desc: 'Enemies have 25% less health and deal 30% less damage. 20% fewer credits, weaker loot odds.',
+                  loot: [['exotic', 0.005], ['legendary', 0.03], ['rare', 0.165], ['common', 0.80]] },
+        normal: { name: 'NORMAL', color: '#facc15', hp: 1,    dmg: 1,    credits: 1,   champs: 0,  desc: 'The intended experience. Loot: Common 74%, Rare 20%, Legendary 5%, Exotic 1%.',
+                  loot: DROP_TABLE },
+        hard:   { name: 'HARD',   color: '#f87171', hp: 1.4,  dmg: 1.35, credits: 1.3, champs: 1,  desc: 'Enemies have 40% more health and deal 35% more damage, with an extra champion. 30% more credits; loot: Rare 27%, Legendary 9%, Exotic 2%.',
+                  loot: [['exotic', 0.02], ['legendary', 0.09], ['rare', 0.27], ['common', 0.62]] },
+    };
+    const dcfg = () => DIFFICULTIES[save.difficulty] || DIFFICULTIES.normal;
+    function rollRarity(table = dcfg().loot) {
         let r = Math.random();
-        for (const [k, p] of DROP_TABLE) if ((r -= p) < 0) return k;
+        for (const [k, p] of table) if ((r -= p) < 0) return k;
         return 'common';
     }
 
-    const UPGRADES = {
-        vitality:  { name: 'VITALITY',         desc: '+20 max health',        base: 250 },
-        shield:    { name: 'SHIELD CAPACITOR', desc: '+15% shield capacity',  base: 250 },
-        damage:    { name: 'WEAPON TUNING',    desc: '+10% all damage',       base: 350 },
-        superRate: { name: 'LIGHT ATTUNEMENT', desc: '+15% super charge rate', base: 300 },
-        grenade:   { name: 'GRENADE KIT',      desc: '-12% grenade cooldown', base: 200 },
-        ammo:      { name: 'AMMO RIG',         desc: '+20% special & heavy reserves', base: 200 },
-    };
+    // The generic stat upgrades (Vitality, Weapon Tuning...) were retired; old saves get their cost refunded
+    const LEGACY_UPGRADE_COST = { vitality: 250, shield: 250, damage: 350, superRate: 300, grenade: 200, ammo: 200 };
+    let legacyRefund = 0;
     const MAX_UPGRADE = 5;
-    const upgradeCost = (id, lvl) => UPGRADES[id].base * (lvl + 1);
 
     // Armor: every piece has its own upgrade track and can be painted with any colour you own
     const ARMOR_PIECES = {
         helmet:    { name: 'HELMET',      desc: 'Shield recharges sooner and faster',        base: 220 },
         arms:      { name: 'GAUNTLETS',   desc: '+20% melee damage, 6% faster reloads',       base: 220 },
         chest:     { name: 'CHEST PLATE', desc: '-5% damage taken',                          base: 300 },
-        legs:      { name: 'LEG ARMOR',   desc: '+4% move speed, +2% jump power',            base: 250 },
+        legs:      { name: 'LEG ARMOR',   desc: '+4% move speed, +2% jump power, dash recharges 6% faster', base: 250 },
         classItem: { name: 'CLASS ITEM',  desc: 'Ranger: stronger double jump • Sentinel: +20% hover • Arcanist: slower glide', base: 250 },
     };
     const ARMOR_IDS = Object.keys(ARMOR_PIECES);
@@ -612,7 +624,7 @@
 
     const GAME_KEYS = new Set(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD',
         'KeyJ','KeyK','KeyL','KeyI','KeyO','KeyZ','KeyX','KeyC','KeyV','KeyR','KeyP','KeyQ','KeyE','Escape',
-        'Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0']);
+        'Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0','ShiftLeft','ShiftRight']);
 
     // =====================================================================
     //  SAVE DATA
@@ -620,7 +632,7 @@
     const SAVE_KEY = 'saturn-vanguard-save-v2';
     function defaultSave() {
         const starter = makeItem('auto', 'common', 1);
-        return { credits: 0, unlocked: 0, upgrades: { vitality: 0, shield: 0, damage: 0, superRate: 0, grenade: 0, ammo: 0 }, best: 0, cleared: [],
+        return { credits: 0, unlocked: 0, best: 0, cleared: [], difficulty: 'normal', hordeBest: 0,
                  armor: Object.fromEntries(ARMOR_IDS.map(k => [k, 0])), paints: ['standard'], paint: Object.fromEntries(ARMOR_IDS.map(k => [k, 'standard'])),
                  inventory: [starter], loadout: [starter.uid, null, null] };
     }
@@ -640,12 +652,18 @@
         try {
             const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
             if (raw && typeof raw === 'object') {
+                // refund every retired upgrade level at the price it was bought for: base * (1 + 2 + ... + level)
+                legacyRefund = Object.entries(LEGACY_UPGRADE_COST).reduce((sum, [k, base]) => {
+                    const lvl = Math.min(MAX_UPGRADE, Math.max(0, (raw.upgrades && raw.upgrades[k]) | 0));
+                    return sum + base * lvl * (lvl + 1) / 2;
+                }, 0);
                 const s = {
-                    credits: Math.max(0, raw.credits | 0),
+                    credits: Math.max(0, raw.credits | 0) + legacyRefund,
                     unlocked: Math.min(TOTAL_STAGES - 1, Math.max(0, raw.unlocked | 0)),
+                    difficulty: DIFFICULTIES[raw.difficulty] ? raw.difficulty : 'normal',
+                    hordeBest: Math.max(0, raw.hordeBest | 0),
                     inventory: loadInventory(raw),
                     loadout: Array.isArray(raw.loadout) ? raw.loadout.slice(0, 3) : [],
-                    upgrades: Object.fromEntries(Object.keys(UPGRADES).map(k => [k, Math.min(MAX_UPGRADE, Math.max(0, (raw.upgrades && raw.upgrades[k]) | 0))])),
                     best: Math.max(0, raw.best | 0),
                     cleared: Array.isArray(raw.cleared) ? raw.cleared.filter(n => Number.isInteger(n)) : [],
                     armor: Object.fromEntries(ARMOR_IDS.map(k => [k, Math.min(MAX_UPGRADE, Math.max(0, (raw.armor && raw.armor[k]) | 0))])),
@@ -688,9 +706,10 @@
     let state = 'menu'; // menu | playing | paused | over
     let selectedClass = 'ranger', selectedElement = 'fire', selectedStage = 0, crtEnabled = true;
     let canvas, ctx, rafId = null, lastTs = 0, acc = 0;
-    let score, kills, credits, lives, frame, cameraX, shake, flash, hurtFlash, bossIntro, stageIntro, victoryTimer;
+    let score, kills, credits, deaths, frame, cameraX, shake, flash, hurtFlash, bossIntro, stageIntro, victoryTimer;
     let player, platforms, enemies, bullets, particles, rings, items, texts, hazards, weather, boss;
-    let structures = [], treasures = [];
+    let structures = [], treasures = [], checkpoints = [];
+    let hordeMode = false;
     let stage = null, theme = WORLDS[0], diff = { hp: 1, dmg: 1 };
     let armoryReturn = 'menu', lastResult = null;
     const keys = {};
@@ -770,7 +789,20 @@
         document.getElementById('menu-credits').textContent = save.credits;
         document.getElementById('best-score').textContent = save.best;
         document.getElementById('menu-progress').textContent = `${save.cleared.length}/${TOTAL_STAGES}`;
+        document.getElementById('difficulty').innerHTML = Object.entries(DIFFICULTIES).map(([id, d]) =>
+            `<button onclick="setDifficulty('${id}')" style="--c:${d.color}" class="pick ${save.difficulty === id ? 'sel' : ''} flex-1 py-2 text-xs font-bold rounded">${d.name}</button>`).join('');
+        document.getElementById('difficulty-desc').textContent = dcfg().desc;
+        document.getElementById('horde-btn').textContent = save.hordeBest ? `HORDE (BEST ${save.hordeBest})` : 'HORDE';
+        const note = document.getElementById('refund-note');
+        note.classList.toggle('hidden', !legacyRefund);
+        note.textContent = legacyRefund ? `+${legacyRefund} credits refunded: generic upgrades were retired` : '';
         renderLoadout();
+    }
+    function setDifficulty(id) {
+        if (!DIFFICULTIES[id]) return;
+        save.difficulty = id;
+        persist(); initAudio(); playSound('reload');
+        renderMenu();
     }
 
     // Perk list for an item: locked slots show the level that unlocks them
@@ -816,8 +848,8 @@
         renderLoadout();
     }
     function resetProgress() {
-        if (!confirm('Erase all progress, credits, weapons and upgrades?')) return;
-        save = defaultSave();
+        if (!confirm('Erase all progress, credits, weapons and armor?')) return;
+        save = defaultSave(); legacyRefund = 0;
         persist();
         selectedStage = 0;
         renderMenu();
@@ -838,14 +870,6 @@
         if (save.inventory.some(it => it.wid === id) || save.credits < w.cost) return;
         save.credits -= w.cost;
         save.inventory.push(makeItem(id, 'common', 1)); // bought weapons start as Common Lv 1
-        persist(); initAudio(); playSound('pickup');
-        renderArmory();
-    }
-    function buyUpgrade(id) {
-        const lvl = save.upgrades[id], cost = upgradeCost(id, lvl);
-        if (lvl >= MAX_UPGRADE || save.credits < cost) return;
-        save.credits -= cost;
-        save.upgrades[id]++;
         persist(); initAudio(); playSound('pickup');
         renderArmory();
     }
@@ -902,19 +926,6 @@
                 </div>
                 ${owned ? '<span class="text-emerald-400 text-xs font-bold px-3">OWNED</span>'
                         : `<button onclick="buyWeapon('${id}')" ${afford ? '' : 'disabled'} class="saturn-button px-3 py-2 text-yellow-300 text-xs font-bold rounded whitespace-nowrap">BUY ${w.cost}</button>`}
-            </div>`;
-        }).join('');
-        document.getElementById('armory-upgrades').innerHTML = Object.keys(UPGRADES).map(id => {
-            const u = UPGRADES[id], lvl = save.upgrades[id], max = lvl >= MAX_UPGRADE, cost = upgradeCost(id, lvl);
-            const pips = Array.from({ length: MAX_UPGRADE }, (_, i) => `<span class="pip ${i < lvl ? 'on' : ''}"></span>`).join('');
-            return `<div class="flex items-center justify-between gap-3 bg-slate-950/70 border border-slate-800 rounded p-2">
-                <div>
-                    <div class="pixel-font text-[9px] text-white mb-1">${u.name}</div>
-                    <div class="text-[12px] text-slate-400">${u.desc}</div>
-                    <div class="mt-1">${pips}</div>
-                </div>
-                ${max ? '<span class="text-yellow-400 text-xs font-bold px-3">MAX</span>'
-                      : `<button onclick="buyUpgrade('${id}')" ${save.credits >= cost ? '' : 'disabled'} class="saturn-button px-3 py-2 text-yellow-300 text-xs font-bold rounded whitespace-nowrap">BUY ${cost}</button>`}
             </div>`;
         }).join('');
         document.getElementById('armory-armor').innerHTML = ARMOR_IDS.map(id => {
@@ -1070,7 +1081,7 @@
         const wi = stage.world;
         const shuffled = CHAMPION_IDS.slice().sort(() => Math.random() - 0.5);
         stage.champKinds = shuffled.slice(0, Math.random() < 0.35 ? 1 : 2); // never more than 2 types per stage
-        const want = stage.isBoss ? (Math.random() < 0.5 ? 1 : 0) : 1 + Math.floor(Math.random() * Math.min(3, wi + 2));
+        const want = Math.max(0, (stage.isBoss ? (Math.random() < 0.5 ? 1 : 0) : 1 + Math.floor(Math.random() * Math.min(3, wi + 2))) + dcfg().champs);
         const pool = enemies.filter(e => (!stage.isBoss || e.x < stage.arenaX - 100) && canBeChampion(e.type));
         for (let i = 0; i < want && pool.length; i++) {
             const en = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
@@ -1181,10 +1192,11 @@
         const levelW = isBoss ? 2300 + wi * 100 : 3200 + si * 500 + wi * 250;
         const arenaX = isBoss ? levelW - 700 : null;
         theme = w;
-        diff = { hp: 1 + 0.3 * wi + 0.1 * si, dmg: 1 + 0.15 * wi };
+        // difficulty scales enemy health here; its damage factor is applied once, in hurtPlayer (covers bosses and beams too)
+        diff = { hp: (1 + 0.3 * wi + 0.1 * si) * dcfg().hp, dmg: 1 + 0.15 * wi };
         stage = { idx, world: wi, sub: si, name: w.stages[si], isBoss, levelW, arenaX, endX: isBoss ? null : levelW - 140,
-                  secretsFound: 0, secretsTotal: 0, champKinds: [], loot: [] };
-        platforms = []; enemies = []; structures = []; treasures = [];
+                  secretsFound: 0, secretsTotal: 0, champKinds: [], loot: [], cp: null, contracts: [], stats: newStageStats() };
+        platforms = []; enemies = []; structures = []; treasures = []; checkpoints = [];
 
         buildModules(rnd, w, isBoss, levelW, arenaX);
         if (isBoss) {
@@ -1301,9 +1313,11 @@
         const weights = { flat: 2, pit: 1 + w.pitChance * 3, climb: 0.9, ledges: 2.6 * w.platDensity, lift: 0.6 };
         const forced = [['tower', 0.15 + rnd() * 0.55], ['bunker', 0.1 + rnd() * 0.65]];
         if (!isBoss && levelW > 3800) forced.push(['bunker', 0.1 + rnd() * 0.8]);
-        let x = 450, gy = 230, last = '';
+        let x = 450, gy = 230, last = '', lastCp = 0;
         ground(0, 450, 230);
         while (x < endZone - 200 || forced.length) { // the tower and bunker are always placed
+            // a checkpoint roughly every 650px, always on the solid ground a module starts with
+            if (x - lastCp >= 650) { checkpoints.push({ x: x + 26, y: gy, active: false }); lastCp = x; }
             let id;
             const due = forced.findIndex(([, at]) => x >= at * endZone);
             const lastChance = forced.length && endZone - x < 420 * forced.length + 220; // 420 = widest module
@@ -1316,6 +1330,17 @@
         // drop to the arena floor across a small gap (no walls); a pit module already ends in a gap
         if (isBoss && gy !== 230 && last !== 'pit') x += 64;
         ground(x, levelW, isBoss ? 230 : gy);
+        if (isBoss) checkpoints.push({ x: Math.max(x + 20, arenaX - 70), y: 230, active: false }); // last stop before the arena
+    }
+    const newStageStats = () => ({ critKills: 0, meleeKills: 0, grenadeKills: 0, perfectDodges: 0, champKills: 0, weaponKills: {} });
+    function updateCheckpoints() {
+        for (const cp of checkpoints) {
+            if (cp.active || player.x + player.w / 2 < cp.x) continue;
+            cp.active = true; stage.cp = cp;
+            popText(cp.x - 28, cp.y - 40, 'CHECKPOINT', '#67e8f9');
+            rings.push({ x: cp.x, y: cp.y - 14, r: 3, maxR: 26, life: 16, max: 16, color: '#67e8f9' });
+            playSound('pickup');
+        }
     }
 
     // Moving platforms (lifts and elevators) carry whoever stands on them
@@ -1362,9 +1387,10 @@
     }
     // Every chest drops one gear item: Common 74%, Rare 20%, Legendary 5%, Exotic 1%.
     // Its level scales with how far into the campaign the stage is.
+    const dropLevel = () => clamp((stage.horde ? 1 + Math.floor(stage.wave / 2) : 1 + stage.world * 4 + stage.sub * 2) + Math.floor(Math.random() * 3), 1, MAX_ITEM_LEVEL);
     function dropLoot(x, y) {
         const rarity = rollRarity(), wid = WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)];
-        const level = clamp(1 + stage.world * 4 + stage.sub * 2 + Math.floor(Math.random() * 3), 1, MAX_ITEM_LEVEL);
+        const level = dropLevel();
         const item = makeItem(wid, rarity, level);
         save.inventory.push(item); stage.loot.push(item);
         const c = RARITIES[rarity].color;
@@ -1375,9 +1401,9 @@
     }
 
     function makeBoss(type) {
-        const d = BOSSES[type], ax = stage.arenaX;
+        const d = BOSSES[type], ax = stage.arenaX, hp = Math.round(d.hp * dcfg().hp);
         return {
-            type, name: d.name, x: ax + 420, y: type === 'tyrant' ? 190 : 110, r: d.r, hp: d.hp, maxHp: d.hp,
+            type, name: d.name, x: ax + 420, y: type === 'tyrant' ? 190 : 110, r: d.r, hp, maxHp: hp,
             immune: false, phaseTimer: 0, attackTimer: 0, spreadTimer: 0, specialTimer: type === 'hive' ? 200 : 0,
             active: false, dead: false, hurt: 0, t: 0, alpha: 1, home: ax + 420, vx: 0.8, facing: -1,
             state: 'idle', stateT: 0, spot: 1, burstLeft: 0, burstT: 0, immuneT: 0, adds: 0,
@@ -1388,14 +1414,12 @@
     //  SETUP
     // =====================================================================
     function makePlayer() {
-        const cls = CLASSES[selectedClass], u = save.upgrades;
+        const cls = CLASSES[selectedClass];
         fixLoadout(save);
         const gearItems = save.loadout.map(uid => save.inventory.find(i => i.uid === uid)).filter(Boolean);
         const owned = gearItems.map(it => it.wid);
-        const ammoMult = 1 + 0.2 * u.ammo;
-        const maxAmmo = { primary: Infinity, special: Math.round(AMMO_MAX.special * ammoMult), heavy: Math.round(AMMO_MAX.heavy * ammoMult) };
-        const maxShield = Math.round(cls.maxShield * (1 + 0.15 * u.shield));
-        const maxHp = 100 + 20 * u.vitality;
+        const maxAmmo = { primary: Infinity, special: AMMO_MAX.special, heavy: AMMO_MAX.heavy };
+        const maxShield = cls.maxShield, maxHp = 100;
         const a = save.armor, liftMax = Math.round(50 * (1 + (selectedClass === 'sentinel' ? 0.2 * a.classItem : 0)));
         return {
             x: 60, y: 190, w: 16, h: 30, vx: 0, vy: 0, speed: cls.speed * (1 + 0.04 * a.legs), jumpForce: -7.2 * (1 + 0.02 * a.legs),
@@ -1408,8 +1432,10 @@
             glideFall: 1.1 * (1 - (selectedClass === 'arcanist' ? 0.1 * a.classItem : 0)),
             gear: Object.fromEntries(ARMOR_IDS.map(k => [k, gearColor(k)])),
             hp: maxHp, maxHp, shield: maxShield, maxShield, regenDelay: 0,
-            superEnergy: 0, superRate: cls.superRate * (1 + 0.15 * u.superRate), dmgMult: 1 + 0.1 * u.damage,
-            grenadeMax: Math.round(240 * (1 - 0.12 * u.grenade)),
+            superEnergy: 0, superRate: cls.superRate, dmgMult: 1, grenadeMax: 240,
+            // dash: brief invulnerable burst; a dash that avoids a hit is a perfect dodge (Focus: +25% damage)
+            dashT: 0, dashCd: 0, dashCdMax: Math.round(55 * (1 - 0.06 * a.legs)), dashDir: 1, airDashed: false, dashHit: false, focusT: 0, ghosts: [],
+            dead: false,
             owned, weaponIdx: 0, weapon: owned[0],
             items: Object.fromEntries(gearItems.map(it => [it.wid, it])),
             magSize: Object.fromEntries(gearItems.map(it => [it.wid, magSizeOf(it)])),
@@ -1424,20 +1450,22 @@
     }
 
     function resetGame() {
-        score = 0; kills = 0; credits = 0; lives = 3; frame = 0;
+        score = 0; kills = 0; credits = 0; deaths = 0; frame = 0;
         cameraX = 0; shake = 0; flash = 0; hurtFlash = 0; bossIntro = 0; stageIntro = 180; victoryTimer = 0;
         bullets = []; particles = []; rings = []; items = []; texts = []; hazards = [];
-        generateStage(selectedStage);
+        if (hordeMode) generateHordeArena(); else generateStage(selectedStage);
         player = makePlayer();
+        if (hordeMode) { player.x = 470; } else stage.contracts = rollContracts();
         initBackground();
         weather = Array.from({ length: theme.weather ? 70 : 0 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: Math.random() }));
         for (const k in keys) keys[k] = false;
         for (const k in hudCache) delete hudCache[k];
         document.getElementById('boss-hud').classList.add('hidden');
-        document.getElementById('hud-stage').textContent = `${stageLabel(stage.idx)} ${stage.name}`;
+        document.getElementById('hud-stage').textContent = stage.horde ? 'HORDE MODE' : `${stageLabel(stage.idx)} ${stage.name}`;
     }
 
-    function startGame() {
+    function startGame(horde = false) {
+        hordeMode = horde === true;
         initAudio();
         ['main-menu', 'game-over-screen', 'armory'].forEach(id => document.getElementById(id).classList.add('hidden'));
         document.getElementById('game-container').classList.remove('hidden');
@@ -1480,7 +1508,9 @@
         keys[e.code] = true;
         if (e.repeat) return;
         if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
+        if (state === 'paused' && e.code === 'KeyM') { abandonMission(); return; } // with no lives to run out, this is the way to quit
         if (state !== 'playing') return;
+        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') startDash();
         if (e.code === 'KeyK' || e.code === 'KeyZ' || e.code === 'KeyW' || e.code === 'ArrowUp') mouse.active = false; // back to keyboard aim
         if (e.code === 'Space' || e.code === 'KeyJ') player.jumpBuffer = 8;
         if (e.code === 'KeyL' || e.code === 'KeyX') performMelee();
@@ -1571,7 +1601,7 @@
         const p = player, [ax, ay] = getAim(), [mx, my] = muzzle(ax, ay);
         const n = w.pellets || 1, it = p.items[p.weapon];
         // item rarity + level, plus a Rampage bonus while kill stacks are active
-        let dmg = w.dmg * p.dmgMult * (it ? itemDmgMult(it) : 1);
+        let dmg = w.dmg * p.dmgMult * (it ? itemDmgMult(it) : 1) * focusMult();
         if (hasPerk(it, 'rampage') && p.rampageT > 0) dmg *= 1 + 0.08 * perkStrength(it.level) * p.rampage;
         for (let i = 0; i < n; i++) {
             const spread = (Math.random() - 0.5) * w.spread, sp = w.speed * (w.pellets ? 0.85 + Math.random() * 0.3 : 1);
@@ -1610,6 +1640,30 @@
         else if (p.mags[p.weapon] === 0) startReload();
     }
 
+    // Dash: 11 frames of fast, gravity-free, invulnerable movement. One air dash per jump.
+    function startDash() {
+        const p = player;
+        if (p.dashCd > 0 || p.dashT > 0 || (!p.grounded && p.airDashed)) return;
+        const dir = (held.right() ? 1 : 0) - (held.left() ? 1 : 0);
+        p.dashDir = dir || p.facing;
+        p.dashT = 11; p.dashCd = p.dashCdMax; p.dashHit = false;
+        if (!p.grounded) p.airDashed = true;
+        playSound('dash');
+        burst(p.x + p.w / 2, p.y + p.h / 2, 6, ELEMENTS[selectedElement].color, 2, 12);
+    }
+    // Called when a hit lands during a dash: reward the timing instead of dealing damage
+    function perfectDodge() {
+        const p = player;
+        if (p.dashHit) return; // once per dash
+        p.dashHit = true;
+        p.focusT = 180; p.dashCd = Math.min(p.dashCd, 10);
+        stage.stats.perfectDodges++;
+        popText(p.x - 30, p.y - 14, 'PERFECT DODGE!', '#67e8f9');
+        rings.push({ x: p.x + p.w / 2, y: p.y + p.h / 2, r: 6, maxR: 34, life: 14, max: 14, color: '#67e8f9' });
+        playSound('pickup');
+    }
+    const focusMult = () => player.focusT > 0 ? 1.25 : 1;
+
     function performMelee() {
         const p = player;
         if (p.meleeCd > 0) return;
@@ -1617,13 +1671,14 @@
         playSound('hit');
         const hb = { x: p.facing > 0 ? p.x + p.w - 2 : p.x - 26, y: p.y - 4, w: 28, h: p.h + 6 };
         let hit = false;
+        const meleeDmg = 45 * p.dmgMult * p.meleeMult * focusMult();
         for (const en of enemies) {
             if (en.dead || !overlap(hb, en)) continue;
-            damageEnemy(en, 45 * p.dmgMult * p.meleeMult, null, 'melee');
+            damageEnemy(en, meleeDmg, null, 'melee');
             if (!en.t.flying) en.x += p.facing * 8;
             hit = true;
         }
-        if (bossHittable() && circleRect(boss.x, boss.y, boss.r, hb)) { damageBoss(45 * p.dmgMult * p.meleeMult); hit = true; }
+        if (bossHittable() && circleRect(boss.x, boss.y, boss.r, hb)) { damageBoss(meleeDmg); hit = true; }
         if (hit) shake = Math.max(shake, 2);
     }
 
@@ -1660,10 +1715,15 @@
     // =====================================================================
     //  DAMAGE
     // =====================================================================
-    function damageEnemy(en, dmg, element, kind, wid) {
+    function damageEnemy(en, dmg, element, kind, wid, crit) {
         if (en.dead) return;
         en.hurt = 6;
         en.aware = true;
+        if (crit) { // headshot feedback (text throttled per enemy so automatic fire doesn't spam it)
+            playSound('crit');
+            burst(en.x + en.w / 2, en.y + 4, 4, '#fde047', 2, 10);
+            if (frame - (en.critAt || -99) > 25) { en.critAt = frame; popText(en.x - 2, en.y - 16, 'CRIT', '#fde047'); }
+        }
         if (en.champ) {
             dmg = championHit(en, dmg, kind, wid);
             if (dmg === null) return;
@@ -1692,7 +1752,7 @@
             en.hp -= dmg;
             playSound('hit');
         }
-        if (en.hp <= 0) killEnemy(en, wid);
+        if (en.hp <= 0) killEnemy(en, wid, kind, crit);
     }
 
     // Kills with a weapon level it up; leveling raises damage, perk strength and unlocks perk slots
@@ -1710,8 +1770,15 @@
         }
         if (it.level >= MAX_ITEM_LEVEL) it.xp = 0;
     }
-    function killEnemy(en, wid) {
+    function killEnemy(en, wid, kind, crit) {
         en.dead = true;
+        // tallies for contracts
+        const st = stage.stats;
+        if (crit) st.critKills++;
+        if (kind === 'melee') st.meleeKills++;
+        if (kind === 'grenade') st.grenadeKills++;
+        if (en.champ) st.champKills++;
+        if (wid) st.weaponKills[wid] = (st.weaponKills[wid] || 0) + 1;
         const it = wid && player.items[wid];
         if (it) {
             gainXp(it, en.t.score / 5 * (en.champ ? 3 : 1), en.x, en.y);
@@ -1796,9 +1863,10 @@
     function hurtPlayer(amt, force) {
         const p = player;
         if (state !== 'playing' || (boss && boss.dead)) return;
+        if (p.dashT > 0 && !force) { perfectDodge(); return; } // contact and beams can be dashed through too
         if (p.invuln > 0 && !force) return;
         p.invuln = 45; p.regenDelay = p.regenDelayMax;
-        amt *= p.dmgTaken;
+        amt *= p.dmgTaken * (force ? 1 : dcfg().dmg); // pit falls (force) ignore difficulty
         playSound('hurt');
         shake = Math.max(shake, 3); hurtFlash = 12;
         if (p.shield > 0) {
@@ -1808,20 +1876,162 @@
         if (p.hp <= 0) loseLife();
     }
 
+    // Death: no lives. You return to the last checkpoint and pay for it in score and run credits.
+    // (Horde mode is the exception: one life, the run ends.)
+    const DEATH_SCORE_LOSS = 0.15, DEATH_CREDIT_LOSS = 0.2;
     function loseLife() {
         const p = player;
-        lives--;
+        deaths++;
         explosionFx(p.x + p.w / 2, p.y + p.h / 2, 30, CLASSES[selectedClass].color);
-        if (lives <= 0) { p.hp = 0; endStage(false); return; }
-        p.hp = p.maxHp; p.shield = p.maxShield;
-        p.x = Math.max(p.safeX, minArenaX()); p.y = p.safeY - 4; p.vx = 0; p.vy = 0;
-        p.invuln = 120; p.reloadTimer = 0; p.burstLeft = 0;
+        if (stage.horde) { p.hp = 0; p.dead = true; endHorde(); return; }
+        const lostCredits = Math.round(credits * DEATH_CREDIT_LOSS);
+        score -= Math.round(score * DEATH_SCORE_LOSS); credits -= lostCredits;
+        const inArena = boss && boss.active && !boss.dead;
+        if (inArena) { // respawn at the arena entrance; the boss recovers a little
+            p.x = stage.arenaX + 50; p.y = 230 - p.h - 4;
+            boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.15);
+        } else if (stage.cp) { p.x = stage.cp.x - p.w / 2; p.y = stage.cp.y - p.h - 4; }
+        else { p.x = 60; p.y = 190; }
+        p.hp = p.maxHp; p.shield = p.maxShield; p.vx = 0; p.vy = 0;
+        p.invuln = 120; p.reloadTimer = 0; p.burstLeft = 0; p.dashT = 0; p.dashCd = 0; p.focusT = 0;
+        p.safeX = p.x; p.safeY = p.y + 4;
+        cameraX = clamp(p.x - W * 0.4, minArenaX(), stage.levelW - W);
         bullets = bullets.filter(b => b.owner === 'player');
-        popText(p.x - 14, p.y - 12, 'REVIVED', '#7dd3fc');
+        hazards = [];
+        popText(p.x - 44, p.y - 12, `BACK TO CHECKPOINT  -${lostCredits} CREDITS`, '#7dd3fc');
+    }
+    function abandonMission() {
+        if (stage.horde) { endHorde(); return; }
+        endStage(false);
     }
 
     function spawnItem(x, y, type) {
         items.push({ x: x - 5, y: y - 5, w: 10, h: 10, vx: (Math.random() - 0.5) * 1.5, vy: -2.5, type, life: 900, grounded: false });
+    }
+
+    // =====================================================================
+    //  CONTRACTS: three optional skill challenges per stage, paid in credits.
+    //  Completing all three adds a bonus loot cache at the end of the stage.
+    // =====================================================================
+    function rollContracts() {
+        const s = stage, st = s.stats, small = s.isBoss, pool = [];
+        const reward = 120 + 60 * s.world;
+        const add = (text, goal, prog, endOnly = false) => pool.push({ text, goal, prog, endOnly, reward, done: false, failed: false });
+        const secs = s.isBoss ? 150 + s.world * 20 : Math.round(s.levelW / 20);
+        add('FLAWLESS: no deaths', 1, () => deaths === 0 ? 1 : 0, true);
+        add(`SPEEDRUN: under ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, 1, () => frame / 60 <= secs ? 1 : 0, true);
+        add('MARKSMAN: crit kills', small ? 3 : 5 + s.world, () => st.critKills);
+        add('BRAWLER: melee kills', small ? 2 : 4, () => st.meleeKills);
+        add('DEMOLITION: grenade kills', small ? 2 : 3, () => st.grenadeKills);
+        add('UNTOUCHABLE: perfect dodges', 3, () => st.perfectDodges);
+        if (s.secretsTotal) add('HUNTER: open all chests', s.secretsTotal, () => s.secretsFound);
+        const champs = enemies.filter(e => e.champ).length + (s.champWarps || 0);
+        if (champs) add('SLAYER: champions', Math.min(2, champs), () => st.champKills);
+        const wid = player.owned[Math.floor(Math.random() * player.owned.length)];
+        add(`SPECIALIST: ${WEAPONS[wid].short} kills`, small ? 4 : 8, () => st.weaponKills[wid] || 0);
+        return pool.sort(() => Math.random() - 0.5).slice(0, 3);
+    }
+    function updateContracts() {
+        for (const c of stage.contracts) {
+            if (c.endOnly) { c.failed = c.prog() < c.goal; continue; } // Flawless / Speedrun pay out at the end, but can be lost mid-stage
+            if (c.done || c.prog() < c.goal) continue;
+            c.done = true; credits += c.reward;
+            popText(player.x - 44, player.y - 30, `CONTRACT DONE +${c.reward}`, '#4ade80');
+            playSound('clear');
+        }
+    }
+    function drawContracts() {
+        ctx.font = '5px "Press Start 2P", monospace';
+        stage.contracts.forEach((c, i) => {
+            const y = 11 + i * 9;
+            const label = c.endOnly ? c.text : `${c.text} ${Math.min(c.goal, c.prog())}/${c.goal}`;
+            const color = c.done ? '#4ade80' : c.failed ? '#64748b' : '#e2e8f0';
+            ctx.fillStyle = 'rgba(2,6,23,0.5)'; ctx.fillRect(4, y - 6, ctx.measureText(label).width + 13, 8);
+            ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.strokeRect(6.5, y - 4.5, 4, 4);
+            if (c.done) { ctx.fillStyle = color; ctx.fillRect(7.5, y - 3.5, 2, 2); }
+            ctx.fillStyle = color; ctx.fillText(label, 13, y);
+            if (c.failed) { ctx.fillRect(13, y - 3, ctx.measureText(label).width, 1); } // struck through
+        });
+    }
+
+    // =====================================================================
+    //  HORDE MODE: endless waves in a small arena. One life; the best wave is saved.
+    //  A new world theme every 5 waves, an elite wave (2 champions, loot, full heal) every 5th.
+    // =====================================================================
+    function generateHordeArena() {
+        theme = WORLDS[0];
+        diff = { hp: dcfg().hp, dmg: 1 };
+        stage = { idx: -1, horde: true, world: 0, sub: 0, name: 'HORDE ARENA', isBoss: false, levelW: 960, arenaX: null, endX: null,
+                  secretsFound: 0, secretsTotal: 0, loot: [], cp: null, contracts: [], stats: newStageStats(),
+                  champKinds: CHAMPION_IDS.slice().sort(() => Math.random() - 0.5).slice(0, 2),
+                  killsNeeded: 0, champWarps: 0, champTimer: 0,
+                  wave: 0, phase: 'break', waveTimer: 150, toSpawn: 0, spawnT: 0, champLeft: 0, banner: 0, elite: false };
+        platforms = [ // every ledge is within one jump of the floor or of a lower ledge
+            { x: 0, y: 230, w: 960, h: H - 230 + 10, ground: true },
+            { x: 90, y: 180, w: 110, h: 12 }, { x: 320, y: 180, w: 110, h: 12 },
+            { x: 430, y: 130, w: 100, h: 12 },
+            { x: 530, y: 180, w: 110, h: 12 }, { x: 760, y: 180, w: 110, h: 12 },
+        ];
+        enemies = []; structures = []; treasures = []; checkpoints = [];
+        boss = null;
+    }
+    function startHordeWave() {
+        const s = stage;
+        s.wave++;
+        if (s.wave > 1 && (s.wave - 1) % 5 === 0) { // move on to the next world
+            s.world = (s.world + 1) % WORLDS.length; theme = WORLDS[s.world];
+            initBackground();
+            weather = Array.from({ length: theme.weather ? 70 : 0 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: Math.random() }));
+            music.transpose = WORLD_KEYS[s.world] || 0;
+            s.champKinds = CHAMPION_IDS.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+        }
+        s.elite = s.wave % 5 === 0;
+        s.toSpawn = 4 + Math.floor(s.wave * 1.6) + (s.elite ? 3 : 0);
+        s.champLeft = s.elite ? 2 : s.wave % 3 === 0 ? 1 : 0;
+        s.spawnT = 20; s.phase = 'fight'; s.banner = 110;
+        diff = { hp: dcfg().hp * (1 + 0.1 * (s.wave - 1)), dmg: 1 + 0.05 * (s.wave - 1) };
+        playSound('beam');
+    }
+    function spawnHordeEnemy() {
+        const s = stage, type = pickWeighted(theme.pool, Math.random), t = ENEMY_TYPES[type];
+        let x = 0, y = 0;
+        for (let tries = 0; tries < 10; tries++) { // warp in away from the player
+            if (t.flying) { x = 20 + Math.random() * 900; y = 40 + Math.random() * 80; }
+            else {
+                const p = Math.random() < 0.6 ? platforms[0] : platforms[1 + Math.floor(Math.random() * (platforms.length - 1))];
+                x = p.x + 6 + Math.random() * (p.w - t.w - 12); y = p.y - t.h - 1;
+            }
+            if (Math.abs(x - player.x) > 130) break;
+        }
+        const el = Math.random() < theme.shieldChance * 0.5 ? ELEMENT_IDS[Math.floor(Math.random() * 3)] : null;
+        const en = makeEnemy(type, x, y, el);
+        if (s.champLeft > 0 && canBeChampion(type)) { makeChampion(en, rollChampionKind(type)); s.champLeft--; }
+        en.minion = true; en.aware = true; en.fireTimer = 70 + Math.random() * 50; // always hunting, wherever the player is
+        enemies.push(en);
+        const c = en.champ ? CHAMPIONS[en.champ].color : '#f87171';
+        rings.push({ x: x + t.w / 2, y: y + t.h / 2, r: 3, maxR: 26, life: 16, max: 16, color: c });
+        burst(x + t.w / 2, y + t.h / 2, 10, c, 2.5, 18);
+    }
+    function updateHorde() {
+        const s = stage;
+        if (s.banner > 0) s.banner--;
+        if (s.phase === 'break') {
+            if (--s.waveTimer <= 0) startHordeWave();
+            return;
+        }
+        const alive = enemies.reduce((n, e) => n + (e.dead ? 0 : 1), 0);
+        if (s.toSpawn > 0) {
+            if (--s.spawnT <= 0 && alive < 8 + Math.min(8, s.wave)) { spawnHordeEnemy(); s.toSpawn--; s.spawnT = Math.max(14, 50 - s.wave * 2); }
+        } else if (alive === 0) { // wave cleared
+            const p = player, bonus = 40 + 15 * s.wave;
+            score += 400 * s.wave; credits += bonus;
+            p.ammo.special = Math.min(p.maxAmmo.special, p.ammo.special + Math.ceil(p.maxAmmo.special * 0.25));
+            p.ammo.heavy = Math.min(p.maxAmmo.heavy, p.ammo.heavy + 1);
+            popText(p.x - 44, p.y - 22, `WAVE ${s.wave} CLEARED +${bonus}`, '#4ade80');
+            playSound('clear');
+            if (s.elite) { p.hp = p.maxHp; p.shield = p.maxShield; dropLoot(p.x + p.w / 2, p.y); } // every 5th wave
+            s.phase = 'break'; s.waveTimer = 200;
+        }
     }
 
     // =====================================================================
@@ -1843,26 +2053,61 @@
             if (idx === TOTAL_STAGES - 1) sub = 'THE SYSTEM IS SAVED. CAMPAIGN COMPLETE!';
             playSound('clear');
         } else {
-            sub = 'Credits from kills are kept. Upgrade in the Armory and try again.';
+            sub = 'Mission abandoned. Credits from kills are kept.';
         }
-        const earned = credits + bonus;
+        // contracts: end-of-stage ones (Flawless, Speedrun) only count on a win; all three done = a bonus cache
+        for (const c of stage.contracts) {
+            if (c.endOnly && won && !c.done && c.prog() >= c.goal) { c.done = true; credits += c.reward; }
+            if (c.endOnly && !c.done) c.failed = true;
+        }
+        if (stage.contracts.length && stage.contracts.every(c => c.done)) {
+            // contract cache: two rarity rolls, keep the better one
+            const a = rollRarity(), b = rollRarity(), rarity = RARITY_ORDER.indexOf(a) > RARITY_ORDER.indexOf(b) ? a : b;
+            const item = makeItem(WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)], rarity, dropLevel());
+            save.inventory.push(item); stage.loot.push(item);
+        }
+        const earned = Math.round((credits + bonus) * dcfg().credits);
         save.credits += earned;
         save.best = Math.max(save.best, score);
         persist();
-        lastResult = { won, sub, earned, score, kills, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}`,
+        lastResult = { won, sub, earned, score, kills, deaths, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}`,
+                       contracts: stage.contracts.map(c => ({ text: c.text, done: c.done, reward: c.reward })),
                        loot: stage.loot.map(it => ({ name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
         setTimeout(() => { if (state === 'over') showResults(lastResult); }, won ? 600 : 900);
+    }
+    // Horde run over (death or abandon): bank credits and record the best wave
+    function endHorde() {
+        if (state === 'over') return;
+        state = 'over';
+        stopMusic(1.5);
+        const wave = Math.max(0, stage.wave - (stage.phase === 'fight' ? 1 : 0)); // waves fully cleared
+        const record = wave > save.hordeBest;
+        save.hordeBest = Math.max(save.hordeBest, wave);
+        const earned = Math.round(credits * dcfg().credits);
+        save.credits += earned;
+        save.best = Math.max(save.best, score);
+        persist();
+        lastResult = { horde: true, won: false, earned, score, kills, deaths, secs: Math.floor(frame / 60), idx: -1, secrets: '-',
+                       sub: `${wave} WAVE${wave === 1 ? '' : 'S'} CLEARED${record ? ' — NEW RECORD!' : ` • BEST ${save.hordeBest}`}`, contracts: [],
+                       loot: stage.loot.map(it => ({ name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
+        setTimeout(() => { if (state === 'over') showResults(lastResult); }, 900);
     }
 
     function showResults(r) {
         const title = document.getElementById('end-title');
         const last = r.idx === TOTAL_STAGES - 1;
-        title.textContent = r.won ? (last ? 'CAMPAIGN COMPLETE!' : stage && stage.isBoss ? 'WORLD CLEARED!' : 'STAGE CLEARED!') : 'MISSION FAILED';
-        title.className = 'pixel-font text-xl font-bold mb-2 ' + (r.won ? 'text-yellow-400' : 'text-red-500');
+        title.textContent = r.horde ? 'HORDE OVER' : r.won ? (last ? 'CAMPAIGN COMPLETE!' : stage && stage.isBoss ? 'WORLD CLEARED!' : 'STAGE CLEARED!') : 'MISSION ABANDONED';
+        title.className = 'pixel-font text-xl font-bold mb-2 ' + (r.horde ? 'text-fuchsia-400' : r.won ? 'text-yellow-400' : 'text-red-500');
         document.getElementById('end-sub').textContent = r.sub;
         document.getElementById('final-score').textContent = r.score;
         document.getElementById('final-kills').textContent = r.kills;
         document.getElementById('final-secrets').textContent = r.secrets || '0/0';
+        document.getElementById('final-deaths').textContent = r.deaths || 0;
+        const conEl = document.getElementById('end-contracts'), cons = r.contracts || [];
+        conEl.classList.toggle('hidden', !cons.length);
+        conEl.innerHTML = cons.length ? '<div class="pixel-font text-[9px] text-yellow-400 mb-1">CONTRACTS</div>' +
+            cons.map(c => `<div class="flex justify-between ${c.done ? 'text-emerald-300' : 'text-slate-500'}"><span>${c.done ? '✔' : '✘'} ${c.text}</span><span>${c.done ? '+' + c.reward : '—'}</span></div>`).join('') +
+            (cons.every(c => c.done) ? '<div class="text-yellow-300 mt-1">All contracts complete: bonus cache added to your loot!</div>' : '') : '';
         const lootEl = document.getElementById('end-loot');
         lootEl.classList.toggle('hidden', !(r.loot && r.loot.length));
         lootEl.innerHTML = r.loot && r.loot.length ? '<div class="pixel-font text-[9px] text-yellow-400 mb-1">LOOT ACQUIRED</div>' +
@@ -1872,7 +2117,7 @@
         document.getElementById('final-bank').textContent = save.credits;
         const btn = (label, fn) => `<button onclick="${fn}" class="flex-1 py-3 saturn-button pixel-font text-yellow-300 text-[10px] font-bold uppercase rounded">${label}</button>`;
         document.getElementById('end-buttons').innerHTML =
-            (r.won && !last ? btn('NEXT ' + stageLabel(r.idx + 1), 'nextStage()') : btn(r.won ? 'REPLAY' : 'RETRY', 'startGame()')) +
+            (r.horde ? btn('RETRY', 'startGame(true)') : r.won && !last ? btn('NEXT ' + stageLabel(r.idx + 1), 'nextStage()') : btn(r.won ? 'REPLAY' : 'RETRY', 'startGame()')) +
             btn('ARMORY', "openArmory('results')") + btn('MENU', 'returnToMenu()');
         document.getElementById('game-over-screen').classList.remove('hidden');
     }
@@ -1884,8 +2129,10 @@
         frame++;
         updateMovers();
         updatePlayer();
+        updateCheckpoints();
         updateTreasures();
         updateEnemies();
+        if (stage.horde) updateHorde(); else updateContracts();
         updateChampionWarps();
         updateBoss();
         updateHazards();
@@ -1915,7 +2162,9 @@
 
     function updatePlayer() {
         const p = player, w = WEAPONS[p.weapon];
-        for (const k of ['meleeCd', 'meleeAnim', 'grenadeCd', 'invuln', 'fireTimer', 'dropTimer', 'jumpBuffer', 'switchTimer', 'rampageT']) if (p[k] > 0) p[k]--;
+        for (const k of ['meleeCd', 'meleeAnim', 'grenadeCd', 'invuln', 'fireTimer', 'dropTimer', 'jumpBuffer', 'switchTimer', 'rampageT', 'dashCd', 'focusT']) if (p[k] > 0) p[k]--;
+        for (const g of p.ghosts) g.a -= 0.12;
+        p.ghosts = p.ghosts.filter(g => g.a > 0);
 
         if (p.reloadTimer > 0 && --p.reloadTimer === 0 && p.reloadFor === p.weapon) {
             const n = Math.min(p.magSize[p.weapon] - p.mags[p.weapon], p.ammo[w.ammo]);
@@ -1964,6 +2213,12 @@
             }
         }
         p.vy = Math.min(p.vy + g, 9);
+        if (p.dashT > 0) { // dashing: fixed speed, no gravity, leaves afterimages
+            p.dashT--;
+            p.vx = p.dashDir * 6.2; p.vy = 0; p.crouch = false;
+            p.ghosts.push({ x: p.x, y: p.y, a: 0.6 });
+            if (p.dashT === 0) p.vx = p.dashDir * p.speed;
+        }
 
         p.x += p.vx;
         p.x = clamp(p.x, minArenaX(), stage.levelW - p.w);
@@ -1973,7 +2228,7 @@
         const plat = landOnPlatforms(p, prevBottom, p.dropTimer > 0);
         p.ground = plat;
         if (plat) {
-            p.jumpsUsed = 0; p.liftFuel = p.liftMax;
+            p.jumpsUsed = 0; p.liftFuel = p.liftMax; p.airDashed = false;
             if (!plat.move) { // never respawn onto a moving platform's old position
                 p.safeX = clamp(p.x, plat.x + 6, plat.x + plat.w - p.w - 6);
                 p.safeY = plat.y - p.h;
@@ -2336,7 +2591,12 @@
                         playSound('immune');
                         break;
                     }
-                    damageEnemy(en, b.dmg, b.element, b.kind === 'golden' ? 'super' : b.kind, b.wid);
+                    // headshot: the bullet struck the top 11px of a walking enemy (drones, bombers and turrets have no head)
+                    const hasHead = !en.t.flying && en.type !== 'turret';
+                    // (9px, not the full 11px head, so level chest-height fire at short enemies doesn't crit for free)
+                    const crit = hasHead && b.y <= en.y + 9 && (b.kind === 'bullet' || b.kind === 'precision');
+                    const critMult = crit ? (b.kind === 'precision' ? CRIT_MULT_PRECISION : CRIT_MULT) : 1;
+                    damageEnemy(en, b.dmg * critMult, b.element, b.kind === 'golden' ? 'super' : b.kind, b.wid, crit);
                     burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
                     const it = b.wid && player.items[b.wid];
                     if (hasPerk(it, 'impact') && Math.random() < 0.12 * perkStrength(it.level)) explode(b.x, b.y, 22, b.dmg * 0.4, b.element, 'impact', b.wid);
@@ -2344,9 +2604,17 @@
                     else if (b.pen > 0) { b.pen--; (b.seen || (b.seen = new Set())).add(en); } // Penetrator: one extra target
                     else { b.dead = true; break; }
                 }
-                if (!b.dead && bossHittable() && !(pierce && b.hit.has(boss)) && Math.hypot(b.x - boss.x, b.y - boss.y) < boss.r) {
-                    damageBoss(b.dmg);
-                    if (pierce) b.hit.add(boss); else b.dead = true;
+                if (!b.dead && bossHittable() && !(pierce && b.hit.has(boss))) {
+                    const dist = Math.hypot(b.x - boss.x, b.y - boss.y);
+                    if (dist < boss.r) {
+                        // the boss core (inner 45% of its radius) is its weak point
+                        const core = dist < boss.r * 0.45 && (b.kind === 'bullet' || b.kind === 'precision');
+                        if (damageBoss(b.dmg * (core ? BOSS_CRIT_MULT : 1)) && core) {
+                            playSound('crit'); burst(b.x, b.y, 4, '#fde047', 2, 10);
+                            if (frame - (boss.critAt || -99) > 30) { boss.critAt = frame; popText(boss.x - 8, boss.y - boss.r - 8, 'CRIT', '#fde047'); }
+                        }
+                        if (pierce) b.hit.add(boss); else b.dead = true;
+                    }
                 }
             } else {
                 if (b.grav && b.vy > 0 && platforms.some(pl => b.x > pl.x && b.x < pl.x + pl.w && prevY <= pl.y && b.y >= pl.y)) {
@@ -2357,7 +2625,10 @@
                     continue;
                 }
                 const hw = b.hw || 2, hh = b.hh || 2;
-                if (overlap({ x: b.x - hw, y: b.y - hh, w: hw * 2, h: hh * 2 }, pb)) { hurtPlayer(b.dmg); b.dead = true; }
+                if (overlap({ x: b.x - hw, y: b.y - hh, w: hw * 2, h: hh * 2 }, pb)) {
+                    if (player.dashT > 0) perfectDodge(); // the shot passes straight through a dashing Vanguard
+                    else { hurtPlayer(b.dmg); b.dead = true; }
+                }
             }
         }
         bullets = bullets.filter(b => !b.dead);
@@ -2445,7 +2716,7 @@
         const p = player, w = WEAPONS[p.weapon];
         setHud('hud-hp', Math.ceil(Math.max(0, p.hp)), p.hp < p.maxHp * 0.35 ? 'text-red-400 font-bold animate-pulse' : 'text-emerald-400 font-bold');
         setHud('hud-shield', Math.ceil(p.shield), p.shield <= 0 ? 'text-slate-500 font-bold' : 'text-sky-400 font-bold');
-        setHud('hud-lives', lives);
+        setHud('hud-lives', deaths);
         const sp = Math.floor(p.superEnergy);
         setHud('hud-super', sp >= 100 ? 'READY [O]' : sp + '%', sp >= 100 ? 'text-yellow-300 font-bold animate-pulse' : 'text-yellow-400 font-bold');
         const mag = p.mags[p.weapon], res = p.ammo[w.ammo];
@@ -2459,7 +2730,11 @@
         setHud('hud-ammo', ammo, ammoCls);
         setHud('hud-grenade', p.grenadeCd > 0 ? Math.ceil(p.grenadeCd / 60) + 's' : 'READY', p.grenadeCd > 0 ? 'text-slate-400 font-bold' : 'text-emerald-400 font-bold');
         setHud('hud-score', String(score).padStart(6, '0'));
-        if (!stage.isBoss) {
+        if (stage.horde) {
+            const s = stage, fighting = s.phase === 'fight';
+            setHud('hud-stage', fighting ? `HORDE • WAVE ${s.wave} • ${s.toSpawn + enemies.length} LEFT` : `HORDE • WAVE ${s.wave + 1} IN ${Math.ceil(s.waveTimer / 60)}`,
+                'pixel-font text-center text-[9px] tracking-widest hidden md:block ' + (fighting ? 'text-white' : 'text-emerald-400'));
+        } else if (!stage.isBoss) {
             const left = Math.max(0, stage.killsNeeded - kills);
             setHud('hud-stage', `${stageLabel(stage.idx)} ${stage.name} • ${left ? `HOSTILES ${kills}/${stage.killsNeeded}` : 'EXTRACT!'}`,
                 'pixel-font text-center text-[9px] tracking-widest hidden md:block ' + (left ? 'text-white' : 'text-emerald-400'));
@@ -2639,6 +2914,19 @@
             ctx.strokeStyle = 'rgba(15,23,42,0.8)'; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(s.x + s.w / 2 - 6, s.y + 16); ctx.lineTo(s.x + s.w / 2 + 2, s.y + 26); ctx.lineTo(s.x + s.w / 2 - 3, s.y + 34); ctx.lineTo(s.x + s.w / 2 + 5, s.y + s.h); ctx.stroke();
             ctx.globalAlpha = 1;
+        }
+    }
+    // Checkpoint pylons: grey until reached, then lit cyan with a pennant
+    function drawCheckpoints() {
+        for (const cp of checkpoints) {
+            if (cp.x < cameraX - 20 || cp.x > cameraX + W + 20) continue;
+            ctx.fillStyle = '#334155'; ctx.fillRect(cp.x - 4, cp.y - 3, 8, 3);
+            ctx.fillStyle = '#475569'; ctx.fillRect(cp.x - 1, cp.y - 26, 2, 24);
+            if (cp.active) {
+                ctx.fillStyle = '#67e8f9';
+                ctx.beginPath(); ctx.moveTo(cp.x + 1, cp.y - 26); ctx.lineTo(cp.x + 9, cp.y - 22 + Math.sin(frame * 0.15) * 0.8); ctx.lineTo(cp.x + 1, cp.y - 18); ctx.fill();
+                ctx.fillRect(cp.x - 2, cp.y - 28, 4, 3);
+            } else { ctx.fillStyle = '#64748b'; ctx.fillRect(cp.x - 2, cp.y - 28, 4, 3); }
         }
     }
     function drawTreasures() {
@@ -2944,6 +3232,16 @@
 
     function drawPlayer() {
         const p = player;
+        // dash afterimages, then a cyan outline while Focus (perfect dodge) is active
+        for (const g of p.ghosts) {
+            ctx.globalAlpha = g.a * 0.5; ctx.fillStyle = ELEMENTS[selectedElement].color;
+            ctx.fillRect(snap(g.x) + 1, snap(g.y), 14, 30);
+        }
+        ctx.globalAlpha = 1;
+        if (p.focusT > 0) {
+            ctx.strokeStyle = `rgba(103,232,249,${0.4 + 0.3 * Math.sin(frame * 0.3)})`; ctx.lineWidth = 1;
+            ctx.strokeRect(snap(p.x) - 1.5, snap(p.y) - 1.5, p.w + 3, p.h + 3);
+        }
         if (p.invuln > 0 && p.invuln < 9000 && Math.floor(p.invuln / 3) % 2 === 0) return;
         const cls = CLASSES[selectedClass], el = ELEMENTS[selectedElement];
         const x = snap(p.x), y = snap(p.y), f = p.facing, top = p.crouch ? y + 13 : y;
@@ -3110,6 +3408,13 @@
             if (it && it.level < MAX_ITEM_LEVEL) { ctx.fillStyle = '#facc15'; ctx.fillRect(x + 1, y + 8, (wd - 2) * it.xp / xpToNext(it.level), 1); }
             x += wd + 3;
         });
+        // dash pill: fills as the dash recharges, cyan when ready
+        const ready = p.dashCd <= 0, dw = ctx.measureText('DASH').width + 6;
+        ctx.fillStyle = 'rgba(15,23,42,0.7)'; ctx.fillRect(x, y, dw, 9);
+        ctx.fillStyle = ready ? 'rgba(103,232,249,0.35)' : 'rgba(100,116,139,0.35)';
+        ctx.fillRect(x, y, dw * (ready ? 1 : 1 - p.dashCd / p.dashCdMax), 9);
+        ctx.strokeStyle = ready ? '#67e8f9' : 'rgba(100,116,139,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, dw - 1, 8);
+        ctx.fillStyle = ready ? '#ecfeff' : '#94a3b8'; ctx.fillText('DASH', x + 3, y + 7);
     }
 
     function centerText(text, y, size, color) {
@@ -3251,7 +3556,7 @@
             ctx.beginPath(); ctx.ellipse(cx, g + 0.5, w * 0.6 * s, 2.2 * s, 0, 0, Math.PI * 2); ctx.fill();
         };
         for (const en of enemies) if (en.x + en.w > cameraX - 20 && en.x < cameraX + W + 20) shadow(en.x + en.w / 2, en.y + en.h, en.w);
-        if (player && (state !== 'over' || lives > 0)) shadow(player.x + player.w / 2, player.y + player.h, player.w + 2);
+        if (player && !player.dead) shadow(player.x + player.w / 2, player.y + player.h, player.w + 2);
         ctx.globalAlpha = 1;
     }
     // Top of the nearest platform at or below `bottom` under x (null if none within reach)
@@ -3301,7 +3606,9 @@
             if (h.warn > 0) continue;
             ctx.globalAlpha = 0.25; ctx.fillStyle = '#a855f7'; ctx.fillRect(h.x - 30, 0, 60, H);
         }
-        if (player && (state !== 'over' || lives > 0)) {
+        for (const cp of checkpoints) if (cp.active && Math.abs(cp.x - cameraX - W / 2) < W) light(cp.x, cp.y - 24, 12, '#67e8f9', 0.45);
+        if (player && !player.dead) {
+            if (player.focusT > 0) light(player.x + player.w / 2, player.y + 15, 24, '#67e8f9', 0.25);
             const el = ELEMENTS[selectedElement].color, top = player.crouch ? player.y + 13 : player.y;
             light(player.x + player.w / 2 + player.facing * 3, top + 4, 9, el, 0.45);
             if (player.superEnergy >= 100) light(player.x + player.w / 2, player.y + 15, 26 + Math.sin(frame * 0.15) * 3, '#fde047', 0.22);
@@ -3352,6 +3659,7 @@
         drawTowers();
         drawPlatforms();
         if (gfx128) { drawPlatformShadingHD(); drawShadowsHD(); }
+        drawCheckpoints();
         drawTreasures();
         drawBeacon();
         if (boss && boss.active && !boss.dead) {
@@ -3362,7 +3670,7 @@
         for (const en of enemies) if (en.x + en.w > cameraX - 20 && en.x < cameraX + W + 20) drawEnemy(en);
         drawBoss();
         drawHazards();
-        if (state !== 'over' || lives > 0) drawPlayer();
+        if (!player.dead) drawPlayer();
         drawBullets();
         drawBunkers();
         drawFx();
@@ -3376,6 +3684,7 @@
             ctx.drawImage(vignetteCanvas, 0, 0, W, H);
         }
         drawWeaponStrip();
+        if (stage.contracts.length) drawContracts();
         // crosshair (the system cursor is hidden over the canvas while mouse-aiming)
         canvas.style.cursor = mouse.active && state === 'playing' ? 'none' : '';
         if (mouse.active && state === 'playing') {
@@ -3392,7 +3701,21 @@
 
         if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash / 16})`; ctx.fillRect(0, 0, W, H); }
         if (hurtFlash > 0) { ctx.strokeStyle = `rgba(239,68,68,${hurtFlash / 20})`; ctx.lineWidth = 10; ctx.strokeRect(0, 0, W, H); }
-        if (stageIntro > 0) {
+        if (stage.horde) {
+            if (stageIntro > 0) {
+                ctx.globalAlpha = Math.min(1, stageIntro / 30);
+                centerText('HORDE MODE', 96, 13, '#e879f9');
+                centerText('ONE LIFE. SURVIVE AS MANY WAVES AS YOU CAN.', 116, 5, '#e2e8f0');
+                centerText(`BEST: ${save.hordeBest} WAVE${save.hordeBest === 1 ? '' : 'S'}`, 130, 6, '#facc15');
+                ctx.globalAlpha = 1;
+            } else if (stage.banner > 0) {
+                ctx.globalAlpha = Math.min(1, stage.banner / 25);
+                centerText(`WAVE ${stage.wave}`, 100, 14, stage.elite ? '#f87171' : '#facc15');
+                if (stage.elite) centerText('ELITE WAVE: CHAMPIONS INBOUND', 118, 6, '#fca5a5');
+                else if (stage.wave > 1 && (stage.wave - 1) % 5 === 0) centerText(`ENTERING ${theme.name}`, 118, 6, WORLDS[stage.world].color);
+                ctx.globalAlpha = 1;
+            }
+        } else if (stageIntro > 0) {
             ctx.globalAlpha = Math.min(1, stageIntro / 30);
             centerText(`WORLD ${stage.world + 1}: ${theme.name}`, 92, 7, WORLDS[stage.world].color);
             centerText(`${stageLabel(stage.idx)}  ${stage.name}`, 112, 11, '#facc15');
@@ -3406,8 +3729,9 @@
         }
         if (state === 'paused') {
             ctx.fillStyle = 'rgba(2, 6, 23, 0.7)'; ctx.fillRect(0, 0, W, H);
-            centerText('PAUSED', 120, 16, '#facc15');
-            centerText('P / ESC TO RESUME', 145, 7, '#cbd5e1');
+            centerText('PAUSED', 112, 16, '#facc15');
+            centerText('P / ESC TO RESUME', 137, 7, '#cbd5e1');
+            centerText(stage.horde ? 'M TO END THE RUN' : 'M TO ABANDON MISSION (CREDITS ARE KEPT)', 152, 5, '#94a3b8');
         }
     }
 

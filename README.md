@@ -11,6 +11,11 @@ Both editions are the same game with the same saves; switch any time with the **
 **⬇ Windows download:** [latest release](https://github.com/allangsilva97/saturn-vanguard/releases/latest)
 
 ## Features
+- **Skill first:** headshots are critical hits (+75%, sniper +150%), boss cores are weak points, and a dash that avoids a hit is a Perfect Dodge (+25% damage for 3s, dash refunded). Gear stat bonuses are deliberately small
+- **Checkpoints, no lives:** dying returns you to the last checkpoint and costs 15% of your score and 20% of the run's credits
+- **Contracts:** three optional skill challenges per stage (Flawless, Speedrun, Marksman, Untouchable...) that pay credits; complete all three for a bonus loot cache
+- **Horde mode:** endless waves in an arena with one life, a new world every 5 waves, elite waves with champions and loot, and a saved best wave
+- **Difficulty:** Easy, Normal or Hard changes enemy health and damage, champion count, credits and loot odds
 - **3 classes:** Ranger (double jump), Sentinel (hover, extra shield), Arcanist (glide, faster super)
 - **3 elements:** Fire, Shock, Void. Match an enemy's shield colour to shatter it
 - **4 worlds, 12 stages:** Iron Yard, Crimson Dunes, Frozen Moon, Void Citadel, each ending in a boss
@@ -23,7 +28,7 @@ Both editions are the same game with the same saves; switch any time with the **
 - **Loadout:** start each stage with 3 weapons, either 2 primaries + 1 heavy or one of each ammo type. Primary ammo is infinite; special and heavy refill every stage and drop from enemies (15% / 9%)
 - **Epic soundtrack:** an original score synthesized live (no audio files): a faster, heavier arrangement for boss fights and a different key per world. Toggle with MUSIC on the menu
 - **10 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher, plus the three anti-champion weapons
-- **Armory:** spend credits on weapons and upgrades; progress is saved in the browser
+- **Armory:** spend credits on weapons, armor and paints; progress is saved in the browser
 
 ## Windows desktop app (.exe)
 The `desktop/` folder wraps the game in Electron as two portable, fully offline exes, one per edition:
@@ -43,6 +48,7 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | Key | Action |
 |---|---|
 | A / D | Move |
+| Shift | Dash (invulnerable; one air dash per jump) |
 | W / S | Aim up / crouch (aim down in the air) |
 | J or Space | Jump (hold for class ability; S + Jump drops through ledges) |
 | Mouse | Aim in any direction (crosshair) |
@@ -53,4 +59,4 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | R | Reload |
 | L | Melee |
 | O | Super |
-| P / Esc | Pause |
+| P / Esc | Pause (then M abandons the mission, keeping credits) |
