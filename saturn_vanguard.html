@@ -112,9 +112,17 @@
                 <div class="mt-5">
                     <div class="flex flex-wrap justify-between items-baseline gap-2 mb-2">
                         <div class="pixel-font text-[10px] text-yellow-400">-- LOADOUT --</div>
-                        <div class="text-[11px] text-slate-400">2 primaries + 1 heavy, or one of each ammo type &bull; primary ammo is infinite</div>
+                        <div class="text-[11px] text-slate-400">Every run starts with one primary, one special and one heavy weapon &bull; primary ammo is infinite</div>
                     </div>
                     <div id="loadout" class="grid grid-cols-1 md:grid-cols-3 gap-2"></div>
+                </div>
+
+                <div class="mt-5">
+                    <div class="flex flex-wrap justify-between items-baseline gap-2 mb-2">
+                        <div class="pixel-font text-[10px] text-yellow-400">-- CONTRACTORS --</div>
+                        <div class="text-[11px] text-slate-400">Accept up to <span id="contract-cap">4</span> contracts &bull; progress carries across stages &bull; claim rewards here</div>
+                    </div>
+                    <div id="contractors" class="grid grid-cols-1 lg:grid-cols-3 gap-2"></div>
                 </div>
 
                 <div class="flex flex-wrap gap-3 justify-between items-center mt-5">
@@ -125,7 +133,7 @@
                         <button onclick="toggleMute()" id="mute-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">SOUND: ON</button>
                         <button onclick="resetProgress()" class="px-3 py-2 bg-slate-900 border border-red-900 text-xs text-red-400 rounded hover:bg-red-950">RESET SAVE</button>
                     </div>
-                    <div class="text-xs text-slate-400">CREDITS <span id="menu-credits" class="text-emerald-400 font-bold">0</span> &bull; BEST <span id="best-score" class="text-yellow-400">0</span>
+                    <div class="text-xs text-slate-400">CREDITS <span id="menu-credits" class="text-emerald-400 font-bold">0</span> &bull; GOLD <span id="menu-gold" class="text-amber-300 font-bold">0</span> &bull; BEST <span id="best-score" class="text-yellow-400">0</span>
                         <div id="refund-note" class="text-[11px] text-emerald-300 hidden"></div></div>
                     <div class="flex gap-2">
                         <button onclick="openArmory('menu')" class="px-5 py-3 saturn-button pixel-font text-sky-300 text-xs font-bold uppercase rounded">ARMORY</button>
@@ -136,8 +144,9 @@
             </div>
 
             <div class="text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
-                [A/D] Move &bull; [Shift] Dash &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold for class ability, S+Jump drops through ledges)
-                &bull; [Mouse] Aim &bull; [Left click / K] Fire (hold) &bull; [Right click / I] Grenade &bull; [Wheel] Swap &bull; [Q/E or 1-3] Switch weapon &bull; [R] Reload &bull; [L] Melee &bull; [I] Grenade &bull; [O] Super &bull; [P/Esc] Pause
+                [A/D] Move &bull; [Shift] Dash &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold: double jump / hover / glide, S+Jump drops through ledges)
+                &bull; [Mouse] Aim &bull; [Left click / K] Fire (hold) &bull; [1/2/3 or Wheel] Primary / Special / Heavy &bull; [R] Reload
+                &bull; [Q] Grenade &bull; [E] Melee &bull; [F] Class ability &bull; [T] Super &bull; [P/Esc] Pause
             </div>
         </div>
     </div>
@@ -147,7 +156,7 @@
         <div class="my-auto w-full max-w-5xl saturn-panel p-5 rounded-lg">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="pixel-font text-lg text-sky-300">ARMORY</h2>
-                <div class="text-sm text-slate-300">CREDITS <span id="armory-credits" class="text-emerald-400 font-bold text-lg">0</span></div>
+                <div class="text-sm text-slate-300">CREDITS <span id="armory-credits" class="text-emerald-400 font-bold text-lg">0</span> &bull; GOLD <span id="armory-gold" class="text-amber-300 font-bold text-lg">0</span></div>
             </div>
             <div>
                 <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- WEAPONS --</div>
@@ -163,8 +172,23 @@
                     <div id="armory-armor" class="space-y-2"></div>
                 </div>
                 <div class="pixel-font text-[10px] text-yellow-400 mt-4 mb-2">-- PAINT SHOP --</div>
-                <div class="text-[12px] text-slate-400 mb-2">Buy a colour once, then apply it to any armor piece with the swatches above.</div>
+                <div class="text-[12px] text-slate-400 mb-2">Buy a colour once, then apply it to any armor piece with the swatches above. <span class="text-amber-300">★ Premium colours cost GOLD, earned by clearing stages, contracts and sealed chests.</span></div>
                 <div id="armory-paints" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+            </div>
+            <div class="mt-5">
+                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- WEAPON SKINS (GOLD) --</div>
+                <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <canvas id="skin-preview" width="40" height="12" class="w-60 h-[72px] bg-slate-950 rounded border border-slate-800" style="image-rendering:pixelated"></canvas>
+                    <div id="skin-weapons" class="flex flex-wrap gap-1"></div>
+                </div>
+                <div id="skin-list" class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2"></div>
+            </div>
+            <div class="mt-5">
+                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- SEALED CHESTS --</div>
+                <div class="text-[12px] text-slate-400 mb-2">Sealed chests are carried home from the field. Each one opens only with a key of its own sigil: keys hide on ledges, fall from champions, and come from Quartermaster Iro's contracts.</div>
+                <div id="armory-keys" class="flex flex-wrap gap-2 mb-2"></div>
+                <div id="chest-result" class="hidden text-[12px] mb-2 p-2 rounded bg-slate-900 border border-yellow-700"></div>
+                <div id="armory-sealed" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
             </div>
             <div class="mt-5">
                 <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- INVENTORY (<span id="inventory-count">0</span>) --</div>
@@ -191,6 +215,7 @@
                 <div class="flex justify-between"><span>CREDITS EARNED:</span> <span id="final-credits" class="text-emerald-400">0</span></div>
                 <div class="flex justify-between"><span>TOTAL CREDITS:</span> <span id="final-bank" class="text-emerald-300">0</span></div>
             </div>
+            <div id="end-extras" class="text-[12px] font-bold mb-3"></div>
             <div id="end-contracts" class="text-left text-[12px] mb-4 hidden"></div>
             <div id="end-loot" class="text-left text-[12px] mb-4 hidden"></div>
             <div class="text-[11px] text-emerald-400 mb-3">AMMO RESERVES REFILLED FOR THE NEXT STAGE</div>
@@ -231,7 +256,7 @@
 
         <div class="bg-slate-950/90 px-3 py-1.5 border-t border-sky-900/60 flex justify-between items-center text-[10px] text-slate-400 gap-2">
             <div>RESERVES: <span id="hud-reserves" class="text-white">-</span> &bull; CREDITS <span id="hud-credits" class="text-emerald-400 font-bold">0</span></div>
-            <div class="hidden md:block">[MOUSE] AIM &bull; [CLICK/K] FIRE &bull; [SHIFT] DASH &bull; [RMB] GRENADE &bull; [Q/E/WHEEL] SWAP &bull; [J] JUMP &bull; [L] MELEE &bull; [I] GRENADE &bull; [O] SUPER &bull; [R] RELOAD &bull; [P] PAUSE</div>
+            <div class="hidden md:block">[CLICK/K] FIRE &bull; [SHIFT] DASH &bull; [1-3] WEAPON &bull; [Q] GRENADE &bull; [E] MELEE &bull; [F] ABILITY &bull; [T] SUPER &bull; [R] RELOAD &bull; [P] PAUSE</div>
         </div>
     </div>
 
@@ -457,6 +482,7 @@
         piercer: { name: 'PIERCER RIFLE',   short: 'PIERCE',  ammo: 'primary', mag: 12, rate: 16, dmg: 30,  speed: 11,  spread: 0.01, reload: 55, cost: 900,  sfx: 'hand',    anti: 'barrier',     desc: 'ANTI-BARRIER. Shreds champion barriers 8x faster and stuns longer.' },
         arc:     { name: 'ARC DISRUPTOR',   short: 'ARC',     ammo: 'primary', mag: 36, rate: 5,  dmg: 9,   speed: 8,   spread: 0.08, reload: 50, cost: 900,  sfx: 'smg',     anti: 'overload',    desc: 'ANTI-OVERLOAD. Each hit jolts an Overload; two hits disrupt it.' },
         breacher:{ name: 'BREACHER SLUG',   short: 'BREACH',  ammo: 'special', mag: 3,  rate: 45, dmg: 90,  speed: 9,   spread: 0,    reload: 65, cost: 1200, sfx: 'shotgun', recoil: 4, anti: 'unstoppable', desc: 'ANTI-UNSTOPPABLE. Slugs stagger an Unstoppable at any time.' },
+        fusion:  { name: 'FUSION RIFLE',    short: 'FUSION',  ammo: 'heavy',   mag: 1,  rate: 40, dmg: 280, speed: 16,  spread: 0,    reload: 70, cost: 2400, sfx: 'sniper',  recoil: 4, pierce: true, kind: 'precision', desc: 'A charged bolt that pierces everything in its path and can crit.' },
     };
     const WEAPON_ORDER = Object.keys(WEAPONS);
     const AMMO_MAX = { primary: Infinity, special: 16, heavy: 4 }; // primary ammo is infinite
@@ -540,6 +566,83 @@
         rose:     { name: 'ROSE',     color: '#ec4899', cost: 450 },
         chrome:   { name: 'CHROME',   color: '#94a3b8', cost: 350 },
         obsidian: { name: 'OBSIDIAN', color: '#111827', cost: 500 },
+        // premium colours, bought with GOLD earned from missions
+        neon:     { name: 'NEON',     color: '#39ff14', gold: 12 },
+        ruby:     { name: 'RUBY',     color: '#9b111e', gold: 10 },
+        midnight: { name: 'MIDNIGHT', color: '#1e1b4b', gold: 10 },
+        solar:    { name: 'SOLAR',    color: '#ffb703', gold: 14 },
+        teal:     { name: 'TEAL',     color: '#14b8a6', gold: 10 },
+        ivory:    { name: 'IVORY',    color: '#fffbeb', gold: 12 },
+        magma:    { name: 'MAGMA',    color: '#ff4d00', gold: 15 },
+        aurora:   { name: 'AURORA',   color: '#7cf5c8', gold: 18 },
+    };
+    // Weapon skins (GOLD): change the gun's body and accent, and some recolour its shots
+    const WEAPON_SKINS = {
+        standard:  { name: 'FACTORY',    body: null,      accent: null,      trail: null,      gold: 0 },
+        carbon:    { name: 'CARBON',     body: '#1f2937', accent: '#64748b', trail: null,      gold: 8 },
+        arctic:    { name: 'ARCTIC',     body: '#e2e8f0', accent: '#38bdf8', trail: null,      gold: 10 },
+        desert:    { name: 'DESERT',     body: '#a16207', accent: '#fde68a', trail: null,      gold: 10 },
+        neonwave:  { name: 'NEON WAVE',  body: '#0f172a', accent: '#22d3ee', trail: '#22d3ee', gold: 15 },
+        bloodmoon: { name: 'BLOOD MOON', body: '#7f1d1d', accent: '#f87171', trail: '#ef4444', gold: 15 },
+        goldleaf:  { name: 'GOLD LEAF',  body: '#ca8a04', accent: '#fde047', trail: '#facc15', gold: 20 },
+        voidglass: { name: 'VOID GLASS', body: '#2e1065', accent: '#c084fc', trail: '#c084fc', gold: 22 },
+        prism:     { name: 'PRISM',      body: '#f0abfc', accent: '#67e8f9', trail: '#f0abfc', gold: 30 },
+    };
+    const skinOf = wid => WEAPON_SKINS[(save.weaponSkin && save.weaponSkin[wid]) || 'standard'] || WEAPON_SKINS.standard;
+
+    // Sealed chests are carried home and only open with the key of their sigil
+    const SIGILS = {
+        ember: { name: 'EMBER', color: '#f97316' },
+        frost: { name: 'FROST', color: '#38bdf8' },
+        storm: { name: 'STORM', color: '#facc15' },
+        umbra: { name: 'UMBRA', color: '#a855f7' },
+    };
+    const SIGIL_IDS = Object.keys(SIGILS);
+
+    // ---- Contractors: three characters, each offering their own kind of contract ----
+    // A contract tracks progress across stages and horde runs; claim the reward back at its contractor.
+    // `stat` names a per-run tally (see newStageStats); `max: true` means best single run instead of a running total.
+    const CONTRACTORS = {
+        vex:  { name: 'COMMANDER VEX', title: 'Vanguard Command', color: '#f87171',
+                look: { helm: '#7f1d1d', visor: '#fca5a5', coat: '#450a0a', trim: '#facc15' },
+                line: 'Every hostile you drop is one less at our gates. Prove your aim.',
+                pool: [
+                    { stat: 'kills',      text: n => `Defeat ${n} hostiles`,        goal: [60, 120] },
+                    { stat: 'critKills',  text: n => `Land ${n} critical kills`,    goal: [12, 25] },
+                    { stat: 'champKills', text: n => `Defeat ${n} champions`,       goal: [3, 6] },
+                    { stat: 'meleeKills', text: n => `Win ${n} fights up close (melee kills)`, goal: [8, 15] },
+                    { stat: 'heavyKills', text: n => `Defeat ${n} hostiles with heavy weapons`, goal: [8, 16] },
+                ], bonus: 'loot' },
+        iro:  { name: 'QUARTERMASTER IRO', title: 'Supply Corps', color: '#facc15',
+                look: { helm: '#854d0e', visor: '#fde68a', coat: '#422006', trim: '#94a3b8' },
+                line: "Salvage keeps us alive. Bring me what's buried out there.",
+                pool: [
+                    { stat: 'chests',   text: n => `Open ${n} chests or caches`,      goal: [4, 8] },
+                    { stat: 'secrets',  text: n => `Discover ${n} secret areas`,      goal: [2, 4] },
+                    { stat: 'sealed',   text: n => `Recover ${n} sealed chest${n > 1 ? 's' : ''}`, goal: [1, 2] },
+                    { stat: 'earned',   text: n => `Bring home ${n} credits`,         goal: [1500, 3000] },
+                    { stat: 'clears',   text: n => `Clear ${n} stages`,               goal: [3, 5] },
+                ], bonus: 'key' },
+        nyla: { name: 'SEER NYLA', title: 'The Observatory', color: '#a78bfa',
+                look: { helm: '#3b0764', visor: '#e9d5ff', coat: '#2e1065', trim: '#67e8f9' },
+                line: 'Grace under fire is a language. Show me you speak it.',
+                pool: [
+                    { stat: 'perfectDodges', text: n => `Perform ${n} perfect dodges`,   goal: [10, 20] },
+                    { stat: 'grenadeKills',  text: n => `Defeat ${n} hostiles with grenades`, goal: [6, 12] },
+                    { stat: 'superKills',    text: n => `Defeat ${n} hostiles with your super`, goal: [6, 12] },
+                    { stat: 'flawless',      text: n => `Clear ${n} stage${n > 1 ? 's' : ''} without dying`, goal: [2, 3] },
+                    { stat: 'hordeWave',     text: n => `Reach wave ${n} in Horde mode`, goal: [5, 10], max: true },
+                    { stat: 'bossKills',     text: n => `Defeat ${n} world guardian${n > 1 ? 's' : ''}`, goal: [1, 2] },
+                ], bonus: 'gold' },
+    };
+    const CONTRACTOR_IDS = Object.keys(CONTRACTORS);
+    const MAX_ACTIVE_CONTRACTS = 4, OFFERS_PER_CONTRACTOR = 2;
+
+    // Class abilities on [F]: 15 s cooldown
+    const CLASS_ABILITIES = {
+        ranger:   { name: "HUNTER'S MARK", short: 'MARK',  cd: 900, desc: 'For 4 s every bullet hit is a critical hit' },
+        sentinel: { name: 'BARRICADE',     short: 'WALL',  cd: 900, desc: 'A shield wall in front of you blocks enemy shots for 6 s' },
+        arcanist: { name: 'RIFT',          short: 'RIFT',  cd: 900, desc: 'A rift on the ground: inside it you regenerate and deal +20% damage for 6 s' },
     };
     // Default colour of each piece when painted STANDARD (class item and chest follow the class)
     function gearColor(piece) {
@@ -623,7 +726,7 @@
     const EXTRACT_KILL_SHARE = 0.7; // share of a stage's hostiles to defeat before extraction unlocks
 
     const GAME_KEYS = new Set(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD',
-        'KeyJ','KeyK','KeyL','KeyI','KeyO','KeyZ','KeyX','KeyC','KeyV','KeyR','KeyP','KeyQ','KeyE','Escape',
+        'KeyJ','KeyK','KeyZ','KeyR','KeyP','KeyQ','KeyE','KeyF','KeyT','KeyM','Escape',
         'Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0','ShiftLeft','ShiftRight']);
 
     // =====================================================================
@@ -631,10 +734,19 @@
     // =====================================================================
     const SAVE_KEY = 'saturn-vanguard-save-v2';
     function defaultSave() {
-        const starter = makeItem('auto', 'common', 1);
-        return { credits: 0, unlocked: 0, best: 0, cleared: [], difficulty: 'normal', hordeBest: 0,
+        const inv = withStarterKit([]);
+        const s = { credits: 0, gold: 0, unlocked: 0, best: 0, cleared: [], difficulty: 'normal', hordeBest: 0,
                  armor: Object.fromEntries(ARMOR_IDS.map(k => [k, 0])), paints: ['standard'], paint: Object.fromEntries(ARMOR_IDS.map(k => [k, 'standard'])),
-                 inventory: [starter], loadout: [starter.uid, null, null] };
+                 skins: ['standard'], weaponSkin: {}, keys: Object.fromEntries(SIGIL_IDS.map(k => [k, 0])), sealed: [],
+                 contracts: [], offers: {}, inventory: inv, loadout: [] };
+        fixLoadout(s); refillOffers(s);
+        return s;
+    }
+    // Every run starts with one primary, one special and one heavy weapon, so everyone owns at least one of each
+    function withStarterKit(inv) {
+        for (const [ammo, wid] of [['primary', 'auto'], ['special', 'shotgun'], ['heavy', 'rocket']])
+            if (!inv.some(it => WEAPONS[it.wid].ammo === ammo)) inv.push(makeItem(wid, 'common', 1));
+        return inv;
     }
     // Validates stored items; older saves (a plain list of owned weapon types) become Common Lv 1 items
     function loadInventory(raw) {
@@ -644,8 +756,13 @@
             perks: Array.isArray(it.perks) ? it.perks.filter(k => PERKS[k]).slice(0, RARITIES[it.rarity].slots) : [],
         })) : null;
         if (!inv || !inv.length) inv = (Array.isArray(raw.owned) ? raw.owned : []).filter(id => WEAPONS[id]).map(id => makeItem(id, 'common', 1));
-        if (!inv.some(it => WEAPONS[it.wid].ammo === 'primary')) inv.unshift(makeItem('auto', 'common', 1));
-        return inv;
+        return withStarterKit(inv);
+    }
+    function loadContract(c) {
+        const npc = c && CONTRACTORS[c.npc], def = npc && npc.pool.find(p => p.stat === c.stat);
+        if (!def || !(c.goal > 0)) return null;
+        return { id: String(c.id), npc: c.npc, stat: c.stat, goal: c.goal | 0, prog: Math.max(0, +c.prog || 0),
+                 credits: Math.max(0, c.credits | 0), gold: Math.max(0, c.gold | 0) };
     }
     function loadSave() {
         const d = defaultSave();
@@ -672,8 +789,17 @@
                         const id = raw.paint && raw.paint[k];
                         return [k, PAINTS[id] && Array.isArray(raw.paints) && (id === 'standard' || raw.paints.includes(id)) ? id : 'standard'];
                     })),
+                    gold: Math.max(0, raw.gold | 0),
+                    skins: ['standard', ...(Array.isArray(raw.skins) ? raw.skins.filter(id => WEAPON_SKINS[id] && id !== 'standard') : [])],
+                    weaponSkin: {},
+                    keys: Object.fromEntries(SIGIL_IDS.map(k => [k, Math.max(0, (raw.keys && raw.keys[k]) | 0)])),
+                    sealed: Array.isArray(raw.sealed) ? raw.sealed.filter(c => c && SIGILS[c.sigil]).map(c => ({ uid: String(c.uid), sigil: c.sigil, level: Math.min(MAX_ITEM_LEVEL, Math.max(1, c.level | 0)) })) : [],
+                    contracts: Array.isArray(raw.contracts) ? raw.contracts.map(loadContract).filter(Boolean).slice(0, MAX_ACTIVE_CONTRACTS) : [],
+                    offers: {},
                 };
-                fixLoadout(s);
+                for (const [wid, sk] of Object.entries(raw.weaponSkin || {})) if (WEAPONS[wid] && s.skins.includes(sk)) s.weaponSkin[wid] = sk;
+                for (const id of CONTRACTOR_IDS) s.offers[id] = (raw.offers && Array.isArray(raw.offers[id]) ? raw.offers[id] : []).map(loadContract).filter(c => c && c.npc === id).slice(0, OFFERS_PER_CONTRACTOR);
+                fixLoadout(s); refillOffers(s);
                 return s;
             }
         } catch (e) {}
@@ -681,22 +807,49 @@
     }
     function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
-    // ---- Loadout: 3 slots. Slot 1 primary, slot 2 primary OR special (a different weapon), slot 3 heavy.
-    // That allows "2 primaries + 1 heavy" or "one of each ammo type". Slots 2 and 3 may be empty.
+    // ---- Loadout: every run starts with exactly 3 weapons, one per ammo type, chosen on the main menu ----
     const LOADOUT_SLOTS = [
-        { label: 'PRIMARY',           ammo: ['primary'] },
-        { label: 'PRIMARY / SPECIAL', ammo: ['primary', 'special'] },
-        { label: 'HEAVY',             ammo: ['heavy'] },
+        { label: 'PRIMARY', ammo: 'primary' },
+        { label: 'SPECIAL', ammo: 'special' },
+        { label: 'HEAVY',   ammo: 'heavy' },
     ];
     const ammoOf = it => it && WEAPONS[it.wid].ammo;
     const itemPower = it => itemDmgMult(it) * WEAPONS[it.wid].dmg;
     function fixLoadout(s) {
         const get = uid => s.inventory.find(i => i.uid === uid);
-        let [a, b, c] = [0, 1, 2].map(i => get(s.loadout[i]));
-        if (ammoOf(a) !== 'primary') a = s.inventory.filter(i => ammoOf(i) === 'primary').sort((x, y) => itemPower(y) - itemPower(x))[0];
-        if (b && (!LOADOUT_SLOTS[1].ammo.includes(ammoOf(b)) || b.wid === a.wid)) b = null;
-        if (c && ammoOf(c) !== 'heavy') c = null;
-        s.loadout = [a.uid, b ? b.uid : null, c ? c.uid : null];
+        s.inventory = withStarterKit(s.inventory);
+        s.loadout = LOADOUT_SLOTS.map((slot, i) => {
+            const cur = get((s.loadout || [])[i]);
+            if (cur && ammoOf(cur) === slot.ammo) return cur.uid;
+            return s.inventory.filter(it => ammoOf(it) === slot.ammo).sort((x, y) => itemPower(y) - itemPower(x))[0].uid;
+        });
+    }
+
+    // ---- Contracts ----
+    function makeContract(npc, exclude = []) {
+        const pool = CONTRACTORS[npc].pool.filter(p => !exclude.includes(p.stat));
+        const def = pool[Math.floor(Math.random() * pool.length)];
+        const [lo, hi] = def.goal, goal = lo + Math.floor(Math.random() * (hi - lo + 1)), t = hi > lo ? (goal - lo) / (hi - lo) : 0.5;
+        return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), npc, stat: def.stat, goal, prog: 0,
+                 credits: Math.round((250 + 350 * t) / 10) * 10, gold: 3 + Math.round(5 * t) };
+    }
+    const contractDef = c => CONTRACTORS[c.npc].pool.find(p => p.stat === c.stat);
+    const contractText = c => contractDef(c).text(c.goal);
+    // Each contractor always has two different offers that aren't already active
+    function refillOffers(s) {
+        for (const npc of CONTRACTOR_IDS) {
+            const offers = s.offers[npc] = (s.offers[npc] || []).slice(0, OFFERS_PER_CONTRACTOR);
+            while (offers.length < OFFERS_PER_CONTRACTOR) {
+                const taken = offers.concat(s.contracts.filter(c => c.npc === npc)).map(c => c.stat);
+                if (taken.length >= CONTRACTORS[npc].pool.length) break;
+                offers.push(makeContract(npc, taken));
+            }
+        }
+    }
+    // Progress of an active contract including the stage being played right now
+    function contractProgress(c) {
+        const live = stage && stage.stats ? (stage.stats[c.stat] || 0) : 0;
+        return Math.min(c.goal, contractDef(c).max ? Math.max(c.prog, live) : c.prog + live);
     }
     let save = loadSave();
 
@@ -717,37 +870,48 @@
     // =====================================================================
     //  MENU / ARMORY UI
     // =====================================================================
-    // ---- Graphics mode: 64-bit (chunky 480x270 pixels) or 128-bit (3x resolution + lighting) ----
+    // ---- Graphics mode: 64-bit (chunky 480x270 pixels), 128-bit (3x resolution + lighting)
+    // or 256-bit (4x resolution / 1080p + reflections, volumetric fog, wide bloom, denser particles) ----
     // Gameplay always runs in the same 480x270 logical space; only rendering changes.
     // Priority: ?mode= URL param, then a build default (desktop .exe), then the saved web choice.
+    // gfx128 = "128-bit effects on" (true in both 128 and 256), gfx256 = the extra 256-bit layer.
     const GFX_KEY = 'saturn-vanguard-gfx';
-    let gfx128 = (() => {
-        const q = new URLSearchParams(location.search).get('mode');
-        if (q === '128' || q === '64') return q === '128';
-        if (window.SV_DEFAULT_MODE) return window.SV_DEFAULT_MODE === '128';
-        try { return localStorage.getItem(GFX_KEY) === '128'; } catch (e) { return false; }
+    const GFX_LEVELS = [64, 128, 256];
+    const GFX_INFO = { 64: { res: 1, edition: 'Enhanced' }, 128: { res: 3, edition: 'Remastered' }, 256: { res: 4, edition: 'Ultra' } };
+    let gfxLevel = (() => {
+        const pick = v => GFX_LEVELS.includes(+v) ? +v : null;
+        const q = pick(new URLSearchParams(location.search).get('mode'));
+        if (q) return q;
+        if (window.SV_DEFAULT_MODE) return pick(window.SV_DEFAULT_MODE) || 64;
+        try { return pick(localStorage.getItem(GFX_KEY)) || 64; } catch (e) { return 64; }
     })();
+    let gfx128 = gfxLevel >= 128, gfx256 = gfxLevel === 256;
+    function setGfxLevel(l) { gfxLevel = l; gfx128 = l >= 128; gfx256 = l === 256; }
     let RES = 1;
     const snap = v => Math.round(v * RES) / RES;
     function updateGfxLabels() {
-        const bits = gfx128 ? '128' : '64';
+        const bits = gfxLevel;
         document.getElementById('gfx-btn').textContent = `GFX: ${bits}-BIT`;
         document.getElementById('gfx-engine').textContent = `SATURN ${bits}-BIT VANGUARD ENGINE`;
-        document.getElementById('gfx-edition').innerHTML = `4 Worlds &bull; 12 Stages &bull; ${bits}-Bit ${gfx128 ? 'Remastered' : 'Enhanced'} Edition`;
-        document.title = gfx128 ? 'Saturn Vanguard 128' : 'Saturn Vanguard';
+        document.getElementById('gfx-edition').innerHTML = `4 Worlds &bull; 12 Stages &bull; ${bits}-Bit ${GFX_INFO[bits].edition} Edition`;
+        document.title = bits === 64 ? 'Saturn Vanguard' : `Saturn Vanguard ${bits}`;
     }
-    function toggleGfx() {
-        gfx128 = !gfx128;
-        if (!window.SV_DEFAULT_MODE) { try { localStorage.setItem(GFX_KEY, gfx128 ? '128' : '64'); } catch (e) {} }
+    function toggleGfx() { // cycles 64 -> 128 -> 256 -> 64
+        setGfxLevel(GFX_LEVELS[(GFX_LEVELS.indexOf(gfxLevel) + 1) % GFX_LEVELS.length]);
+        if (!window.SV_DEFAULT_MODE) { try { localStorage.setItem(GFX_KEY, String(gfxLevel)); } catch (e) {} }
         updateGfxLabels();
-        if (crtEnabled === gfx128) toggleCRT(); // scanlines suit 64-bit; 128-bit starts clean (still toggleable)
+        if (crtEnabled === gfx128) toggleCRT(); // scanlines suit 64-bit; 128/256-bit start clean (still toggleable)
     }
     function applyGfx() {
-        RES = gfx128 ? 3 : 1;
+        // keep the flags consistent even if a caller (or a test) set gfx128 directly
+        if (!gfx128) gfx256 = false;
+        gfxLevel = gfx256 ? 256 : gfx128 ? 128 : 64;
+        RES = GFX_INFO[gfxLevel].res;
         if (canvas.width !== W * RES) { canvas.width = W * RES; canvas.height = H * RES; }
         ctx.imageSmoothingEnabled = gfx128;
         canvas.style.imageRendering = gfx128 ? 'auto' : '';
         if (gfx128) buildPostFx();
+        if (gfx256) buildPost256();
     }
     function toggleCRT() {
         crtEnabled = !crtEnabled;
@@ -787,7 +951,9 @@
             </div>`).join('');
         document.getElementById('launch-btn').textContent = 'LAUNCH ' + stageLabel(selectedStage);
         document.getElementById('menu-credits').textContent = save.credits;
+        document.getElementById('menu-gold').textContent = save.gold;
         document.getElementById('best-score').textContent = save.best;
+        renderContractors();
         document.getElementById('menu-progress').textContent = `${save.cleared.length}/${TOTAL_STAGES}`;
         document.getElementById('difficulty').innerHTML = Object.entries(DIFFICULTIES).map(([id, d]) =>
             `<button onclick="setDifficulty('${id}')" style="--c:${d.color}" class="pick ${save.difficulty === id ? 'sel' : ''} flex-1 py-2 text-xs font-bold rounded">${d.name}</button>`).join('');
@@ -797,6 +963,84 @@
         note.classList.toggle('hidden', !legacyRefund);
         note.textContent = legacyRefund ? `+${legacyRefund} credits refunded: generic upgrades were retired` : '';
         renderLoadout();
+    }
+    // ---- Contractors board ----
+    function drawPortrait(canvas, look) { // 24x24 pixel bust: helmet, visor, coat, trim
+        const g = canvas.getContext('2d');
+        g.imageSmoothingEnabled = false; g.clearRect(0, 0, 24, 24);
+        g.fillStyle = '#0f172a'; g.fillRect(0, 0, 24, 24);
+        g.fillStyle = look.coat; g.fillRect(3, 16, 18, 8);
+        g.fillStyle = look.trim; g.fillRect(3, 16, 18, 1); g.fillRect(11, 17, 2, 7);
+        g.fillStyle = look.helm; g.fillRect(6, 4, 12, 12); g.fillRect(5, 6, 1, 8); g.fillRect(18, 6, 1, 8);
+        g.fillStyle = look.visor; g.fillRect(8, 8, 8, 3);
+        g.fillStyle = look.trim; g.fillRect(6, 4, 12, 1); g.fillRect(11, 1, 2, 3);
+    }
+    function renderContractors() {
+        document.getElementById('contract-cap').textContent = MAX_ACTIVE_CONTRACTS;
+        const full = save.contracts.length >= MAX_ACTIVE_CONTRACTS;
+        const reward = c => `<span class="text-emerald-400">${c.credits}c</span> + <span class="text-amber-300">${c.gold}g</span>`;
+        const bonusText = { loot: '+ a gear drop', key: '+ a sigil key', gold: '+ bonus gold' };
+        const box = document.getElementById('contractors');
+        box.innerHTML = CONTRACTOR_IDS.map(id => {
+            const npc = CONTRACTORS[id];
+            const active = save.contracts.filter(c => c.npc === id).map(c => {
+                const done = c.prog >= c.goal;
+                return `<div class="mt-1 p-1.5 rounded bg-slate-900/80 border ${done ? 'border-emerald-500' : 'border-slate-700'}">
+                    <div class="flex justify-between gap-2 text-[11px]"><span class="text-white">${contractText(c)}</span><span class="${done ? 'text-emerald-400' : 'text-slate-400'}">${Math.floor(c.prog)}/${c.goal}</span></div>
+                    <div class="h-1 bg-slate-800 rounded mt-1"><div class="h-1 rounded" style="width:${Math.round(100 * Math.min(1, c.prog / c.goal))}%;background:${npc.color}"></div></div>
+                    <div class="flex justify-between items-center mt-1 text-[10px]"><span>${reward(c)} ${bonusText[npc.bonus]}</span>
+                        ${done ? `<button onclick="claimContract('${c.id}')" class="saturn-button px-2 py-0.5 text-yellow-300 font-bold rounded">CLAIM</button>`
+                               : `<button onclick="abandonContract('${c.id}')" class="px-2 py-0.5 text-red-300 border border-red-900 rounded hover:bg-red-950">DROP</button>`}</div>
+                </div>`;
+            }).join('');
+            const offers = (save.offers[id] || []).map(c => `<div class="mt-1 p-1.5 rounded bg-slate-950 border border-dashed border-slate-700">
+                    <div class="text-[11px] text-slate-200">${contractText(c)}</div>
+                    <div class="flex justify-between items-center mt-1 text-[10px]"><span>${reward(c)} ${bonusText[npc.bonus]}</span>
+                        <button onclick="acceptContract('${id}','${c.id}')" ${full ? 'disabled' : ''} class="saturn-button px-2 py-0.5 text-sky-300 font-bold rounded">ACCEPT</button></div>
+                </div>`).join('');
+            return `<div class="bg-slate-950/70 border rounded p-2" style="border-color:${npc.color}55">
+                <div class="flex gap-2 items-center">
+                    <canvas data-npc="${id}" width="24" height="24" class="w-12 h-12 rounded border" style="image-rendering:pixelated;border-color:${npc.color}"></canvas>
+                    <div class="min-w-0"><div class="pixel-font text-[9px]" style="color:${npc.color}">${npc.name}</div>
+                        <div class="text-[10px] text-slate-500">${npc.title}</div>
+                        <div class="text-[11px] text-slate-300 italic leading-tight">"${npc.line}"</div></div>
+                </div>
+                ${active ? `<div class="pixel-font text-[7px] text-slate-400 mt-2">ACTIVE</div>${active}` : ''}
+                <div class="pixel-font text-[7px] text-slate-400 mt-2">OFFERS</div>${offers || '<div class="text-[11px] text-slate-500">No offers left right now.</div>'}
+            </div>`;
+        }).join('');
+        box.querySelectorAll('canvas[data-npc]').forEach(cv => drawPortrait(cv, CONTRACTORS[cv.dataset.npc].look));
+    }
+    function acceptContract(npc, id) {
+        const offers = save.offers[npc] || [], c = offers.find(o => o.id === id);
+        if (!c || save.contracts.length >= MAX_ACTIVE_CONTRACTS) return;
+        save.offers[npc] = offers.filter(o => o !== c);
+        save.contracts.push(c);
+        refillOffers(save);
+        persist(); initAudio(); playSound('pickup');
+        renderMenu();
+    }
+    function abandonContract(id) {
+        save.contracts = save.contracts.filter(c => c.id !== id);
+        refillOffers(save);
+        persist(); initAudio(); playSound('reload');
+        renderMenu();
+    }
+    // Rewards: credits + gold, and each contractor's signature bonus
+    function claimContract(id) {
+        const c = save.contracts.find(x => x.id === id);
+        if (!c || c.prog < c.goal) return;
+        const npc = CONTRACTORS[c.npc];
+        save.credits += c.credits; save.gold += c.gold;
+        if (npc.bonus === 'loot') {
+            const level = clamp(1 + Math.max(...save.cleared, 0) + Math.floor(Math.random() * 3), 1, MAX_ITEM_LEVEL);
+            save.inventory.push(makeItem(WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)], rollRarity(), level));
+        } else if (npc.bonus === 'key') save.keys[SIGIL_IDS[Math.floor(Math.random() * SIGIL_IDS.length)]]++;
+        else save.gold += 4;
+        save.contracts = save.contracts.filter(x => x !== c);
+        refillOffers(save);
+        persist(); initAudio(); playSound('clear');
+        renderMenu();
     }
     function setDifficulty(id) {
         if (!DIFFICULTIES[id]) return;
@@ -826,17 +1070,15 @@
         fixLoadout(save);
         const box = document.getElementById('loadout');
         box.innerHTML = LOADOUT_SLOTS.map((slot, i) => {
-            const otherWid = i === 1 ? (save.inventory.find(it => it.uid === save.loadout[0]) || {}).wid : null;
-            const eligible = save.inventory.filter(it => slot.ammo.includes(ammoOf(it)) && it.wid !== otherWid)
+            const eligible = save.inventory.filter(it => ammoOf(it) === slot.ammo)
                 .sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) || b.level - a.level);
             const cur = save.inventory.find(it => it.uid === save.loadout[i]);
-            const opts = (i ? [`<option value="">— EMPTY —</option>`] : [])
-                .concat(eligible.map(it => `<option value="${it.uid}" ${cur && cur.uid === it.uid ? 'selected' : ''}>${itemLabel(it)}</option>`)).join('');
+            const opts = eligible.map(it => `<option value="${it.uid}" ${cur && cur.uid === it.uid ? 'selected' : ''}>${itemLabel(it)}</option>`).join('');
             const c = cur ? RARITIES[cur.rarity].color : '#334155';
             return `<div class="bg-slate-950/70 border rounded p-2" style="border-color:${c}">
-                <div class="pixel-font text-[8px] mb-1" style="color:${c}">${i + 1}. ${slot.label}</div>
-                <select onchange="setLoadout(${i}, this.value)" ${eligible.length ? '' : 'disabled'}
-                    class="w-full bg-slate-900 border border-slate-700 rounded text-[12px] text-white px-1 py-1">${eligible.length ? opts : '<option>No weapon owned for this slot</option>'}</select>
+                <div class="pixel-font text-[8px] mb-1" style="color:${c}">[${i + 1}] ${slot.label} <span style="color:${AMMO_COLORS[slot.ammo]}">●</span></div>
+                <select onchange="setLoadout(${i}, this.value)"
+                    class="w-full bg-slate-900 border border-slate-700 rounded text-[12px] text-white px-1 py-1">${opts}</select>
                 ${cur ? `<div class="text-[11px] mt-1 leading-snug">${perkHtml(cur)}</div>${xpBarHtml(cur)}` : ''}
             </div>`;
         }).join('');
@@ -856,7 +1098,7 @@
     }
 
     function openArmory(from) {
-        armoryReturn = from;
+        armoryReturn = from; lastChestResult = null;
         document.getElementById('armory').classList.remove('hidden');
         renderArmory();
     }
@@ -880,11 +1122,52 @@
         persist(); initAudio(); playSound('pickup');
         renderArmory();
     }
+    // Paints cost credits, except the premium ones priced in gold
+    const priceOf = x => x.gold ? { amount: x.gold, cur: 'gold' } : { amount: x.cost, cur: 'credits' };
+    const canAfford = pr => save[pr.cur] >= pr.amount;
+    const priceLabel = pr => pr.cur === 'gold' ? `${pr.amount} GOLD` : `${pr.amount}`;
     function buyPaint(id) {
-        const pt = PAINTS[id];
-        if (save.paints.includes(id) || save.credits < pt.cost) return;
-        save.credits -= pt.cost; save.paints.push(id);
+        const pt = PAINTS[id], pr = priceOf(pt);
+        if (save.paints.includes(id) || !canAfford(pr)) return;
+        save[pr.cur] -= pr.amount; save.paints.push(id);
         persist(); initAudio(); playSound('pickup');
+        renderArmory();
+    }
+    // ---- Weapon skins (gold) ----
+    let skinWeapon = 'auto';
+    function buySkin(id) {
+        const sk = WEAPON_SKINS[id];
+        if (!sk || save.skins.includes(id) || save.gold < sk.gold) return;
+        save.gold -= sk.gold; save.skins.push(id);
+        save.weaponSkin[skinWeapon] = id; // apply right away to the weapon being previewed
+        persist(); initAudio(); playSound('pickup');
+        renderArmory();
+    }
+    function setSkin(id) {
+        if (!save.skins.includes(id)) return;
+        if (id === 'standard') delete save.weaponSkin[skinWeapon]; else save.weaponSkin[skinWeapon] = id;
+        persist(); initAudio(); playSound('reload');
+        renderArmory();
+    }
+    function pickSkinWeapon(wid) { skinWeapon = wid; renderArmory(); }
+    function drawSkinPreview() { // the gun side-on at 6x, with its muzzle shot colour
+        const c = document.getElementById('skin-preview'), g = c.getContext('2d');
+        g.imageSmoothingEnabled = false; g.clearRect(0, 0, 40, 12);
+        const sk = skinOf(skinWeapon), len = { auto: 14, smg: 10, pulse: 15, hand: 9, shotgun: 15, sniper: 20, rocket: 18, piercer: 18, arc: 12, breacher: 14, fusion: 19 }[skinWeapon] || 14;
+        const thick = skinWeapon === 'rocket' ? 6 : skinWeapon === 'shotgun' ? 5 : 4, y = 6 - thick / 2;
+        g.fillStyle = sk.body || (skinWeapon === 'rocket' ? '#4b5563' : '#64748b'); g.fillRect(6, y, len, thick);
+        g.fillStyle = sk.accent || AMMO_COLORS[WEAPONS[skinWeapon].ammo]; g.fillRect(8, y - 1, 5, 2);
+        if (sk.accent) g.fillRect(6 + len - 3, y, 1, thick);
+        g.fillStyle = '#cbd5e1'; g.fillRect(3, y + 1, 4, thick + 1); // gauntlet
+        g.fillStyle = sk.trail || ELEMENTS[selectedElement].color; g.fillRect(6 + len + 2, 5, 9, 2);
+    }
+    // ---- Sealed chests ----
+    let lastChestResult = null;
+    function openSealed(uid) {
+        const r = openSealedChest(uid);
+        if (!r) return;
+        lastChestResult = r;
+        persist(); initAudio(); playSound(RARITY_ORDER.indexOf(r.item.rarity) >= 2 ? 'super' : 'clear');
         renderArmory();
     }
     function setPaint(piece, id) {
@@ -948,15 +1231,50 @@
                       : `<button onclick="buyArmor('${id}')" ${save.credits >= cost ? '' : 'disabled'} class="saturn-button px-3 py-2 text-yellow-300 text-xs font-bold rounded whitespace-nowrap">BUY ${cost}</button>`}
             </div>`;
         }).join('');
+        document.getElementById('armory-gold').textContent = save.gold;
         document.getElementById('armory-paints').innerHTML = Object.entries(PAINTS).filter(([pid]) => pid !== 'standard').map(([pid, pt]) => {
-            const owned = save.paints.includes(pid);
-            return `<div class="bg-slate-950/70 border border-slate-800 rounded p-2 flex flex-col items-center gap-1">
+            const owned = save.paints.includes(pid), pr = priceOf(pt), premium = pr.cur === 'gold';
+            return `<div class="bg-slate-950/70 border ${premium ? 'border-amber-700' : 'border-slate-800'} rounded p-2 flex flex-col items-center gap-1">
                 <div class="w-8 h-8 rounded border border-slate-500" style="background:${pt.color};box-shadow:0 0 10px -2px ${pt.color}"></div>
-                <div class="pixel-font text-[8px] text-white">${pt.name}</div>
+                <div class="pixel-font text-[8px] text-white">${pt.name}${premium ? ' <span class="text-amber-300">★</span>' : ''}</div>
                 ${owned ? '<span class="text-emerald-400 text-[11px] font-bold">OWNED</span>'
-                        : `<button onclick="buyPaint('${pid}')" ${save.credits >= pt.cost ? '' : 'disabled'} class="saturn-button px-2 py-1 text-yellow-300 text-[11px] font-bold rounded">BUY ${pt.cost}</button>`}
+                        : `<button onclick="buyPaint('${pid}')" ${canAfford(pr) ? '' : 'disabled'} class="saturn-button px-2 py-1 ${premium ? 'text-amber-300' : 'text-yellow-300'} text-[11px] font-bold rounded">BUY ${priceLabel(pr)}</button>`}
             </div>`;
         }).join('');
+        // weapon skins
+        const ownedWids = WEAPON_ORDER.filter(w => save.inventory.some(it => it.wid === w));
+        if (!ownedWids.includes(skinWeapon)) skinWeapon = ownedWids[0];
+        document.getElementById('skin-weapons').innerHTML = ownedWids.map(w =>
+            `<button onclick="pickSkinWeapon('${w}')" style="--c:#facc15" class="pick ${w === skinWeapon ? 'sel' : ''} px-2 py-1 text-[11px] rounded">${WEAPONS[w].short}</button>`).join('');
+        const curSkin = (save.weaponSkin[skinWeapon]) || 'standard';
+        document.getElementById('skin-list').innerHTML = Object.entries(WEAPON_SKINS).map(([sid, sk]) => {
+            const owned = save.skins.includes(sid), sel = sid === curSkin;
+            const sw = sk.body ? `background:linear-gradient(135deg,${sk.body} 0 60%,${sk.accent} 60%)` : 'background:linear-gradient(135deg,#64748b 0 60%,#e2e8f0 60%)';
+            return `<div class="bg-slate-950/70 border ${sel ? 'border-yellow-400' : 'border-slate-800'} rounded p-2 flex flex-col items-center gap-1">
+                <div class="w-10 h-5 rounded-sm border border-slate-600" style="${sw}"></div>
+                <div class="pixel-font text-[7px] text-white text-center">${sk.name}</div>
+                ${sk.trail ? `<div class="text-[10px]" style="color:${sk.trail}">tinted shots</div>` : ''}
+                ${owned ? (sel ? '<span class="text-yellow-300 text-[11px] font-bold">EQUIPPED</span>' : `<button onclick="setSkin('${sid}')" class="px-2 py-0.5 border border-slate-600 text-[11px] text-slate-200 rounded hover:bg-slate-800">APPLY</button>`)
+                        : `<button onclick="buySkin('${sid}')" ${save.gold >= sk.gold ? '' : 'disabled'} class="saturn-button px-2 py-0.5 text-amber-300 text-[11px] font-bold rounded">${sk.gold} GOLD</button>`}
+            </div>`;
+        }).join('');
+        drawSkinPreview();
+        // sealed chests and keys
+        document.getElementById('armory-keys').innerHTML = SIGIL_IDS.map(sg =>
+            `<span class="px-2 py-0.5 rounded border text-[11px]" style="border-color:${SIGILS[sg].color};color:${SIGILS[sg].color}">🗝 ${SIGILS[sg].name} ×${save.keys[sg]}</span>`).join('');
+        document.getElementById('armory-sealed').innerHTML = save.sealed.length ? save.sealed.map(c => {
+            const sg = SIGILS[c.sigil], has = save.keys[c.sigil] > 0;
+            return `<div class="bg-slate-950/70 border rounded p-2 flex justify-between items-center gap-2" style="border-color:${sg.color}66">
+                <div><div class="pixel-font text-[8px]" style="color:${sg.color}">SEALED ${sg.name} CHEST</div><div class="text-[11px] text-slate-400">Gear LV ${c.level} &bull; best of 3 rarity rolls &bull; gold &amp; credits</div></div>
+                <button onclick="openSealed('${c.uid}')" ${has ? '' : 'disabled'} class="saturn-button px-3 py-1 text-yellow-300 text-[11px] font-bold rounded whitespace-nowrap">${has ? 'OPEN' : 'NEEDS KEY'}</button>
+            </div>`;
+        }).join('') : '<div class="text-[12px] text-slate-500">No sealed chests yet. Look for them on high ledges and carry them home.</div>';
+        const res = document.getElementById('chest-result');
+        res.classList.toggle('hidden', !lastChestResult);
+        if (lastChestResult) {
+            const r = lastChestResult, rc = RARITIES[r.item.rarity].color;
+            res.innerHTML = `<span style="color:${SIGILS[r.sigil].color}">${SIGILS[r.sigil].name} CHEST OPENED:</span> <span style="color:${rc}">${itemName(r.item)} LV ${r.item.level}</span> + <span class="text-amber-300">${r.gold} GOLD</span> + <span class="text-emerald-400">${r.credits} credits</span>`;
+        }
         drawArmorPreview();
         renderInventory();
     }
@@ -1028,7 +1346,7 @@
         return p.crouch ? { x: p.x, y: p.y + 14, w: p.w, h: p.h - 14 } : p;
     }
     function burst(x, y, n, color, spd = 3, life = 22) {
-        if (gfx128) n = Math.round(n * 1.6);
+        if (gfx128) n = Math.round(n * (gfx256 ? 2.4 : 1.6));
         for (let i = 0; i < n; i++) {
             particles.push({ x, y, vx: (Math.random() - 0.5) * spd * 2, vy: (Math.random() - 0.5) * spd * 2,
                 life: life * (0.6 + Math.random() * 0.4), max: life, color,
@@ -1189,7 +1507,7 @@
         // A fresh seed every run: the stage is rebuilt from shuffled modules each time you play it
         const rnd = mulberry32((7919 * (wi + 1) + 104729 * (si + 1)) ^ ((Math.random() * 0x7fffffff) | 0));
         const isBoss = si === 2;
-        const levelW = isBoss ? 2300 + wi * 100 : 3200 + si * 500 + wi * 250;
+        const levelW = isBoss ? 2900 + wi * 120 : 4800 + si * 700 + wi * 300; // ~50% longer than before
         const arenaX = isBoss ? levelW - 700 : null;
         theme = w;
         // difficulty scales enemy health here; its damage factor is applied once, in hurtPlayer (covers bosses and beams too)
@@ -1202,9 +1520,10 @@
         if (isBoss) {
             platforms.push({ x: arenaX + 110, y: 230 - MAX_REACH, w: 90, h: 12 }, { x: arenaX + 500, y: 230 - MAX_REACH, w: 90, h: 12 });
         }
+        placeSealedAndKeys(isBoss, arenaX);
 
         // Enemies
-        const count = isBoss ? 6 + wi * 2 : 14 + si * 5 + wi * 3;
+        const count = isBoss ? 10 + wi * 3 : 24 + si * 7 + wi * 5; // ~70% more hostiles
         const s0 = 520, s1 = isBoss ? arenaX - 200 : levelW - 260;
         for (let i = 0; i < count; i++) {
             let ex = s0 + (s1 - s0) * (i + rnd() * 0.8) / count;
@@ -1245,8 +1564,8 @@
     // A stage is a random sequence of modules. An elevator tower (treasure on the roof) and a secret
     // bunker are always placed, at random points, so module positions change between stages and runs.
     // Height changes only happen across pits: the engine has no walls, only one-way platforms.
-    function addTreasure(x, surfaceY, kind) {
-        treasures.push({ x, y: surfaceY - 10, w: 14, h: 10, kind, opened: false });
+    function addTreasure(x, surfaceY, kind, extra) {
+        treasures.push(Object.assign({ x, y: surfaceY - 10, w: 14, h: 10, kind, opened: false }, extra));
         stage.secretsTotal++;
     }
     function buildModules(rnd, w, isBoss, levelW, arenaX) {
@@ -1313,6 +1632,7 @@
         const weights = { flat: 2, pit: 1 + w.pitChance * 3, climb: 0.9, ledges: 2.6 * w.platDensity, lift: 0.6 };
         const forced = [['tower', 0.15 + rnd() * 0.55], ['bunker', 0.1 + rnd() * 0.65]];
         if (!isBoss && levelW > 3800) forced.push(['bunker', 0.1 + rnd() * 0.8]);
+        if (!isBoss && levelW > 5400) forced.push(['tower', 0.5 + rnd() * 0.4]); // the longest stages get a second tower
         let x = 450, gy = 230, last = '', lastCp = 0;
         ground(0, 450, 230);
         while (x < endZone - 200 || forced.length) { // the tower and bunker are always placed
@@ -1332,7 +1652,34 @@
         ground(x, levelW, isBoss ? 230 : gy);
         if (isBoss) checkpoints.push({ x: Math.max(x + 20, arenaX - 70), y: 230, active: false }); // last stop before the arena
     }
-    const newStageStats = () => ({ critKills: 0, meleeKills: 0, grenadeKills: 0, perfectDodges: 0, champKills: 0, weaponKills: {} });
+    // A sealed chest (60% of stages) and a sigil key (45%) sit on ledges away from the start.
+    // Keys favour the sigil of a sealed chest you are already carrying.
+    function randomLedgeSpot(isBoss, arenaX) {
+        const spots = platforms.filter(p => !p.ground && !p.move && !p.step && p.w >= 40 && p.x > 600 && (!isBoss || p.x < arenaX - 120)
+            && !treasures.some(t => t.x > p.x - 10 && t.x < p.x + p.w + 10 && Math.abs(t.y + t.h - p.y) < 2));
+        const p = spots[Math.floor(Math.random() * spots.length)];
+        return p && { x: p.x + p.w / 2 - 7, y: p.y };
+    }
+    function pickKeySigil() {
+        const missing = save.sealed.map(c => c.sigil).filter(sg => !save.keys[sg]);
+        return missing.length && Math.random() < 0.6 ? missing[Math.floor(Math.random() * missing.length)] : SIGIL_IDS[Math.floor(Math.random() * SIGIL_IDS.length)];
+    }
+    function placeSealedAndKeys(isBoss, arenaX) {
+        if (Math.random() < 0.6) { const s = randomLedgeSpot(isBoss, arenaX); if (s) addTreasure(s.x, s.y, 'sealed', { sigil: SIGIL_IDS[Math.floor(Math.random() * SIGIL_IDS.length)] }); }
+        if (Math.random() < 0.45) { const s = randomLedgeSpot(isBoss, arenaX); if (s) addTreasure(s.x + 2, s.y, 'key', { sigil: pickKeySigil(), w: 10 }); }
+    }
+    // A key that falls from a champion: picked up by walking over it like any treasure
+    function dropKey(x, y) {
+        const g = groundBelow(x, y) ?? groundAt(x)?.y;
+        if (g == null) return;
+        treasures.push({ x: x - 5, y: g - 10, w: 10, h: 10, kind: 'key', sigil: pickKeySigil(), opened: false });
+        stage.secretsTotal++;
+        popText(x - 24, y - 20, 'A KEY DROPPED!', '#fde047');
+    }
+
+    // per-run tallies: they drive the contractors' contracts (keys match CONTRACTORS[..].pool[..].stat)
+    const newStageStats = () => ({ kills: 0, critKills: 0, meleeKills: 0, grenadeKills: 0, superKills: 0, heavyKills: 0, perfectDodges: 0,
+        champKills: 0, chests: 0, secrets: 0, sealed: 0, earned: 0, clears: 0, flawless: 0, bossKills: 0, hordeWave: 0, weaponKills: {} });
     function updateCheckpoints() {
         for (const cp of checkpoints) {
             if (cp.active || player.x + player.w / 2 < cp.x) continue;
@@ -1366,12 +1713,28 @@
             if (s.kind !== 'bunker') continue;
             const inside = overlap(pb, s);
             s.reveal += ((inside ? 1 : 0) - s.reveal) * 0.15;
-            if (inside && !s.found) { s.found = true; popText(s.x + s.w / 2 - 34, s.y - 8, 'SECRET AREA!', '#e879f9'); playSound('pickup'); }
+            if (inside && !s.found) { s.found = true; stage.stats.secrets++; popText(s.x + s.w / 2 - 34, s.y - 8, 'SECRET AREA!', '#e879f9'); playSound('pickup'); }
         }
         for (const t of treasures) {
             if (t.opened || !overlap(pb, t)) continue;
             t.opened = true; stage.secretsFound++;
             const cx = t.x + 7, cy = t.y;
+            if (t.kind === 'sealed' || t.kind === 'key') { // carried home, not opened here
+                const sg = SIGILS[t.sigil];
+                if (t.kind === 'sealed') {
+                    save.sealed.push({ uid: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), sigil: t.sigil, level: dropLevel() });
+                    stage.stats.sealed++; stage.sealedFound = (stage.sealedFound || 0) + 1;
+                    popText(cx - 50, cy - 16, `SEALED ${sg.name} CHEST RECOVERED`, sg.color);
+                } else {
+                    save.keys[t.sigil]++; stage.keysFound = (stage.keysFound || 0) + 1;
+                    popText(cx - 34, cy - 16, `${sg.name} KEY FOUND`, sg.color);
+                }
+                rings.push({ x: cx, y: cy, r: 4, maxR: 30, life: 18, max: 18, color: sg.color });
+                burst(cx, cy, 18, sg.color, 3, 26);
+                playSound('pickup');
+                continue;
+            }
+            stage.stats.chests++;
             const reward = t.kind === 'secret' ? 250 + Math.round(Math.random() * 150) : t.kind === 'chest' ? 150 + Math.round(Math.random() * 100) : 60 + Math.round(Math.random() * 60);
             credits += reward; score += reward * 2;
             spawnItem(cx, cy - 4, 'orb'); spawnItem(cx + 6, cy - 4, 'special');
@@ -1388,6 +1751,18 @@
     // Every chest drops one gear item: Common 74%, Rare 20%, Legendary 5%, Exotic 1%.
     // Its level scales with how far into the campaign the stage is.
     const dropLevel = () => clamp((stage.horde ? 1 + Math.floor(stage.wave / 2) : 1 + stage.world * 4 + stage.sub * 2) + Math.floor(Math.random() * 3), 1, MAX_ITEM_LEVEL);
+    // Opening a sealed chest at home: rarity is the best of three rolls, plus gold and credits
+    function openSealedChest(uid) {
+        const c = save.sealed.find(s => s.uid === uid);
+        if (!c || !save.keys[c.sigil]) return null;
+        save.keys[c.sigil]--;
+        save.sealed = save.sealed.filter(s => s !== c);
+        const rolls = [rollRarity(), rollRarity(), rollRarity()].sort((a, b) => RARITY_ORDER.indexOf(b) - RARITY_ORDER.indexOf(a));
+        const item = makeItem(WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)], rolls[0], c.level);
+        const gold = 5 + Math.floor(Math.random() * 6), creditsWon = 200 + Math.floor(Math.random() * 201);
+        save.inventory.push(item); save.gold += gold; save.credits += creditsWon;
+        return { item, gold, credits: creditsWon, sigil: c.sigil };
+    }
     function dropLoot(x, y) {
         const rarity = rollRarity(), wid = WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)];
         const level = dropLevel();
@@ -1442,7 +1817,7 @@
             mags: Object.fromEntries(gearItems.map(it => [it.wid, magSizeOf(it)])),
             // every stage starts with full reserves; primary never runs out
             ammo: { primary: Infinity, special: maxAmmo.special, heavy: maxAmmo.heavy }, maxAmmo,
-            rampage: 0, rampageT: 0,
+            rampage: 0, rampageT: 0, abilityCd: 0, markT: 0,
             reloadTimer: 0, reloadFor: null, fireTimer: 0, burstLeft: 0, burstTimer: 0, switchTimer: 0,
             anim: 0, legFrame: 0, invuln: 60, meleeCd: 0, meleeAnim: 0, grenadeCd: 0,
             safeX: 60, safeY: 190,
@@ -1452,10 +1827,11 @@
     function resetGame() {
         score = 0; kills = 0; credits = 0; deaths = 0; frame = 0;
         cameraX = 0; shake = 0; flash = 0; hurtFlash = 0; bossIntro = 0; stageIntro = 180; victoryTimer = 0;
-        bullets = []; particles = []; rings = []; items = []; texts = []; hazards = [];
+        bullets = []; particles = []; rings = []; items = []; texts = []; hazards = []; walls = []; rifts = [];
         if (hordeMode) generateHordeArena(); else generateStage(selectedStage);
         player = makePlayer();
-        if (hordeMode) { player.x = 470; } else stage.contracts = rollContracts();
+        if (hordeMode) player.x = 470;
+        notifiedContracts.clear();
         initBackground();
         weather = Array.from({ length: theme.weather ? 70 : 0 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: Math.random() }));
         for (const k in keys) keys[k] = false;
@@ -1513,13 +1889,13 @@
         if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') startDash();
         if (e.code === 'KeyK' || e.code === 'KeyZ' || e.code === 'KeyW' || e.code === 'ArrowUp') mouse.active = false; // back to keyboard aim
         if (e.code === 'Space' || e.code === 'KeyJ') player.jumpBuffer = 8;
-        if (e.code === 'KeyL' || e.code === 'KeyX') performMelee();
-        if (e.code === 'KeyI' || e.code === 'KeyC') throwGrenade();
-        if (e.code === 'KeyO' || e.code === 'KeyV') castSuper();
+        // Q grenade · E melee · F class ability · T super · 1/2/3 weapons (primary / special / heavy)
+        if (e.code === 'KeyQ') throwGrenade();
+        if (e.code === 'KeyE') performMelee();
+        if (e.code === 'KeyF') useClassAbility();
+        if (e.code === 'KeyT') castSuper();
         if (e.code === 'KeyR') startReload();
-        if (e.code === 'KeyQ') switchWeapon((player.weaponIdx - 1 + player.owned.length) % player.owned.length);
-        if (e.code === 'KeyE') switchWeapon((player.weaponIdx + 1) % player.owned.length);
-        if (e.code.startsWith('Digit')) { const n = parseInt(e.code.slice(5), 10); switchWeapon(n === 0 ? 9 : n - 1); }
+        if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') switchWeapon(+e.code.slice(5) - 1);
     });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
     window.addEventListener('blur', () => {
@@ -1606,7 +1982,7 @@
         for (let i = 0; i < n; i++) {
             const spread = (Math.random() - 0.5) * w.spread, sp = w.speed * (w.pellets ? 0.85 + Math.random() * 0.3 : 1);
             const b = { x: mx, y: my, vx: sp * (ax - ay * spread), vy: sp * (ay + ax * spread), owner: 'player',
-                kind: w.kind || 'bullet', element: selectedElement, dmg, life: w.life || 80, wid: p.weapon };
+                kind: w.kind || 'bullet', element: selectedElement, dmg, life: w.life || 80, wid: p.weapon, trail: skinOf(p.weapon).trail };
             if (w.pierce) b.hit = new Set();
             if (hasPerk(it, 'pen')) b.pen = 1;
             bullets.push(b);
@@ -1662,7 +2038,58 @@
         rings.push({ x: p.x + p.w / 2, y: p.y + p.h / 2, r: 6, maxR: 34, life: 14, max: 14, color: '#67e8f9' });
         playSound('pickup');
     }
-    const focusMult = () => player.focusT > 0 ? 1.25 : 1;
+    // Rift (Arcanist) adds +20% damage while you stand in it
+    const focusMult = () => (player.focusT > 0 ? 1.25 : 1) * (inRift() ? 1.2 : 1);
+
+    // ---- Class abilities [F] ----
+    let walls = [], rifts = [];
+    function useClassAbility() {
+        const p = player, ab = CLASS_ABILITIES[selectedClass];
+        if (p.abilityCd > 0) return;
+        p.abilityCd = ab.cd;
+        const cx = p.x + p.w / 2, foot = p.y + p.h;
+        if (selectedClass === 'ranger') {
+            p.markT = 240;
+            rings.push({ x: cx, y: p.y + 10, r: 4, maxR: 36, life: 16, max: 16, color: '#fde047' });
+        } else if (selectedClass === 'sentinel') {
+            walls.push({ x: cx + p.facing * 18 - 3, y: foot - 44, w: 6, h: 44, life: 360, max: 360 });
+        } else {
+            rifts.push({ x: cx, y: foot, r: 42, life: 360, max: 360 });
+        }
+        popText(p.x - 20, p.y - 14, ab.name, { ranger: '#fde047', sentinel: '#7dd3fc', arcanist: '#e9d5ff' }[selectedClass]);
+        playSound('super');
+    }
+    const inRift = () => !!player && rifts.some(r => Math.abs(player.x + player.w / 2 - r.x) < r.r && Math.abs(player.y + player.h - r.y) < 30);
+    function updateAbilities() {
+        const p = player;
+        if (p.abilityCd > 0) p.abilityCd--;
+        if (p.markT > 0) p.markT--;
+        for (const w of walls) w.life--;
+        for (const r of rifts) r.life--;
+        walls = walls.filter(w => w.life > 0); rifts = rifts.filter(r => r.life > 0);
+        if (inRift()) {
+            p.shield = Math.min(p.maxShield, p.shield + 1.2);
+            p.hp = Math.min(p.maxHp, p.hp + 0.12);
+        }
+    }
+    function drawAbilityFx() {
+        for (const r of rifts) {
+            const a = Math.min(1, r.life / 40);
+            ctx.globalAlpha = 0.28 * a; ctx.fillStyle = '#a855f7';
+            ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r, 7, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 0.7 * a; ctx.strokeStyle = '#e9d5ff'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.ellipse(r.x, r.y, r.r * (0.6 + 0.4 * ((frame % 60) / 60)), 5, 0, 0, Math.PI * 2); ctx.stroke();
+            if (frame % 4 === 0) particles.push({ x: r.x + (Math.random() - 0.5) * r.r * 1.6, y: r.y, vx: 0, vy: -0.8, life: 24, max: 24, color: '#c084fc', size: 2 });
+        }
+        for (const w of walls) {
+            const a = Math.min(1, w.life / 40);
+            ctx.globalAlpha = (0.35 + 0.15 * Math.sin(frame * 0.2)) * a; ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(w.x, w.y, w.w, w.h);
+            ctx.globalAlpha = 0.9 * a; ctx.fillStyle = '#e0f2fe';
+            ctx.fillRect(w.x + 2, w.y, 2, w.h);
+        }
+        ctx.globalAlpha = 1;
+    }
 
     function performMelee() {
         const p = player;
@@ -1774,10 +2201,16 @@
         en.dead = true;
         // tallies for contracts
         const st = stage.stats;
+        st.kills++;
         if (crit) st.critKills++;
         if (kind === 'melee') st.meleeKills++;
         if (kind === 'grenade') st.grenadeKills++;
-        if (en.champ) st.champKills++;
+        if (kind === 'super') st.superKills++;
+        if (wid && WEAPONS[wid].ammo === 'heavy') st.heavyKills++;
+        if (en.champ) {
+            st.champKills++;
+            if (Math.random() < 0.2) dropKey(en.x + en.w / 2, en.y + en.h); // champions sometimes carry a sigil key
+        }
         if (wid) st.weaponKills[wid] = (st.weaponKills[wid] || 0) + 1;
         const it = wid && player.items[wid];
         if (it) {
@@ -1910,48 +2343,40 @@
     }
 
     // =====================================================================
-    //  CONTRACTS: three optional skill challenges per stage, paid in credits.
-    //  Completing all three adds a bonus loot cache at the end of the stage.
+    //  CONTRACTS (in play): the contracts you accepted from the contractors track live progress.
+    //  Progress is banked when a stage or horde run ends; rewards are claimed back at the menu.
     // =====================================================================
-    function rollContracts() {
-        const s = stage, st = s.stats, small = s.isBoss, pool = [];
-        const reward = 120 + 60 * s.world;
-        const add = (text, goal, prog, endOnly = false) => pool.push({ text, goal, prog, endOnly, reward, done: false, failed: false });
-        const secs = s.isBoss ? 150 + s.world * 20 : Math.round(s.levelW / 20);
-        add('FLAWLESS: no deaths', 1, () => deaths === 0 ? 1 : 0, true);
-        add(`SPEEDRUN: under ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`, 1, () => frame / 60 <= secs ? 1 : 0, true);
-        add('MARKSMAN: crit kills', small ? 3 : 5 + s.world, () => st.critKills);
-        add('BRAWLER: melee kills', small ? 2 : 4, () => st.meleeKills);
-        add('DEMOLITION: grenade kills', small ? 2 : 3, () => st.grenadeKills);
-        add('UNTOUCHABLE: perfect dodges', 3, () => st.perfectDodges);
-        if (s.secretsTotal) add('HUNTER: open all chests', s.secretsTotal, () => s.secretsFound);
-        const champs = enemies.filter(e => e.champ).length + (s.champWarps || 0);
-        if (champs) add('SLAYER: champions', Math.min(2, champs), () => st.champKills);
-        const wid = player.owned[Math.floor(Math.random() * player.owned.length)];
-        add(`SPECIALIST: ${WEAPONS[wid].short} kills`, small ? 4 : 8, () => st.weaponKills[wid] || 0);
-        return pool.sort(() => Math.random() - 0.5).slice(0, 3);
-    }
+    const notifiedContracts = new Set(); // contract ids already announced this run (cleared in resetGame)
     function updateContracts() {
-        for (const c of stage.contracts) {
-            if (c.endOnly) { c.failed = c.prog() < c.goal; continue; } // Flawless / Speedrun pay out at the end, but can be lost mid-stage
-            if (c.done || c.prog() < c.goal) continue;
-            c.done = true; credits += c.reward;
-            popText(player.x - 44, player.y - 30, `CONTRACT DONE +${c.reward}`, '#4ade80');
+        for (const c of save.contracts) {
+            if (c.prog >= c.goal || notifiedContracts.has(c.id) || contractProgress(c) < c.goal) continue;
+            notifiedContracts.add(c.id);
+            popText(player.x - 50, player.y - 30, `CONTRACT COMPLETE: SEE ${CONTRACTORS[c.npc].name.split(' ').pop()}`, CONTRACTORS[c.npc].color);
             playSound('clear');
         }
     }
     function drawContracts() {
         ctx.font = '5px "Press Start 2P", monospace';
-        stage.contracts.forEach((c, i) => {
-            const y = 11 + i * 9;
-            const label = c.endOnly ? c.text : `${c.text} ${Math.min(c.goal, c.prog())}/${c.goal}`;
-            const color = c.done ? '#4ade80' : c.failed ? '#64748b' : '#e2e8f0';
+        save.contracts.forEach((c, i) => {
+            const y = 11 + i * 9, prog = contractProgress(c), done = prog >= c.goal;
+            const label = `${contractText(c)} ${Math.floor(prog)}/${c.goal}`;
+            const color = done ? '#4ade80' : '#e2e8f0';
             ctx.fillStyle = 'rgba(2,6,23,0.5)'; ctx.fillRect(4, y - 6, ctx.measureText(label).width + 13, 8);
-            ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.strokeRect(6.5, y - 4.5, 4, 4);
-            if (c.done) { ctx.fillStyle = color; ctx.fillRect(7.5, y - 3.5, 2, 2); }
-            ctx.fillStyle = color; ctx.fillText(label, 13, y);
-            if (c.failed) { ctx.fillRect(13, y - 3, ctx.measureText(label).width, 1); } // struck through
+            ctx.fillStyle = CONTRACTORS[c.npc].color; ctx.fillRect(5, y - 5, 2, 6); // contractor colour tab
+            ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.strokeRect(8.5, y - 4.5, 3, 4);
+            if (done) { ctx.fillStyle = color; ctx.fillRect(9.5, y - 3.5, 1, 2); }
+            ctx.fillStyle = color; ctx.fillText(label, 14, y);
         });
+    }
+    // Bank this run's tallies into every active contract (called once when a stage / horde run ends)
+    function bankContracts() {
+        const done = [];
+        for (const c of save.contracts) {
+            const before = c.prog;
+            c.prog = contractProgress(c);
+            if (before < c.goal && c.prog >= c.goal) done.push(c);
+        }
+        return done;
     }
 
     // =====================================================================
@@ -2055,26 +2480,22 @@
         } else {
             sub = 'Mission abandoned. Credits from kills are kept.';
         }
-        // contracts: end-of-stage ones (Flawless, Speedrun) only count on a win; all three done = a bonus cache
-        for (const c of stage.contracts) {
-            if (c.endOnly && won && !c.done && c.prog() >= c.goal) { c.done = true; credits += c.reward; }
-            if (c.endOnly && !c.done) c.failed = true;
-        }
-        if (stage.contracts.length && stage.contracts.every(c => c.done)) {
-            // contract cache: two rarity rolls, keep the better one
-            const a = rollRarity(), b = rollRarity(), rarity = RARITY_ORDER.indexOf(a) > RARITY_ORDER.indexOf(b) ? a : b;
-            const item = makeItem(WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)], rarity, dropLevel());
-            save.inventory.push(item); stage.loot.push(item);
-        }
+        const st = stage.stats;
+        if (won) { st.clears = 1; if (deaths === 0) st.flawless = 1; if (stage.isBoss) st.bossKills = 1; }
         const earned = Math.round((credits + bonus) * dcfg().credits);
-        save.credits += earned;
+        st.earned = earned;
+        // GOLD (the cosmetics currency) is only paid for clearing a stage
+        const gold = won ? Math.max(1, Math.round((2 + stage.world + (stage.isBoss ? 3 : 0)) * dcfg().credits)) : 0;
+        save.credits += earned; save.gold += gold;
         save.best = Math.max(save.best, score);
+        const finished = bankContracts();
         persist();
-        lastResult = { won, sub, earned, score, kills, deaths, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}`,
-                       contracts: stage.contracts.map(c => ({ text: c.text, done: c.done, reward: c.reward })),
+        lastResult = { won, sub, earned, gold, score, kills, deaths, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}`,
+                       sealed: stage.sealedFound || 0, keys: stage.keysFound || 0, contracts: contractSummary(finished),
                        loot: stage.loot.map(it => ({ name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
         setTimeout(() => { if (state === 'over') showResults(lastResult); }, won ? 600 : 900);
     }
+    const contractSummary = finished => save.contracts.map(c => ({ text: contractText(c), npc: c.npc, prog: Math.floor(c.prog), goal: c.goal, done: c.prog >= c.goal, justDone: finished.includes(c) }));
     // Horde run over (death or abandon): bank credits and record the best wave
     function endHorde() {
         if (state === 'over') return;
@@ -2083,12 +2504,14 @@
         const wave = Math.max(0, stage.wave - (stage.phase === 'fight' ? 1 : 0)); // waves fully cleared
         const record = wave > save.hordeBest;
         save.hordeBest = Math.max(save.hordeBest, wave);
-        const earned = Math.round(credits * dcfg().credits);
-        save.credits += earned;
+        const earned = Math.round(credits * dcfg().credits), gold = Math.floor(wave / 3);
+        stage.stats.earned = earned; stage.stats.hordeWave = wave;
+        save.credits += earned; save.gold += gold;
         save.best = Math.max(save.best, score);
+        const finished = bankContracts();
         persist();
-        lastResult = { horde: true, won: false, earned, score, kills, deaths, secs: Math.floor(frame / 60), idx: -1, secrets: '-',
-                       sub: `${wave} WAVE${wave === 1 ? '' : 'S'} CLEARED${record ? ' — NEW RECORD!' : ` • BEST ${save.hordeBest}`}`, contracts: [],
+        lastResult = { horde: true, won: false, earned, gold, score, kills, deaths, secs: Math.floor(frame / 60), idx: -1, secrets: '-',
+                       sub: `${wave} WAVE${wave === 1 ? '' : 'S'} CLEARED${record ? ' — NEW RECORD!' : ` • BEST ${save.hordeBest}`}`, contracts: contractSummary(finished),
                        loot: stage.loot.map(it => ({ name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
         setTimeout(() => { if (state === 'over') showResults(lastResult); }, 900);
     }
@@ -2106,8 +2529,13 @@
         const conEl = document.getElementById('end-contracts'), cons = r.contracts || [];
         conEl.classList.toggle('hidden', !cons.length);
         conEl.innerHTML = cons.length ? '<div class="pixel-font text-[9px] text-yellow-400 mb-1">CONTRACTS</div>' +
-            cons.map(c => `<div class="flex justify-between ${c.done ? 'text-emerald-300' : 'text-slate-500'}"><span>${c.done ? '✔' : '✘'} ${c.text}</span><span>${c.done ? '+' + c.reward : '—'}</span></div>`).join('') +
-            (cons.every(c => c.done) ? '<div class="text-yellow-300 mt-1">All contracts complete: bonus cache added to your loot!</div>' : '') : '';
+            cons.map(c => `<div class="flex justify-between gap-2 ${c.done ? 'text-emerald-300' : 'text-slate-300'}"><span><span style="color:${CONTRACTORS[c.npc].color}">■</span> ${c.text}</span><span>${c.done ? (c.justDone ? 'DONE!' : 'CLAIM') : `${c.prog}/${c.goal}`}</span></div>`).join('') +
+            (cons.some(c => c.done) ? '<div class="text-yellow-300 mt-1">Claim finished contracts from their contractor on the main menu.</div>' : '') : '';
+        const extras = [];
+        if (r.gold) extras.push(`<span class="text-amber-300">+${r.gold} GOLD</span>`);
+        if (r.sealed) extras.push(`<span class="text-orange-300">${r.sealed} SEALED CHEST${r.sealed > 1 ? 'S' : ''} RECOVERED</span>`);
+        if (r.keys) extras.push(`<span class="text-sky-300">${r.keys} KEY${r.keys > 1 ? 'S' : ''} FOUND</span>`);
+        document.getElementById('end-extras').innerHTML = extras.join(' &bull; ');
         const lootEl = document.getElementById('end-loot');
         lootEl.classList.toggle('hidden', !(r.loot && r.loot.length));
         lootEl.innerHTML = r.loot && r.loot.length ? '<div class="pixel-font text-[9px] text-yellow-400 mb-1">LOOT ACQUIRED</div>' +
@@ -2130,9 +2558,11 @@
         updateMovers();
         updatePlayer();
         updateCheckpoints();
+        updateAbilities();
         updateTreasures();
         updateEnemies();
-        if (stage.horde) updateHorde(); else updateContracts();
+        if (stage.horde) { updateHorde(); stage.stats.hordeWave = Math.max(0, stage.wave - (stage.phase === 'fight' ? 1 : 0)); }
+        updateContracts();
         updateChampionWarps();
         updateBoss();
         updateHazards();
@@ -2594,7 +3024,8 @@
                     // headshot: the bullet struck the top 11px of a walking enemy (drones, bombers and turrets have no head)
                     const hasHead = !en.t.flying && en.type !== 'turret';
                     // (9px, not the full 11px head, so level chest-height fire at short enemies doesn't crit for free)
-                    const crit = hasHead && b.y <= en.y + 9 && (b.kind === 'bullet' || b.kind === 'precision');
+                    // Hunter's Mark (Ranger [F]) makes every bullet hit a crit
+                    const crit = (b.kind === 'bullet' || b.kind === 'precision') && (player.markT > 0 || (hasHead && b.y <= en.y + 9));
                     const critMult = crit ? (b.kind === 'precision' ? CRIT_MULT_PRECISION : CRIT_MULT) : 1;
                     damageEnemy(en, b.dmg * critMult, b.element, b.kind === 'golden' ? 'super' : b.kind, b.wid, crit);
                     burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
@@ -2608,7 +3039,7 @@
                     const dist = Math.hypot(b.x - boss.x, b.y - boss.y);
                     if (dist < boss.r) {
                         // the boss core (inner 45% of its radius) is its weak point
-                        const core = dist < boss.r * 0.45 && (b.kind === 'bullet' || b.kind === 'precision');
+                        const core = (dist < boss.r * 0.45 || player.markT > 0) && (b.kind === 'bullet' || b.kind === 'precision');
                         if (damageBoss(b.dmg * (core ? BOSS_CRIT_MULT : 1)) && core) {
                             playSound('crit'); burst(b.x, b.y, 4, '#fde047', 2, 10);
                             if (frame - (boss.critAt || -99) > 30) { boss.critAt = frame; popText(boss.x - 8, boss.y - boss.r - 8, 'CRIT', '#fde047'); }
@@ -2628,6 +3059,10 @@
                 if (overlap({ x: b.x - hw, y: b.y - hh, w: hw * 2, h: hh * 2 }, pb)) {
                     if (player.dashT > 0) perfectDodge(); // the shot passes straight through a dashing Vanguard
                     else { hurtPlayer(b.dmg); b.dead = true; }
+                }
+                // Sentinel barricade soaks enemy shots
+                if (!b.dead && walls.some(w => b.x > w.x - 2 && b.x < w.x + w.w + 2 && b.y > w.y && b.y < w.y + w.h)) {
+                    b.dead = true; burst(b.x, b.y, 4, '#7dd3fc', 1.5, 10);
                 }
             }
         }
@@ -2718,7 +3153,7 @@
         setHud('hud-shield', Math.ceil(p.shield), p.shield <= 0 ? 'text-slate-500 font-bold' : 'text-sky-400 font-bold');
         setHud('hud-lives', deaths);
         const sp = Math.floor(p.superEnergy);
-        setHud('hud-super', sp >= 100 ? 'READY [O]' : sp + '%', sp >= 100 ? 'text-yellow-300 font-bold animate-pulse' : 'text-yellow-400 font-bold');
+        setHud('hud-super', sp >= 100 ? 'READY [T]' : sp + '%', sp >= 100 ? 'text-yellow-300 font-bold animate-pulse' : 'text-yellow-400 font-bold');
         const mag = p.mags[p.weapon], res = p.ammo[w.ammo];
         const sidearm = w.ammo === 'primary' && mag <= 0 && res <= 0;
         setHud('hud-weapon', sidearm ? 'SIDEARM' : w.short, 'font-bold');
@@ -2932,6 +3367,23 @@
     function drawTreasures() {
         for (const t of treasures) {
             if (t.x + t.w < cameraX || t.x > cameraX + W) continue;
+            if (t.kind === 'sealed' || t.kind === 'key') { // collected (vanish) instead of being opened
+                if (t.opened) continue;
+                const sg = SIGILS[t.sigil].color, bob = Math.sin(frame * 0.08 + t.x) * 1;
+                if (t.kind === 'sealed') { // dark iron chest, sigil-coloured bands and a padlock
+                    ctx.fillStyle = '#1e293b'; ctx.fillRect(t.x, t.y + bob, t.w, t.h);
+                    ctx.fillStyle = sg; ctx.fillRect(t.x, t.y + bob, t.w, 2); ctx.fillRect(t.x + 2, t.y + bob, 1, t.h); ctx.fillRect(t.x + t.w - 3, t.y + bob, 1, t.h);
+                    ctx.fillStyle = '#e2e8f0'; ctx.fillRect(t.x + t.w / 2 - 2, t.y + 3 + bob, 4, 4);
+                    ctx.fillStyle = '#0f172a'; ctx.fillRect(t.x + t.w / 2 - 0.5, t.y + 4.5 + bob, 1, 2);
+                } else { // a floating key: ring head, shaft, bit
+                    const y = t.y + bob - 2;
+                    ctx.strokeStyle = sg; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.arc(t.x + 3, y + 5, 2.5, 0, Math.PI * 2); ctx.stroke();
+                    ctx.fillStyle = sg; ctx.fillRect(t.x + 5, y + 4.4, 5, 1.4); ctx.fillRect(t.x + 8, y + 5.6, 1.4, 2); ctx.fillRect(t.x + 6.2, y + 5.6, 1.2, 1.4);
+                }
+                if (frame % 40 < 4) { ctx.fillStyle = '#fff'; ctx.fillRect(t.x + 2 + (frame % 40) * 2, t.y + bob, 1.5, 1.5); }
+                continue;
+            }
             const c = t.kind === 'secret' ? '#c026d3' : t.kind === 'chest' ? '#b45309' : '#15803d';
             const trim = t.kind === 'secret' ? '#f0abfc' : t.kind === 'chest' ? '#facc15' : '#86efac';
             if (t.opened) {
@@ -3238,8 +3690,8 @@
             ctx.fillRect(snap(g.x) + 1, snap(g.y), 14, 30);
         }
         ctx.globalAlpha = 1;
-        if (p.focusT > 0) {
-            ctx.strokeStyle = `rgba(103,232,249,${0.4 + 0.3 * Math.sin(frame * 0.3)})`; ctx.lineWidth = 1;
+        if (p.focusT > 0 || p.markT > 0) { // cyan = perfect-dodge Focus, gold = Hunter's Mark
+            ctx.strokeStyle = p.markT > 0 ? `rgba(253,224,71,${0.5 + 0.3 * Math.sin(frame * 0.3)})` : `rgba(103,232,249,${0.4 + 0.3 * Math.sin(frame * 0.3)})`; ctx.lineWidth = 1;
             ctx.strokeRect(snap(p.x) - 1.5, snap(p.y) - 1.5, p.w + 3, p.h + 3);
         }
         if (p.invuln > 0 && p.invuln < 9000 && Math.floor(p.invuln / 3) % 2 === 0) return;
@@ -3263,11 +3715,13 @@
 
         // Weapon silhouette changes with the equipped gun
         const [ax, ay] = getAim(), wid = p.weapon;
-        const len = { auto: 14, smg: 10, pulse: 15, hand: 9, shotgun: 15, sniper: 20, rocket: 18, piercer: 18, arc: 12, breacher: 14 }[wid] || 14;
+        const len = { auto: 14, smg: 10, pulse: 15, hand: 9, shotgun: 15, sniper: 20, rocket: 18, piercer: 18, arc: 12, breacher: 14, fusion: 19 }[wid] || 14;
+        const skin = skinOf(wid);
         const thick = wid === 'rocket' ? 6 : wid === 'shotgun' ? 5 : 4;
         ctx.save(); ctx.translate(x + p.w / 2, top + 13); ctx.rotate(Math.atan2(ay, ax));
-        ctx.fillStyle = wid === 'rocket' ? '#4b5563' : '#64748b'; ctx.fillRect(0, -thick / 2, len, thick);
-        ctx.fillStyle = AMMO_COLORS[WEAPONS[wid].ammo]; ctx.fillRect(2, -thick / 2 - 1, 5, 2);
+        ctx.fillStyle = skin.body || (wid === 'rocket' ? '#4b5563' : '#64748b'); ctx.fillRect(0, -thick / 2, len, thick);
+        ctx.fillStyle = skin.accent || AMMO_COLORS[WEAPONS[wid].ammo]; ctx.fillRect(2, -thick / 2 - 1, 5, 2);
+        if (skin.accent) ctx.fillRect(len - 3, -thick / 2, 1, thick); // skins add a muzzle band
         if (wid === 'sniper') { ctx.fillStyle = '#94a3b8'; ctx.fillRect(5, -5, 6, 2); }
         const anti = WEAPONS[wid].anti;
         if (anti) { ctx.fillStyle = CHAMPIONS[anti].color; ctx.fillRect(len - 5, -thick / 2, 3, thick); } // anti-champion weapons glow in their champion's colour
@@ -3311,7 +3765,7 @@
                 ctx.fillStyle = '#fff'; ctx.fillRect(b.x - 1, b.y - 1, 2, 2);
                 continue;
             }
-            const color = ELEMENTS[b.element].color;
+            const color = b.trail || ELEMENTS[b.element].color; // weapon skins can recolour shots
             if (b.kind === 'grenade') {
                 ctx.fillStyle = color; ctx.beginPath(); ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2); ctx.fill();
                 if (frame % 10 < 5) { ctx.fillStyle = '#fff'; ctx.fillRect(b.x - 1, b.y - 1, 2, 2); }
@@ -3415,6 +3869,15 @@
         ctx.fillRect(x, y, dw * (ready ? 1 : 1 - p.dashCd / p.dashCdMax), 9);
         ctx.strokeStyle = ready ? '#67e8f9' : 'rgba(100,116,139,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, dw - 1, 8);
         ctx.fillStyle = ready ? '#ecfeff' : '#94a3b8'; ctx.fillText('DASH', x + 3, y + 7);
+        // class ability [F]: same pill style, recharge bar, lit while its effect is running
+        x += dw + 3;
+        const ab = CLASS_ABILITIES[selectedClass], aLabel = `F ${ab.short}`, aw = ctx.measureText(aLabel).width + 6;
+        const aReady = p.abilityCd <= 0, aColor = { ranger: '#fde047', sentinel: '#7dd3fc', arcanist: '#c084fc' }[selectedClass];
+        ctx.fillStyle = 'rgba(15,23,42,0.7)'; ctx.fillRect(x, y, aw, 9);
+        ctx.globalAlpha = 0.35; ctx.fillStyle = aReady ? aColor : '#64748b';
+        ctx.fillRect(x, y, aw * (aReady ? 1 : 1 - p.abilityCd / ab.cd), 9); ctx.globalAlpha = 1;
+        ctx.strokeStyle = aReady ? aColor : 'rgba(100,116,139,0.6)'; ctx.strokeRect(x + 0.5, y + 0.5, aw - 1, 8);
+        ctx.fillStyle = aReady ? '#fff' : '#94a3b8'; ctx.fillText(aLabel, x + 3, y + 7);
     }
 
     function centerText(text, y, size, color) {
@@ -3583,7 +4046,8 @@
         for (const t of treasures) {
             if (t.opened || t.x < cameraX - 30 || t.x > cameraX + W + 30) continue;
             const hidden = t.kind === 'secret' && !structures.some(s => s.kind === 'bunker' && s.reveal > 0.5 && t.x >= s.x && t.x <= s.x + s.w);
-            if (!hidden) light(t.x + 7, t.y + 5, 18, t.kind === 'secret' ? '#e879f9' : t.kind === 'chest' ? '#facc15' : '#4ade80', 0.4 + 0.1 * Math.sin(frame * 0.1));
+            const col = t.sigil ? SIGILS[t.sigil].color : t.kind === 'secret' ? '#e879f9' : t.kind === 'chest' ? '#facc15' : '#4ade80';
+            if (!hidden) light(t.x + 7, t.y + 5, 18, col, 0.4 + 0.1 * Math.sin(frame * 0.1));
         }
         for (const s of structures) if (s.kind === 'tower' && Math.abs(s.ex - cameraX - W / 2) < W) light(s.ex + 17, s.y - 18, 12, '#facc15', frame % 60 < 30 ? 0.5 : 0.2);
         for (const it of items) {
@@ -3640,6 +4104,66 @@
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = 0.28;
         ctx.drawImage(bloomCanvas, 0, 0, canvas.width, canvas.height);
+        if (gfx256) { // second, much wider and softer halo
+            wideCtx.globalCompositeOperation = 'copy';
+            wideCtx.filter = 'blur(3px)';
+            wideCtx.drawImage(bloomCanvas, 0, 0, wideCanvas.width, wideCanvas.height);
+            wideCtx.filter = 'none';
+            ctx.globalAlpha = 0.22;
+            ctx.drawImage(wideCanvas, 0, 0, canvas.width, canvas.height);
+        }
+        ctx.restore();
+    }
+
+    // ---------------- 256-BIT EXTRAS ----------------
+    let wideCanvas, wideCtx, reflCanvas, reflCtx, dustMotes = [];
+    function buildPost256() {
+        if (!wideCanvas) { wideCanvas = document.createElement('canvas'); wideCanvas.width = W / 8; wideCanvas.height = H / 8; wideCtx = wideCanvas.getContext('2d'); }
+        if (!reflCanvas) { reflCanvas = document.createElement('canvas'); reflCtx = reflCanvas.getContext('2d'); }
+        if (reflCanvas.width !== W * RES) { reflCanvas.width = W * RES; reflCanvas.height = H * RES; }
+        if (!dustMotes.length) dustMotes = Array.from({ length: 26 }, () => ({ x: Math.random() * W * 1.4, y: 40 + Math.random() * 220, s: 0.6 + Math.random() * 1.4, ph: Math.random() * 6.28 }));
+    }
+    // Mirror images of the player and nearby enemies on the polished surfaces they stand on
+    function drawReflections256() {
+        const r = reflCtx, main = ctx;
+        r.setTransform(1, 0, 0, 1, 0, 0); r.clearRect(0, 0, reflCanvas.width, reflCanvas.height);
+        r.setTransform(RES, 0, 0, RES, 0, 0); r.translate(snap(-cameraX), 0);
+        r.save();
+        r.beginPath();
+        for (const p of platforms) if (p.x + p.w > cameraX && p.x < cameraX + W) r.rect(p.x, p.y, p.w, Math.min(p.h, 40));
+        r.clip();
+        ctx = r; // the sprite routines draw to the global ctx
+        try {
+            const mirror = (footY, draw) => { r.save(); r.translate(0, 2 * footY); r.scale(1, -1); draw(); r.restore(); };
+            for (const en of enemies) if (!en.t.flying && en.grounded && en.x + en.w > cameraX - 20 && en.x < cameraX + W + 20) mirror(en.y + en.h, () => drawEnemy(en));
+            if (!player.dead && player.grounded) mirror(player.y + player.h, () => drawPlayer());
+        } finally { ctx = main; }
+        r.restore();
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = 0.2; ctx.drawImage(reflCanvas, 0, 0);
+        ctx.restore();
+    }
+    // Two slow layers of low fog drifting at different parallax speeds
+    function drawFog256() {
+        ctx.save();
+        for (const [speed, y, a] of [[0.25, 175, 0.16], [0.6, 205, 0.12]]) {
+            const off = -((cameraX * speed + frame * 0.15) % 480);
+            for (let k = -1; k < 3; k++) {
+                const x = off + k * 480;
+                const g = ctx.createRadialGradient(x + 240, y + 20, 10, x + 240, y + 20, 260);
+                g.addColorStop(0, theme.sky[2]); g.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.globalAlpha = a; ctx.fillStyle = g; ctx.fillRect(x, y - 60, 480, 120);
+            }
+        }
+        ctx.restore();
+    }
+    // Out-of-focus dust in front of everything, moving faster than the camera
+    function drawDust256() {
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        for (const d of dustMotes) {
+            const x = ((d.x - cameraX * 1.35 + Math.sin(frame * 0.01 + d.ph) * 8) % (W * 1.4) + W * 1.4) % (W * 1.4) - W * 0.2;
+            light(x, d.y + Math.sin(frame * 0.013 + d.ph) * 6, 3 + d.s * 2, '#e2e8f0', 0.12 * d.s);
+        }
         ctx.restore();
     }
 
@@ -3653,12 +4177,15 @@
         drawBackground();
 
         if (gfx128) drawShaftsHD();
+        if (gfx256) drawFog256();
 
         ctx.save();
         ctx.translate(snap(-cameraX + sx), snap(sy));
         drawTowers();
         drawPlatforms();
         if (gfx128) { drawPlatformShadingHD(); drawShadowsHD(); }
+        if (gfx256) drawReflections256();
+        drawAbilityFx();
         drawCheckpoints();
         drawTreasures();
         drawBeacon();
@@ -3678,13 +4205,14 @@
         ctx.restore();
 
         drawWeather();
+        if (gfx256) drawDust256();
         if (gfx128) {
             drawBloomHD();
             ctx.globalAlpha = 1;
             ctx.drawImage(vignetteCanvas, 0, 0, W, H);
         }
         drawWeaponStrip();
-        if (stage.contracts.length) drawContracts();
+        if (save.contracts.length) drawContracts();
         // crosshair (the system cursor is hidden over the canvas while mouse-aiming)
         canvas.style.cursor = mouse.active && state === 'playing' ? 'none' : '';
         if (mouse.active && state === 'playing') {

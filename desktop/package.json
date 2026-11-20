@@ -9,9 +9,11 @@
     "prepare-app": "node build-app.mjs",
     "start": "node build-app.mjs && electron .",
     "start:128": "node build-app.mjs 128 && electron .",
-    "dist": "npm run dist:64 && npm run dist:128",
+    "start:256": "node build-app.mjs 256 && electron .",
+    "dist": "npm run dist:64 && npm run dist:128 && npm run dist:256",
     "dist:64": "node build-app.mjs 64 && electron-builder --win portable -c.portable.artifactName=SaturnVanguard-64bit.exe",
-    "dist:128": "node build-app.mjs 128 && electron-builder --win portable -c.portable.artifactName=SaturnVanguard-128bit.exe"
+    "dist:128": "node build-app.mjs 128 && electron-builder --win portable -c.portable.artifactName=SaturnVanguard-128bit.exe",
+    "dist:256": "node build-app.mjs 256 && electron-builder --win portable -c.portable.artifactName=SaturnVanguard-256bit.exe"
   },
   "build": {
     "appId": "com.saturnvanguard.game",
