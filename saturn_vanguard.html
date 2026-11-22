@@ -251,6 +251,7 @@
                 <div class="w-full h-2.5 bg-slate-900 border border-slate-700 rounded overflow-hidden">
                     <div id="boss-hp-bar" class="h-full bg-gradient-to-r from-red-600 to-amber-500 transition-all" style="width: 100%;"></div>
                 </div>
+                <div id="boss-hud-hp" class="hidden text-[8px] pixel-font text-fuchsia-200 text-right mt-1"></div>
             </div>
         </div>
 
@@ -299,6 +300,12 @@
         clear:     { type: 'triangle', f0: 400, f1: 1200, dur: 0.60, vol: 0.14, exp: true },
         dash:      { type: 'sawtooth', f0: 900, f1: 180, dur: 0.12, vol: 0.07, exp: true },
         crit:      { type: 'triangle', f0: 1500, f1: 900, dur: 0.07, vol: 0.09, exp: true },
+        // Nimays' four resonance crystals each sing their own note (C, E, G, B)
+        crystal0:  { type: 'sine',     f0: 523, f1: 527, dur: 0.30, vol: 0.13 },
+        crystal1:  { type: 'sine',     f0: 659, f1: 664, dur: 0.30, vol: 0.13 },
+        crystal2:  { type: 'sine',     f0: 784, f1: 790, dur: 0.30, vol: 0.13 },
+        crystal3:  { type: 'sine',     f0: 988, f1: 995, dur: 0.30, vol: 0.13 },
+        wrong:     { type: 'sawtooth', f0: 220, f1: 70,  dur: 0.45, vol: 0.12 },
     };
     function playSound(name) {
         if (!audioCtx || muted) return;
@@ -672,6 +679,7 @@
         tyrant:   { name: 'DUNE TYRANT',   hp: 3200, r: 34 },
         hive:     { name: 'HIVE MOTHER',   hp: 3600, r: 30 },
         herald:   { name: 'VOID HERALD',   hp: 4800, r: 28 },
+        nimays:   { name: 'NIMAYS',        hp: 500000, r: 30 }, // the secret stage's boss: fixed HP on every difficulty
     };
 
     // Champions: tougher variants of normal enemies, rolled randomly each run and warped in mid-stage.
@@ -722,6 +730,21 @@
         },
     ];
     const TOTAL_STAGES = WORLDS.length * 3;
+    // Secret stage, outside the campaign count: NIMAYS SANCTUM. Unlocked by the Echo Shard hidden in the
+    // secret bunker of 4-2 HALL OF ECHOES, or by finishing the campaign.
+    const SECRET_STAGE = TOTAL_STAGES, SHARD_STAGE = 10;
+    const SECRET_WORLD = {
+        name: 'NIMAYS SANCTUM', stages: ['', '', 'NIMAYS SANCTUM'], boss: 'nimays', color: '#e879f9',
+        sky: ['#03000a', '#2e0a3d', '#831843'], planet: { x: 240, y: 48, r: 30, c1: '#fdf4ff', c2: '#a21caf', ring: 'rgba(232,121,249,0.7)' },
+        far: '#1f0a2e', mid: '#2d0f3f', midTop: '#c026d3', lights: 'rgba(244,114,182,0.5)', structure: 'spires',
+        ground: '#1c1028', groundTop: '#e879f9', seam: '#2c1840', plat: '#3f1d5c', platTop: '#f5d0fe', platGlow: 'rgba(232,121,249,0.35)',
+        weather: 'motes', friction: 1, gravity: 0.9, pitChance: 0.4, heightVar: 0.3, platDensity: 0.65, shieldChance: 0.9,
+        pool: { phantom: 3, shieldbearer: 1.5, sniper: 1.5, drone: 2, bomber: 1, juggernaut: 0.8 },
+    };
+    // Nimays is immune until her crystal puzzle is solved. Solving it shatters her ward (NIMAYS_SHATTER damage)
+    // and opens a NIMAYS_WINDOW-frame window where every hit is amplified NIMAYS_DMG_MULT times:
+    // without that, 500,000 HP could never be worn down.
+    const NIMAYS_DMG_MULT = 25, NIMAYS_SHATTER = 45000, NIMAYS_WINDOW = 540;
     const MAX_REACH = 54; // tallest ledge rise generated, kept under a held single jump (~64px)
     const EXTRACT_KILL_SHARE = 0.7; // share of a stage's hostiles to defeat before extraction unlocks
 
@@ -738,7 +761,7 @@
         const s = { credits: 0, gold: 0, unlocked: 0, best: 0, cleared: [], difficulty: 'normal', hordeBest: 0,
                  armor: Object.fromEntries(ARMOR_IDS.map(k => [k, 0])), paints: ['standard'], paint: Object.fromEntries(ARMOR_IDS.map(k => [k, 'standard'])),
                  skins: ['standard'], weaponSkin: {}, keys: Object.fromEntries(SIGIL_IDS.map(k => [k, 0])), sealed: [],
-                 contracts: [], offers: {}, inventory: inv, loadout: [] };
+                 contracts: [], offers: {}, inventory: inv, loadout: [], nimaysUnlocked: false, nimaysWins: 0 };
         fixLoadout(s); refillOffers(s);
         return s;
     }
@@ -796,7 +819,10 @@
                     sealed: Array.isArray(raw.sealed) ? raw.sealed.filter(c => c && SIGILS[c.sigil]).map(c => ({ uid: String(c.uid), sigil: c.sigil, level: Math.min(MAX_ITEM_LEVEL, Math.max(1, c.level | 0)) })) : [],
                     contracts: Array.isArray(raw.contracts) ? raw.contracts.map(loadContract).filter(Boolean).slice(0, MAX_ACTIVE_CONTRACTS) : [],
                     offers: {},
+                    nimaysWins: Math.max(0, raw.nimaysWins | 0),
                 };
+                // the secret stage opens with the Echo Shard, or for anyone who has finished the campaign
+                s.nimaysUnlocked = !!raw.nimaysUnlocked || s.cleared.includes(TOTAL_STAGES - 1);
                 for (const [wid, sk] of Object.entries(raw.weaponSkin || {})) if (WEAPONS[wid] && s.skins.includes(sk)) s.weaponSkin[wid] = sk;
                 for (const id of CONTRACTOR_IDS) s.offers[id] = (raw.offers && Array.isArray(raw.offers[id]) ? raw.offers[id] : []).map(loadContract).filter(c => c && c.npc === id).slice(0, OFFERS_PER_CONTRACTOR);
                 fixLoadout(s); refillOffers(s);
@@ -930,9 +956,9 @@
         selectedElement = el;
         ELEMENT_IDS.forEach(k => document.getElementById('elem-' + k).classList.toggle('sel', k === el));
     }
-    const stageLabel = i => `${Math.floor(i / 3) + 1}-${i % 3 + 1}`;
+    const stageLabel = i => i === SECRET_STAGE ? 'S-1' : `${Math.floor(i / 3) + 1}-${i % 3 + 1}`;
     function selectStage(i) {
-        if (i > save.unlocked) return;
+        if (i === SECRET_STAGE ? !save.nimaysUnlocked : i > save.unlocked) return;
         selectedStage = i;
         renderMenu();
     }
@@ -948,7 +974,14 @@
                         <span>${stageLabel(i)} ${locked ? 'LOCKED' : s}${si === 2 ? ' ☠' : ''}</span><span class="text-emerald-400">${done ? '✓' : ''}</span>
                     </button>`;
                 }).join('')}
-            </div>`).join('');
+            </div>`).join('') + (save.nimaysUnlocked
+            ? `<div class="col-span-2 bg-fuchsia-950/40 border border-fuchsia-800 rounded p-2">
+                <div class="pixel-font text-[8px] mb-2 text-fuchsia-400">SECRET • ${SECRET_WORLD.name}</div>
+                <button onclick="selectStage(${SECRET_STAGE})" style="--c:${SECRET_WORLD.color}"
+                    class="pick ${selectedStage === SECRET_STAGE ? 'sel' : ''} w-full text-left px-2 py-1 rounded text-[11px] flex justify-between">
+                    <span>S-1 NIMAYS ☠ (500,000 HP)</span><span class="text-emerald-400">${save.nimaysWins ? '✓ ×' + save.nimaysWins : ''}</span>
+                </button></div>`
+            : `<div class="col-span-2 border border-dashed border-slate-800 rounded p-2 text-[10px] text-slate-500 italic">??? Something echoes inside the walls of the Hall of Echoes...</div>`);
         document.getElementById('launch-btn').textContent = 'LAUNCH ' + stageLabel(selectedStage);
         document.getElementById('menu-credits').textContent = save.credits;
         document.getElementById('menu-gold').textContent = save.gold;
@@ -1503,27 +1536,38 @@
     }
 
     function generateStage(idx) {
-        const wi = Math.floor(idx / 3), si = idx % 3, w = WORLDS[wi];
+        // the secret stage plays like a world-4 boss stage, in its own sanctum theme
+        const secret = idx === SECRET_STAGE;
+        const wi = secret ? 3 : Math.floor(idx / 3), si = secret ? 2 : idx % 3, w = secret ? SECRET_WORLD : WORLDS[wi];
         // A fresh seed every run: the stage is rebuilt from shuffled modules each time you play it
-        const rnd = mulberry32((7919 * (wi + 1) + 104729 * (si + 1)) ^ ((Math.random() * 0x7fffffff) | 0));
+        const rnd = mulberry32((7919 * (wi + 1) + 104729 * (si + 1) + (secret ? 31337 : 0)) ^ ((Math.random() * 0x7fffffff) | 0));
         const isBoss = si === 2;
-        const levelW = isBoss ? 2900 + wi * 120 : 4800 + si * 700 + wi * 300; // ~50% longer than before
+        const levelW = secret ? 3100 : isBoss ? 2900 + wi * 120 : 4800 + si * 700 + wi * 300; // ~50% longer than before
         const arenaX = isBoss ? levelW - 700 : null;
         theme = w;
         // difficulty scales enemy health here; its damage factor is applied once, in hurtPlayer (covers bosses and beams too)
-        diff = { hp: (1 + 0.3 * wi + 0.1 * si) * dcfg().hp, dmg: 1 + 0.15 * wi };
-        stage = { idx, world: wi, sub: si, name: w.stages[si], isBoss, levelW, arenaX, endX: isBoss ? null : levelW - 140,
-                  secretsFound: 0, secretsTotal: 0, champKinds: [], loot: [], cp: null, contracts: [], stats: newStageStats() };
+        diff = secret ? { hp: 2.2 * dcfg().hp, dmg: 1.6 } : { hp: (1 + 0.3 * wi + 0.1 * si) * dcfg().hp, dmg: 1 + 0.15 * wi };
+        stage = { idx, world: wi, sub: si, secret, name: w.stages[si], isBoss, levelW, arenaX, endX: isBoss ? null : levelW - 140,
+                  secretsFound: 0, secretsTotal: 0, champKinds: [], loot: [], cp: null, contracts: [], stats: newStageStats(), pylons: null };
         platforms = []; enemies = []; structures = []; treasures = []; checkpoints = [];
 
         buildModules(rnd, w, isBoss, levelW, arenaX);
         if (isBoss) {
             platforms.push({ x: arenaX + 110, y: 230 - MAX_REACH, w: 90, h: 12 }, { x: arenaX + 500, y: 230 - MAX_REACH, w: 90, h: 12 });
         }
+        // Nimays' four resonance crystals, one per sigil: two on the arena ledges, two on the floor between them.
+        // They span ~340px (inner ends of the ledges) so all four stay on screen from the middle of the arena.
+        if (secret) stage.pylons = [[arenaX + 184, 230 - MAX_REACH], [arenaX + 282, 230], [arenaX + 406, 230], [arenaX + 504, 230 - MAX_REACH]]
+            .map(([x, gy], i) => ({ i, x, y: gy - 24, w: 12, h: 24, sigil: SIGIL_IDS[i], flash: 0, flashColor: '#fff' }));
+        // the Echo Shard that unlocks the secret stage hides beside the stash in this stage's secret bunker
+        if (idx === SHARD_STAGE && !save.nimaysUnlocked) {
+            const stash = treasures.find(t => t.kind === 'secret');
+            if (stash) addTreasure(stash.x + 18, stash.y + stash.h, 'shard', { w: 8, h: 12, y: stash.y + stash.h - 12 });
+        }
         placeSealedAndKeys(isBoss, arenaX);
 
         // Enemies
-        const count = isBoss ? 10 + wi * 3 : 24 + si * 7 + wi * 5; // ~70% more hostiles
+        const count = secret ? 20 : isBoss ? 10 + wi * 3 : 24 + si * 7 + wi * 5; // ~70% more hostiles
         const s0 = 520, s1 = isBoss ? arenaX - 200 : levelW - 260;
         for (let i = 0; i < count; i++) {
             let ex = s0 + (s1 - s0) * (i + rnd() * 0.8) / count;
@@ -1719,6 +1763,15 @@
             if (t.opened || !overlap(pb, t)) continue;
             t.opened = true; stage.secretsFound++;
             const cx = t.x + 7, cy = t.y;
+            if (t.kind === 'shard') { // the Echo Shard: opens the secret stage for good
+                save.nimaysUnlocked = true; persist();
+                popText(cx - 60, cy - 24, 'ECHO SHARD: A SECRET PATH OPENS', '#e879f9');
+                popText(cx - 56, cy - 14, 'NIMAYS SANCTUM UNLOCKED (MENU)', '#f5d0fe');
+                rings.push({ x: cx, y: cy, r: 4, maxR: 60, life: 30, max: 30, color: '#e879f9' });
+                burst(cx, cy, 30, '#e879f9', 3.5, 40);
+                flash = 6; playSound('super');
+                continue;
+            }
             if (t.kind === 'sealed' || t.kind === 'key') { // carried home, not opened here
                 const sg = SIGILS[t.sigil];
                 if (t.kind === 'sealed') {
@@ -1776,10 +1829,12 @@
     }
 
     function makeBoss(type) {
-        const d = BOSSES[type], ax = stage.arenaX, hp = Math.round(d.hp * dcfg().hp);
+        const d = BOSSES[type], ax = stage.arenaX, hp = type === 'nimays' ? d.hp : Math.round(d.hp * dcfg().hp);
         return {
             type, name: d.name, x: ax + 420, y: type === 'tyrant' ? 190 : 110, r: d.r, hp, maxHp: hp,
-            immune: false, phaseTimer: 0, attackTimer: 0, spreadTimer: 0, specialTimer: type === 'hive' ? 200 : 0,
+            // Nimays' puzzle: the crystal sequence, how far the player has got, and how many wards were broken
+            seq: [], step: 0, inputIdx: 0, lit: -1, cycle: 0, reverse: false, lastPylon: -1,
+            immune: type === 'nimays', phaseTimer: 0, attackTimer: 0, spreadTimer: 0, specialTimer: type === 'hive' ? 200 : 0,
             active: false, dead: false, hurt: 0, t: 0, alpha: 1, home: ax + 420, vx: 0.8, facing: -1,
             state: 'idle', stateT: 0, spot: 1, burstLeft: 0, burstT: 0, immuneT: 0, adds: 0,
         };
@@ -1837,6 +1892,7 @@
         for (const k in keys) keys[k] = false;
         for (const k in hudCache) delete hudCache[k];
         document.getElementById('boss-hud').classList.add('hidden');
+        document.getElementById('boss-hud-hp').classList.add('hidden');
         document.getElementById('hud-stage').textContent = stage.horde ? 'HORDE MODE' : `${stageLabel(stage.idx)} ${stage.name}`;
     }
 
@@ -2248,6 +2304,7 @@
         const el = document.getElementById('boss-hud-status');
         if (!boss) return;
         if (boss.dead) { el.textContent = 'DESTROYED'; el.className = 'text-emerald-400'; return; }
+        if (boss.type === 'nimays') return; // her puzzle status is written every frame by updateHud
         el.textContent = boss.immune ? 'IMMUNE' : 'VULNERABLE';
         el.className = boss.immune ? 'text-sky-400' : 'text-yellow-400';
     }
@@ -2259,9 +2316,10 @@
             burst(boss.x, boss.y, 2, '#7dd3fc', 2, 10);
             return false;
         }
+        if (boss.type === 'nimays') dmg *= NIMAYS_DMG_MULT; // only reachable while her ward is broken
         boss.hp -= dmg;
         boss.hurt = 4;
-        score += Math.round(dmg / 2);
+        score += Math.round(dmg / (boss.type === 'nimays' ? 40 : 2));
         playSound('hit');
         if (boss.hp <= 0) {
             boss.hp = 0; boss.dead = true; victoryTimer = 140;
@@ -2322,7 +2380,10 @@
         const inArena = boss && boss.active && !boss.dead;
         if (inArena) { // respawn at the arena entrance; the boss recovers a little
             p.x = stage.arenaX + 50; p.y = 230 - p.h - 4;
-            boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.15);
+            if (boss.type === 'nimays') { // a small heal, and her ward reforms with the same sequence
+                boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.02);
+                nimaysShow(boss);
+            } else boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.15);
         } else if (stage.cp) { p.x = stage.cp.x - p.w / 2; p.y = stage.cp.y - p.h - 4; }
         else { p.x = 60; p.y = 190; }
         p.hp = p.maxHp; p.shield = p.maxShield; p.vx = 0; p.vy = 0;
@@ -2468,14 +2529,27 @@
         stopMusic(1.5); // fade out over the results
         const idx = stage.idx;
         let bonus = 0, sub = '';
-        if (won) {
+        if (won && stage.secret) { // Nimays: kept apart from campaign progress
+            bonus = 6000;
+            save.nimaysWins++;
+            // a guaranteed Exotic and one key of every sigil
+            const item = makeItem(WEAPON_ORDER[Math.floor(Math.random() * WEAPON_ORDER.length)], 'exotic', dropLevel());
+            save.inventory.push(item); stage.loot.push(item);
+            for (const k of SIGIL_IDS) save.keys[k]++;
+            stage.keysFound = (stage.keysFound || 0) + SIGIL_IDS.length;
+            sub = save.nimaysWins === 1 ? 'NIMAYS FALLS. THE ECHOES GO SILENT.' : `NIMAYS DEFEATED ×${save.nimaysWins}`;
+            playSound('clear');
+        } else if (won) {
             bonus = 250 + 100 * idx + (stage.isBoss ? 1000 + 500 * stage.world : 0);
             if (!save.cleared.includes(idx)) save.cleared.push(idx);
             if (idx + 1 < TOTAL_STAGES && save.unlocked < idx + 1) {
                 save.unlocked = idx + 1;
                 sub = stage.isBoss ? `NEW WORLD UNLOCKED: ${WORLDS[stage.world + 1].name}` : `STAGE ${stageLabel(idx + 1)} UNLOCKED`;
             }
-            if (idx === TOTAL_STAGES - 1) sub = 'THE SYSTEM IS SAVED. CAMPAIGN COMPLETE!';
+            if (idx === TOTAL_STAGES - 1) {
+                sub = 'THE SYSTEM IS SAVED. CAMPAIGN COMPLETE!';
+                if (!save.nimaysUnlocked) { save.nimaysUnlocked = true; sub += ' A SECRET STAGE HAS OPENED...'; }
+            }
             playSound('clear');
         } else {
             sub = 'Mission abandoned. Credits from kills are kept.';
@@ -2485,7 +2559,7 @@
         const earned = Math.round((credits + bonus) * dcfg().credits);
         st.earned = earned;
         // GOLD (the cosmetics currency) is only paid for clearing a stage
-        const gold = won ? Math.max(1, Math.round((2 + stage.world + (stage.isBoss ? 3 : 0)) * dcfg().credits)) : 0;
+        const gold = !won ? 0 : stage.secret ? Math.round(30 * dcfg().credits) : Math.max(1, Math.round((2 + stage.world + (stage.isBoss ? 3 : 0)) * dcfg().credits));
         save.credits += earned; save.gold += gold;
         save.best = Math.max(save.best, score);
         const finished = bankContracts();
@@ -2518,8 +2592,8 @@
 
     function showResults(r) {
         const title = document.getElementById('end-title');
-        const last = r.idx === TOTAL_STAGES - 1;
-        title.textContent = r.horde ? 'HORDE OVER' : r.won ? (last ? 'CAMPAIGN COMPLETE!' : stage && stage.isBoss ? 'WORLD CLEARED!' : 'STAGE CLEARED!') : 'MISSION ABANDONED';
+        const secret = r.idx === SECRET_STAGE, last = r.idx === TOTAL_STAGES - 1 || secret; // no NEXT after these
+        title.textContent = r.horde ? 'HORDE OVER' : r.won ? (secret ? 'NIMAYS DEFEATED!' : last ? 'CAMPAIGN COMPLETE!' : stage && stage.isBoss ? 'WORLD CLEARED!' : 'STAGE CLEARED!') : 'MISSION ABANDONED';
         title.className = 'pixel-font text-xl font-bold mb-2 ' + (r.horde ? 'text-fuchsia-400' : r.won ? 'text-yellow-400' : 'text-red-500');
         document.getElementById('end-sub').textContent = r.sub;
         document.getElementById('final-score').textContent = r.score;
@@ -2930,7 +3004,102 @@
                 popText(b.x - 30, b.y - 40, 'PHANTOMS SUMMONED', '#e9d5ff');
             }
         },
+        // NIMAYS: immune while she runs her crystal puzzle.
+        //  show   she lights the crystals one by one (each with its own note)
+        //  input  shoot the crystals in that order; in reverse order below 25% HP
+        //  fail   wrong crystal or too slow: a punishing burst, then the same sequence again
+        //  broken puzzle solved: the ward shatters and hits are amplified for a short window
+        nimays(b, enraged) {
+            const ax = stage.arenaX;
+            for (const py of stage.pylons) { if (py.flash > 0) py.flash--; if (py.cd > 0) py.cd--; }
+            if (b.state === 'idle') { b.home = ax + 350; nimaysSequence(b); }
+            if (b.state === 'broken') { // dazed: she sinks lower and fights back weakly
+                b.x += (b.home + Math.sin(b.t * 0.02) * 60 - b.x) * 0.05;
+                b.y += (132 - b.y) * 0.05;
+            } else {
+                b.x += (b.home + Math.sin(b.t * 0.009) * 120 - b.x) * 0.08;
+                b.y += (78 + Math.sin(b.t * 0.03) * 10 - b.y) * 0.08;
+            }
+            if (b.state === 'show') {
+                b.lit = b.step >= 0 && b.stateT > 14 ? b.seq[b.step] : -1;
+                if (--b.stateT <= 0) {
+                    b.step++; b.stateT = 50;
+                    if (b.step >= b.seq.length) {
+                        b.state = 'input'; b.lit = -1; b.inputIdx = 0; b.lastPylon = -1;
+                        b.stateT = 60 * (5 + 2 * b.seq.length); // seconds to answer grow with the sequence
+                        popText(b.x - 46, b.y + b.r + 26, b.reverse ? 'NOW IN REVERSE!' : 'YOUR TURN!', b.reverse ? '#f87171' : '#f5d0fe');
+                        // below 50% HP her echoes (phantoms) join each answer phase
+                        if (enraged && enemies.filter(e => e.minion && !e.dead).length < 2) {
+                            const ex = ax + 200 + Math.random() * 300, m = makeEnemy('phantom', ex, 230 - 30, ELEMENT_IDS[Math.floor(Math.random() * 3)]);
+                            m.minion = true; m.tpTimer = 90; enemies.push(m);
+                            burst(ex + 9, 215, 12, '#e879f9', 2);
+                        }
+                    } else playSound('crystal' + b.seq[b.step]);
+                }
+            } else if (b.state === 'input') {
+                if (--b.stateT <= 0) nimaysFail(b, 'TOO SLOW!');
+            } else if (b.state === 'fail') {
+                if (--b.stateT <= 0) nimaysShow(b);
+            } else if (b.state === 'broken') {
+                if (--b.stateT <= 0) {
+                    b.cycle++;
+                    popText(b.x - 40, b.y + b.r + 26, 'HER WARD REFORMS', '#7dd3fc');
+                    playSound('shield');
+                    nimaysSequence(b);
+                }
+            }
+            // attacks: lighter while she shows the sequence, so it can be watched
+            const rate = b.state === 'show' ? 130 : b.state === 'broken' ? 110 : enraged ? 65 : 85;
+            if (++b.attackTimer > rate) {
+                b.attackTimer = 0;
+                const a = Math.atan2(player.y + player.h / 2 - b.y, player.x + player.w / 2 - b.x);
+                for (const d of [-0.16, 0, 0.16]) enemyShot(b.x, b.y, a + d, 3.1, 14, { big: true, voidOrb: true });
+                playSound('enemyShot');
+            }
+            if (b.state === 'input' && ++b.spreadTimer > (enraged ? 200 : 260)) { b.spreadTimer = 0; bossRing(b, enraged ? 14 : 10, 2.1, 12); }
+            if (b.state === 'input' && enraged && b.t % 240 === 0) hazards.push({ x: player.x + player.w / 2, warn: 60, fire: 25 });
+        },
     };
+    function nimaysSequence(b) { // a new sequence: 3 crystals, one more per broken ward (max 7), never the same one twice in a row
+        const n = Math.min(3 + b.cycle, 7), seq = [];
+        while (seq.length < n) { const k = Math.floor(Math.random() * 4); if (k !== seq[seq.length - 1]) seq.push(k); }
+        b.seq = seq;
+        nimaysShow(b);
+    }
+    function nimaysShow(b) {
+        if (!b.seq.length) { nimaysSequence(b); return; }
+        b.state = 'show'; b.step = -1; b.stateT = 45; b.lit = -1; b.inputIdx = 0; b.immune = true;
+        b.reverse = b.hp < b.maxHp * 0.25;
+    }
+    function nimaysFail(b, why) {
+        b.state = 'fail'; b.stateT = 100; b.lit = -1;
+        popText(b.x - 36, b.y + b.r + 26, why, '#f87171');
+        playSound('wrong'); shake = Math.max(shake, 5);
+        for (const py of stage.pylons) { py.flash = 30; py.flashColor = '#ef4444'; hazards.push({ x: py.x + py.w / 2, warn: 50, fire: 22 }); }
+        bossRing(b, 16, 2.4, 14);
+    }
+    function nimaysBreak(b) {
+        b.state = 'broken'; b.stateT = NIMAYS_WINDOW; b.immune = false; b.lit = -1;
+        popText(b.x - 40, b.y + b.r + 26, 'WARD SHATTERED!', '#fde047');
+        flash = 10; shake = 8;
+        explosionFx(b.x, b.y, 80, '#e879f9');
+        damageBoss(NIMAYS_SHATTER / NIMAYS_DMG_MULT);
+        spawnItem(b.x - 20, b.y + 40, 'heavy'); spawnItem(b.x + 20, b.y + 40, 'special'); spawnItem(b.x, b.y + 40, 'orb');
+    }
+    // A player shot struck crystal py
+    function hitPylon(py) {
+        const b = boss;
+        if (py.cd > 0 || !b || b.dead) return;
+        py.cd = 10;
+        if (b.state !== 'input') { py.flash = 8; py.flashColor = '#94a3b8'; return; } // inert outside the answer phase
+        if (py.i === b.lastPylon) return; // still the crystal you just struck: never the next one in a sequence
+        const want = b.seq[b.reverse ? b.seq.length - 1 - b.inputIdx : b.inputIdx];
+        if (py.i !== want) { nimaysFail(b, 'WRONG CRYSTAL!'); return; }
+        py.flash = 24; py.flashColor = '#4ade80'; b.lastPylon = py.i; b.inputIdx++;
+        playSound('crystal' + py.i);
+        rings.push({ x: py.x + 6, y: py.y + 10, r: 3, maxR: 22, life: 14, max: 14, color: SIGILS[py.sigil].color });
+        if (b.inputIdx >= b.seq.length) nimaysBreak(b);
+    }
 
     function updateBoss() {
         const b = boss;
@@ -2999,6 +3168,11 @@
             }
 
             if (b.owner === 'player') {
+                // Nimays' crystals catch any player shot once the fight has started
+                if (stage.pylons && boss && boss.active && !boss.dead) {
+                    const py = stage.pylons.find(q => b.x > q.x - 2 && b.x < q.x + q.w + 2 && b.y > q.y - 2 && b.y < q.y + q.h);
+                    if (py) { if (isExplosive(b)) detonate(b); else b.dead = true; hitPylon(py); continue; }
+                }
                 const box = { x: b.x - 2, y: b.y - 2, w: 4, h: 4 };
                 if (isExplosive(b)) {
                     const rad = b.kind === 'nova' ? 8 : 3;
@@ -3179,6 +3353,15 @@
         if (boss && boss.active) {
             const pct = Math.max(0, boss.hp / boss.maxHp * 100).toFixed(1);
             if (hudCache.bossbar !== pct) { hudCache.bossbar = pct; document.getElementById('boss-hp-bar').style.width = pct + '%'; }
+            if (boss.type === 'nimays') {
+                setHud('boss-hud-hp', `${Math.ceil(boss.hp).toLocaleString('en-US')} / ${boss.maxHp.toLocaleString('en-US')}`, 'text-[8px] pixel-font text-fuchsia-200 text-right mt-1');
+                if (!boss.dead) {
+                    const b = boss, st = b.state === 'broken' ? [`VULNERABLE ${Math.ceil(b.stateT / 60)}s`, 'text-yellow-400']
+                        : b.state === 'input' ? [`IMMUNE • ${b.inputIdx}/${b.seq.length} • ${Math.ceil(b.stateT / 60)}s`, 'text-fuchsia-300']
+                        : b.state === 'fail' ? ['IMMUNE • FAILED', 'text-red-400'] : ['IMMUNE • WATCH', 'text-sky-400'];
+                    setHud('boss-hud-status', st[0], st[1]);
+                }
+            }
         }
     }
 
@@ -3367,6 +3550,15 @@
     function drawTreasures() {
         for (const t of treasures) {
             if (t.x + t.w < cameraX || t.x > cameraX + W) continue;
+            if (t.kind === 'shard') { // a floating magenta crystal shard
+                if (t.opened) continue;
+                const y = t.y + Math.sin(frame * 0.07) * 1.5;
+                ctx.fillStyle = '#a21caf';
+                ctx.beginPath(); ctx.moveTo(t.x + 4, y); ctx.lineTo(t.x + 8, y + 6); ctx.lineTo(t.x + 4, y + 12); ctx.lineTo(t.x, y + 6); ctx.fill();
+                ctx.fillStyle = '#f5d0fe'; ctx.fillRect(t.x + 3, y + 3, 2, 5);
+                if (frame % 30 < 4) { ctx.fillStyle = '#fff'; ctx.fillRect(t.x + 4, y + 1, 1.5, 1.5); }
+                continue;
+            }
             if (t.kind === 'sealed' || t.kind === 'key') { // collected (vanish) instead of being opened
                 if (t.opened) continue;
                 const sg = SIGILS[t.sigil].color, bob = Math.sin(frame * 0.08 + t.x) * 1;
@@ -3596,7 +3788,7 @@
         ctx.globalAlpha = b.dead ? Math.max(0, (victoryTimer - 40) / 100) : b.alpha;
         const white = b.hurt > 0;
         const ea = Math.atan2(player.y + 15 - b.y, player.x + 8 - b.x);
-        const glowColor = { overseer: '239,68,68', tyrant: '251,146,60', hive: '103,232,249', herald: '192,132,252' }[b.type];
+        const glowColor = { overseer: '239,68,68', tyrant: '251,146,60', hive: '103,232,249', herald: '192,132,252', nimays: '232,121,249' }[b.type];
         const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, b.r + 24);
         glow.addColorStop(0, `rgba(${glowColor},0.35)`); glow.addColorStop(1, `rgba(${glowColor},0)`);
         ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, b.r + 24, 0, Math.PI * 2); ctx.fill();
@@ -3627,6 +3819,31 @@
             ctx.fillStyle = '#57534e'; ctx.fillRect(0, -5, 20, 10); ctx.restore();
             ctx.fillStyle = '#fde047'; ctx.beginPath(); ctx.arc(b.facing * 24, -8, 6, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.fillRect(b.facing * 24 - 2 + b.facing * 2, -10, 3, 3);
+        } else if (b.type === 'nimays') {
+            // a hooded crystal sovereign: trailing veil, diamond body, crown of shards and a single eye
+            const lc = b.lit >= 0 ? SIGILS[SIGIL_IDS[b.lit]].color : '#e879f9';
+            ctx.fillStyle = white ? '#fff' : '#3b0a4f';
+            for (let i = 0; i < 5; i++) { // veil strands
+                const tx = -18 + i * 9, sw = Math.sin(b.t * 0.05 + i * 1.3) * 7;
+                ctx.beginPath(); ctx.moveTo(tx - 4, 10); ctx.quadraticCurveTo(tx + sw, 34, tx + sw * 1.4, 52 + (i % 2) * 6); ctx.lineTo(tx + 4, 10); ctx.fill();
+            }
+            ctx.fillStyle = white ? '#fff' : '#581c87'; // robe
+            ctx.beginPath(); ctx.moveTo(0, -b.r); ctx.lineTo(b.r * 0.85, 4); ctx.lineTo(b.r * 0.5, b.r + 6); ctx.lineTo(-b.r * 0.5, b.r + 6); ctx.lineTo(-b.r * 0.85, 4); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = white ? '#fff' : '#a21caf'; // inner crystal
+            ctx.beginPath(); ctx.moveTo(0, -b.r + 8); ctx.lineTo(b.r * 0.45, 4); ctx.lineTo(0, b.r - 2); ctx.lineTo(-b.r * 0.45, 4); ctx.fill();
+            ctx.fillStyle = '#1e0a2e'; // hood
+            ctx.beginPath(); ctx.arc(0, -b.r + 6, 11, Math.PI, 0); ctx.lineTo(9, -b.r + 16); ctx.lineTo(-9, -b.r + 16); ctx.fill();
+            for (let i = 0; i < 5; i++) { // crown of floating shards, recoloured by the crystal she is showing
+                const a = -Math.PI / 2 + (i - 2) * 0.45, rr = b.r + 4 + Math.sin(b.t * 0.08 + i) * 2;
+                ctx.save(); ctx.translate(Math.cos(a) * rr, Math.sin(a) * rr - 6); ctx.rotate(a + Math.PI / 2);
+                ctx.fillStyle = lc; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(2.5, 0); ctx.lineTo(0, 4); ctx.lineTo(-2.5, 0); ctx.fill(); ctx.restore();
+            }
+            ctx.fillStyle = lc; ctx.beginPath(); ctx.arc(Math.cos(ea) * 2, -b.r + 11 + Math.sin(ea) * 1.5, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.fillRect(Math.cos(ea) * 2 - 1, -b.r + 10 + Math.sin(ea) * 1.5, 2, 2);
+            if (b.state === 'broken') { // cracks in the shattered ward
+                ctx.strokeStyle = `rgba(253,224,71,${0.5 + 0.3 * Math.sin(frame * 0.3)})`; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-2, 2); ctx.lineTo(-6, 10); ctx.moveTo(6, -10); ctx.lineTo(2, 0); ctx.lineTo(8, 8); ctx.stroke();
+            }
         } else if (b.type === 'hive') {
             ctx.strokeStyle = '#155e75'; ctx.lineWidth = 3;
             for (let i = 0; i < 5; i++) {
@@ -3667,6 +3884,42 @@
             ctx.fillRect(-60, 36, 120, 4);
         }
         ctx.restore();
+    }
+
+    // Nimays' four sigil crystals, the beam to the one she is showing, and the sequence pips above her
+    function drawPylons() {
+        if (!stage.pylons) return;
+        const b = boss, live = b && b.active && !b.dead;
+        for (const py of stage.pylons) {
+            const c = SIGILS[py.sigil].color, lit = live && b.lit === py.i, fl = py.flash > 0;
+            ctx.fillStyle = '#1e1b2e'; ctx.fillRect(py.x - 2, py.y + py.h - 4, py.w + 4, 4); // pedestal
+            ctx.fillStyle = lit ? '#fff' : fl ? py.flashColor : c;
+            ctx.globalAlpha = lit || fl ? 1 : 0.75;
+            const cx = py.x + py.w / 2, top = py.y + Math.sin(frame * 0.05 + py.i) * 1.5;
+            ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(py.x + py.w, top + 9); ctx.lineTo(cx + 2, py.y + py.h - 4); ctx.lineTo(cx - 2, py.y + py.h - 4); ctx.lineTo(py.x, top + 9); ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(cx - 1, top + 4, 2, 9);
+            if (lit) { // a halo while it is being shown
+                ctx.strokeStyle = c; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(cx, py.y + 10, 14 + Math.sin(frame * 0.3) * 2, 0, Math.PI * 2); ctx.stroke();
+            }
+        }
+        if (!live) return;
+        if (b.lit >= 0) { // a beam from Nimays to the crystal she is showing
+            const py = stage.pylons[b.lit];
+            ctx.strokeStyle = SIGILS[py.sigil].color; ctx.globalAlpha = 0.55 + 0.25 * Math.sin(frame * 0.4); ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(py.x + py.w / 2, py.y + 6); ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
+        if (b.seq.length && b.state !== 'broken') { // one pip per step: shown steps take their colour, answered steps turn green
+            const n = b.seq.length, x0 = b.x - n * 4, y = b.y + b.r + 38; // below her veil: the boss HUD covers the space above
+            for (let i = 0; i < n; i++) {
+                const shown = b.state === 'show' && i <= b.step, done = b.state === 'input' && i < b.inputIdx;
+                ctx.fillStyle = done ? '#4ade80' : shown ? SIGILS[SIGIL_IDS[b.seq[i]]].color : b.state === 'fail' ? '#ef4444' : '#475569';
+                ctx.fillRect(x0 + i * 8, y, 6, 4);
+            }
+            if (b.reverse) { ctx.font = '5px "Press Start 2P", monospace'; ctx.fillStyle = '#f87171'; ctx.fillText('REVERSE', b.x - 17, y + 11); }
+        }
     }
 
     function drawHazards() {
@@ -4045,8 +4298,8 @@
         }
         for (const t of treasures) {
             if (t.opened || t.x < cameraX - 30 || t.x > cameraX + W + 30) continue;
-            const hidden = t.kind === 'secret' && !structures.some(s => s.kind === 'bunker' && s.reveal > 0.5 && t.x >= s.x && t.x <= s.x + s.w);
-            const col = t.sigil ? SIGILS[t.sigil].color : t.kind === 'secret' ? '#e879f9' : t.kind === 'chest' ? '#facc15' : '#4ade80';
+            const hidden = (t.kind === 'secret' || t.kind === 'shard') && !structures.some(s => s.kind === 'bunker' && s.reveal > 0.5 && t.x >= s.x && t.x <= s.x + s.w);
+            const col = t.sigil ? SIGILS[t.sigil].color : t.kind === 'secret' || t.kind === 'shard' ? '#e879f9' : t.kind === 'chest' ? '#facc15' : '#4ade80';
             if (!hidden) light(t.x + 7, t.y + 5, 18, col, 0.4 + 0.1 * Math.sin(frame * 0.1));
         }
         for (const s of structures) if (s.kind === 'tower' && Math.abs(s.ex - cameraX - W / 2) < W) light(s.ex + 17, s.y - 18, 12, '#facc15', frame % 60 < 30 ? 0.5 : 0.2);
@@ -4063,8 +4316,12 @@
             if (en.champ) light(en.x + en.w / 2, en.y + en.h / 2, en.w * 1.6 + (en.barrier > 0 ? 10 : 0), CHAMPIONS[en.champ].color, (en.barrier > 0 ? 0.35 : 0.22) * en.alpha);
         }
         if (boss && boss.active && !boss.dead) {
-            const gc = { overseer: '#ef4444', tyrant: '#fb923c', hive: '#67e8f9', herald: '#c084fc' }[boss.type];
+            const gc = { overseer: '#ef4444', tyrant: '#fb923c', hive: '#67e8f9', herald: '#c084fc', nimays: '#e879f9' }[boss.type];
             light(boss.x, boss.y, boss.r + 50, gc, 0.3 * boss.alpha);
+        }
+        if (stage.pylons) for (const py of stage.pylons) {
+            const lit = boss && boss.lit === py.i;
+            light(py.x + 6, py.y + 8, lit ? 40 : py.flash > 0 ? 28 : 14, py.flash > 0 && !lit ? py.flashColor : SIGILS[py.sigil].color, lit ? 0.8 : 0.35);
         }
         for (const h of hazards) {
             if (h.warn > 0) continue;
@@ -4188,6 +4445,7 @@
         drawAbilityFx();
         drawCheckpoints();
         drawTreasures();
+        drawPylons();
         drawBeacon();
         if (boss && boss.active && !boss.dead) {
             ctx.fillStyle = `rgba(56,189,248,${0.25 + 0.15 * Math.sin(frame * 0.1)})`;
@@ -4245,9 +4503,9 @@
             }
         } else if (stageIntro > 0) {
             ctx.globalAlpha = Math.min(1, stageIntro / 30);
-            centerText(`WORLD ${stage.world + 1}: ${theme.name}`, 92, 7, WORLDS[stage.world].color);
+            centerText(stage.secret ? 'SECRET STAGE' : `WORLD ${stage.world + 1}: ${theme.name}`, 92, 7, stage.secret ? SECRET_WORLD.color : WORLDS[stage.world].color);
             centerText(`${stageLabel(stage.idx)}  ${stage.name}`, 112, 11, '#facc15');
-            centerText(stage.isBoss ? 'DEFEAT THE GUARDIAN BOSS' : `DEFEAT ${stage.killsNeeded} HOSTILES, THEN EXTRACT`, 132, 6, '#e2e8f0');
+            centerText(stage.secret ? 'NIMAYS IS IMMUNE UNTIL YOU SOLVE HER CRYSTAL PUZZLE' : stage.isBoss ? 'DEFEAT THE GUARDIAN BOSS' : `DEFEAT ${stage.killsNeeded} HOSTILES, THEN EXTRACT`, 132, 6, '#e2e8f0');
             if (stage.champKinds.length) centerText('CHAMPIONS: ' + stage.champKinds.map(k => CHAMPIONS[k].name).join(' + '), 148, 5, CHAMPIONS[stage.champKinds[0]].color);
             ctx.globalAlpha = 1;
         }
@@ -4255,6 +4513,9 @@
             centerText('WARNING', 100, 14, '#ef4444');
             centerText(boss.name + ' APPROACHING', 122, 7, '#fca5a5');
         }
+        // Nimays' first ward: spell out the rule once
+        if (boss && boss.type === 'nimays' && boss.active && !boss.dead && boss.cycle === 0 && bossIntro <= 0 && boss.state !== 'broken')
+            centerText(boss.state === 'input' ? 'SHOOT THE CRYSTALS IN THE SAME ORDER' : 'WATCH THE ORDER OF THE CRYSTALS', 236, 5, '#f5d0fe');
         if (state === 'paused') {
             ctx.fillStyle = 'rgba(2, 6, 23, 0.7)'; ctx.fillRect(0, 0, W, H);
             centerText('PAUSED', 112, 16, '#facc15');
