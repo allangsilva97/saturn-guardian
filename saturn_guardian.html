@@ -130,7 +130,7 @@
                         <div class="bg-slate-950 p-2 border border-slate-800 rounded text-[12px] text-slate-300 leading-snug">
                             <span class="block mb-1"><span class="text-yellow-300">Skill wins fights.</span> Headshots are critical hits (+75%, sniper +150%).
                             <span class="text-sky-300">[Shift]</span> dashes through shots; dodging a hit that way is a PERFECT DODGE: +25% damage for 3s and the dash is refunded.
-                            Dying sends you back to the last checkpoint and costs score and credits.</span>
+                            You have a few lives per stage (3 on Normal): dying sends you back to the last checkpoint and costs score and credits, and losing the last life fails the mission.</span>
                             Match your element to a shield's colour to shatter it. Melee breaks any shield.
                             Shieldbearers block shots from the front, so flank them or use explosives. Crouch to duck under level shots.
                             <span class="block mt-1">Champions (max 2 types per stage, shown at the start): <span style="color:#22d3ee">BARRIER</span> &rarr; Piercer Rifle;
@@ -275,7 +275,7 @@
             <div class="flex items-center gap-3">
                 <div>HP <span id="hud-hp" class="text-emerald-400 font-bold">100</span></div>
                 <div>SHIELD <span id="hud-shield" class="text-sky-400 font-bold">100</span></div>
-                <div>DEATHS <span id="hud-lives" class="text-sky-400 font-bold">0</span></div>
+                <div>LIVES <span id="hud-lives" class="text-sky-400 font-bold">3</span></div>
                 <div>SUPER <span id="hud-super" class="text-yellow-400 font-bold">0%</span></div>
             </div>
             <div id="hud-stage" class="pixel-font text-center text-[9px] text-white tracking-widest hidden md:block">1-1</div>
@@ -597,11 +597,11 @@
     const magSizeOf = it => Math.max(1, Math.round(WEAPONS[it.wid].mag * (hasPerk(it, 'deepmag') ? 1 + 0.25 * perkStrength(it.level) : 1)));
     // ---- Difficulty: scales enemy toughness, credits, champion count and chest loot odds ----
     const DIFFICULTIES = {
-        easy:   { name: 'EASY',   color: '#4ade80', hp: 0.75, dmg: 0.7,  credits: 0.8, champs: -1, desc: 'Enemies have 25% less health and deal 30% less damage. 20% fewer credits, weaker loot odds.',
+        easy:   { name: 'EASY',   color: '#4ade80', hp: 0.75, dmg: 0.7,  credits: 0.8, champs: -1, lives: 5, desc: '5 lives per stage. Enemies have 25% less health and deal 30% less damage. 20% fewer credits, weaker loot odds.',
                   loot: [['exotic', 0.005], ['legendary', 0.03], ['rare', 0.165], ['common', 0.80]] },
-        normal: { name: 'NORMAL', color: '#facc15', hp: 1,    dmg: 1,    credits: 1,   champs: 0,  desc: 'The intended experience. Loot: Common 74%, Rare 20%, Legendary 5%, Exotic 1%.',
+        normal: { name: 'NORMAL', color: '#facc15', hp: 1,    dmg: 1,    credits: 1,   champs: 0,  lives: 3, desc: 'The intended experience: 3 lives per stage. Loot: Common 74%, Rare 20%, Legendary 5%, Exotic 1%.',
                   loot: DROP_TABLE },
-        hard:   { name: 'HARD',   color: '#f87171', hp: 1.4,  dmg: 1.35, credits: 1.3, champs: 1,  desc: 'Enemies have 40% more health and deal 35% more damage, with an extra champion. 30% more credits; loot: Rare 27%, Legendary 9%, Exotic 2%.',
+        hard:   { name: 'HARD',   color: '#f87171', hp: 1.4,  dmg: 1.35, credits: 1.3, champs: 1,  lives: 2, desc: '2 lives per stage. Enemies have 40% more health and deal 35% more damage, with an extra champion. 30% more credits; loot: Rare 27%, Legendary 9%, Exotic 2%.',
                   loot: [['exotic', 0.02], ['legendary', 0.09], ['rare', 0.27], ['common', 0.62]] },
     };
     const dcfg = () => DIFFICULTIES[save.difficulty] || DIFFICULTIES.normal;
@@ -950,6 +950,7 @@
     let state = 'menu'; // menu | playing | paused | over
     let selectedClass = 'ranger', selectedElement = 'fire', selectedStage = 0, crtEnabled = true;
     let canvas, ctx, rafId = null, lastTs = 0, acc = 0;
+    let livesLeft = 3;
     let score, kills, credits, deaths, frame, cameraX, shake, flash, hurtFlash, bossIntro, stageIntro, victoryTimer;
     let player, platforms, enemies, bullets, particles, rings, items, texts, hazards, weather, boss;
     let structures = [], treasures = [], checkpoints = [];
@@ -1946,6 +1947,7 @@
 
     function resetGame() {
         score = 0; kills = 0; credits = 0; deaths = 0; frame = 0;
+        livesLeft = dcfg().lives;
         cameraX = 0; shake = 0; flash = 0; hurtFlash = 0; bossIntro = 0; stageIntro = 180; victoryTimer = 0;
         bullets = []; particles = []; rings = []; items = []; texts = []; hazards = []; walls = []; rifts = [];
         if (hordeMode) generateHordeArena(); else generateStage(selectedStage);
@@ -2009,7 +2011,7 @@
         keys[e.code] = true;
         if (e.repeat) return;
         if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
-        if (state === 'paused' && e.code === 'KeyM') { abandonMission(); return; } // with no lives to run out, this is the way to quit
+        if (state === 'paused' && e.code === 'KeyM') { abandonMission(); return; } // quit the mission
         if (state !== 'playing') return;
         if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') startDash();
         if (e.code === 'KeyK' || e.code === 'KeyZ' || e.code === 'KeyW' || e.code === 'ArrowUp') mouse.active = false; // back to keyboard aim
@@ -2535,14 +2537,15 @@
         if (p.hp <= 0) loseLife();
     }
 
-    // Death: no lives. You return to the last checkpoint and pay for it in score and run credits.
-    // (Horde mode is the exception: one life, the run ends.)
+    // Death: each stage gives a few lives (by difficulty). Losing one returns you to the last checkpoint
+    // and costs score and run credits; losing the last one fails the mission. Horde mode has one life.
     const DEATH_SCORE_LOSS = 0.15, DEATH_CREDIT_LOSS = 0.2;
     function loseLife() {
         const p = player;
         deaths++;
         explosionFx(p.x + p.w / 2, p.y + p.h / 2, 30, CLASSES[selectedClass].color);
         if (stage.horde) { p.hp = 0; p.dead = true; endHorde(); return; }
+        if (--livesLeft <= 0) { livesLeft = 0; p.hp = 0; p.dead = true; endStage(false, true); return; }
         const lostCredits = Math.round(credits * DEATH_CREDIT_LOSS);
         score -= Math.round(score * DEATH_SCORE_LOSS); credits -= lostCredits;
         const inArena = boss && boss.active && !boss.dead;
@@ -2561,6 +2564,7 @@
         bullets = bullets.filter(b => b.owner === 'player');
         hazards = [];
         popText(p.x - 44, p.y - 12, `BACK TO CHECKPOINT  -${lostCredits} CREDITS`, '#7dd3fc');
+        popText(p.x - 20, p.y - 22, livesLeft === 1 ? 'LAST LIFE!' : `${livesLeft} LIVES LEFT`, livesLeft === 1 ? '#f87171' : '#facc15');
     }
     function abandonMission() {
         if (stage.horde) { endHorde(); return; }
@@ -2691,7 +2695,7 @@
     // =====================================================================
     //  STAGE END / RESULTS
     // =====================================================================
-    function endStage(won) {
+    function endStage(won, outOfLives = false) {
         if (state === 'over') return;
         state = 'over';
         stopMusic(1.5); // fade out over the results
@@ -2720,7 +2724,7 @@
             }
             playSound('clear');
         } else {
-            sub = 'Mission abandoned. Credits from kills are kept.';
+            sub = outOfLives ? 'Out of lives. Credits from kills are kept.' : 'Mission abandoned. Credits from kills are kept.';
         }
         const st = stage.stats;
         if (won) { st.clears = 1; if (deaths === 0) st.flawless = 1; if (stage.isBoss) st.bossKills = 1; }
@@ -2732,7 +2736,7 @@
         save.best = Math.max(save.best, score);
         const finished = bankContracts();
         persist();
-        lastResult = { won, sub, earned, gold, score, kills, deaths, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}`,
+        lastResult = { won, failed: outOfLives, sub, earned, gold, score, kills, deaths, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}`,
                        sealed: stage.sealedFound || 0, keys: stage.keysFound || 0, contracts: contractSummary(finished),
                        loot: stage.loot.map(it => ({ name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
         setTimeout(() => { if (state === 'over') showResults(lastResult); }, won ? 600 : 900);
@@ -2761,7 +2765,7 @@
     function showResults(r) {
         const title = document.getElementById('end-title');
         const secret = r.idx === SECRET_STAGE, last = r.idx === TOTAL_STAGES - 1 || secret; // no NEXT after these
-        title.textContent = r.horde ? 'HORDE OVER' : r.won ? (secret ? 'NIMAYS DEFEATED!' : last ? 'CAMPAIGN COMPLETE!' : stage && stage.isBoss ? 'WORLD CLEARED!' : 'STAGE CLEARED!') : 'MISSION ABANDONED';
+        title.textContent = r.horde ? 'HORDE OVER' : r.won ? (secret ? 'NIMAYS DEFEATED!' : last ? 'CAMPAIGN COMPLETE!' : stage && stage.isBoss ? 'WORLD CLEARED!' : 'STAGE CLEARED!') : r.failed ? 'MISSION FAILED' : 'MISSION ABANDONED';
         title.className = 'pixel-font text-xl font-bold mb-2 ' + (r.horde ? 'text-fuchsia-400' : r.won ? 'text-yellow-400' : 'text-red-500');
         document.getElementById('end-sub').textContent = r.sub;
         document.getElementById('final-score').textContent = r.score;
@@ -3495,7 +3499,8 @@
         const p = player, w = WEAPONS[p.weapon];
         setHud('hud-hp', Math.ceil(Math.max(0, p.hp)), p.hp < p.maxHp * 0.35 ? 'text-red-400 font-bold animate-pulse' : 'text-emerald-400 font-bold');
         setHud('hud-shield', Math.ceil(p.shield), p.shield <= 0 ? 'text-slate-500 font-bold' : 'text-sky-400 font-bold');
-        setHud('hud-lives', deaths);
+        if (stage.horde) setHud('hud-lives', '1', 'text-sky-400 font-bold');
+        else setHud('hud-lives', String(livesLeft), livesLeft === 1 ? 'text-red-400 font-bold animate-pulse' : 'text-sky-400 font-bold');
         const sp = Math.floor(p.superEnergy);
         setHud('hud-super', sp >= 100 ? (touch.on ? 'READY' : 'READY [T]') : sp + '%', sp >= 100 ? 'text-yellow-300 font-bold animate-pulse' : 'text-yellow-400 font-bold');
         const mag = p.mags[p.weapon], res = p.ammo[w.ammo];

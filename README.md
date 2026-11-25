@@ -18,7 +18,7 @@ All editions are the same game with the same saves; cycle between them with the 
 ## Features
 - **Skill first:** headshots are critical hits (+75%, sniper +150%), boss cores are weak points, and a dash that avoids a hit is a Perfect Dodge (+25% damage for 3s, dash refunded). Gear stat bonuses are deliberately small
 - **Class abilities [F]:** Ranger's Hunter's Mark (every hit crits for 4 s), Sentinel's Barricade (a wall that blocks enemy shots for 6 s), Arcanist's Rift (regenerate and deal +20% damage while standing in it)
-- **Checkpoints, no lives:** dying returns you to the last checkpoint and costs 15% of your score and 20% of the run's credits
+- **Lives and checkpoints:** each stage gives 5 lives on Easy, 3 on Normal and 2 on Hard. Losing one returns you to the last checkpoint and costs 15% of your score and 20% of the run's credits; losing the last one fails the mission (credits from kills are kept)
 - **Contractors:** Commander Vex (combat), Quartermaster Iro (salvage and exploration) and Seer Nyla (style and skill) each offer their own contracts. Accept up to 4; progress carries across stages and horde runs, and you claim credits, gold and a contractor bonus (gear, a sigil key or extra gold) back at the menu
 - **Sealed chests & keys:** carry sealed chests home from the field; each opens only with a key of its own sigil (Ember, Frost, Storm, Umbra). Keys hide on ledges, drop from champions and come from Iro's contracts. Sealed loot takes the best of three rarity rolls
 - **Gold & cosmetics:** clearing stages, contracts and sealed chests pays gold, spent on premium armor colours and weapon skins (some recolour your shots)
