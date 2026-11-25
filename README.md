@@ -26,7 +26,7 @@ All editions are the same game with the same saves; cycle between them with the 
 - **Horde mode:** endless waves in an arena with one life, a new world every 5 waves, elite waves with champions and loot, and a saved best wave
 - **Difficulty:** Easy, Normal or Hard changes enemy health and damage, champion count, credits and loot odds
 - **3 classes:** Ranger (double jump), Sentinel (hover, extra shield), Arcanist (glide, faster super)
-- **3 elements:** Fire, Shock, Void. Match an enemy's shield colour to shatter it
+- **3 subclasses:** Fire, Shock, Void. Your element; match an enemy's shield colour to shatter it
 - **4 worlds, 12 long stages:** Iron Yard, Crimson Dunes, Frozen Moon, Void Citadel, each ending in a boss, with 24–44 hostiles per stage
 - **Champions:** random Barrier, Overload and Unstoppable variants (at most 2 types per stage), plus mid-stage warp-ins, each countered by its own weapon: Piercer Rifle, Arc Disruptor, Breacher Slug
 - **Shuffled stages:** every run rebuilds each stage from randomly ordered modules (pits, climbs, lifts across wide gaps, elevator towers, secret bunkers)
@@ -34,6 +34,7 @@ All editions are the same game with the same saves; cycle between them with the 
 - **Armor:** upgrade the helmet, gauntlets, chest, legs and class item separately, and paint each piece in the Paint Shop
 - **Crouch to dodge:** level enemy shots fly over you while you crouch
 - **Loot & gear levels:** chests drop weapons as Common (74%), Rare (20%), Legendary (5%) or Exotic (1%) items with perks; kills level them up to LV 20
+- **Inventory [I / Tab]:** a full-screen menu, from the main menu, the results screen or mid-mission (it pauses the game), to pick the weapon in each slot, review your armor and class ability, and change subclass (Fire, Shock or Void). Swapping weapons mid-mission keeps your ammo reserves; changing subclass mid-mission resets your grenade, melee, class ability and super, which recharge from zero
 - **Loadout:** every run starts with exactly three weapons, one primary, one special and one heavy, picked on the main menu. Primary ammo is infinite; special and heavy refill every stage and drop from enemies (15% / 9%)
 - **Epic soundtrack:** an original score synthesized live (no audio files): a faster, heavier arrangement for boss fights and a different key per world
 - **11 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher, Fusion Rifle, plus the three anti-champion weapons
@@ -66,6 +67,7 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | Q (or right click) | Grenade |
 | E | Melee |
 | F | Class ability |
+| I / Tab | Inventory (weapons, equipment, subclass) |
 | T | Super |
 | P / Esc | Pause (then M abandons the mission, keeping credits) |
 
@@ -79,3 +81,4 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | SKILL, SUPER | Class ability, super |
 | SWAP, RELOAD | Next weapon, reload |
 | II | Pause (then RESUME or ABANDON) |
+| INV | Inventory |

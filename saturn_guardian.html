@@ -62,6 +62,7 @@
         body.touch #game-container > .hud-bottom { display: none; }
         body.touch #canvas-wrap { flex: none; width: min(100vw, calc((100dvh - 24px) * 16 / 9)); margin: auto 0; }
         body.touch.ingame #touch-ui { display: block; }
+        body.inv #touch-ui { display: none !important; }
         #touch-ui { position: fixed; inset: 0; z-index: 25; pointer-events: none; font-family: 'Press Start 2P', monospace; }
         #touch-ui .stick, #touch-ui .tbtn, #touch-pause button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
         #touch-ui .stick { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); width: min(34vh, 150px); height: min(34vh, 150px);
@@ -121,7 +122,7 @@
                                 <div class="text-[11px] text-slate-300 text-center leading-tight">Glide &bull; Fast super<br><span class="text-yellow-400">Singularity</span></div>
                             </button>
                         </div>
-                        <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- ENERGY ELEMENT --</div>
+                        <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- SUBCLASS --</div>
                         <div class="flex space-x-2 mb-3">
                             <button onclick="selectElement('fire')" id="elem-fire" style="--c:#ef4444" class="pick sel flex-1 py-2 text-xs font-bold rounded">FIRE</button>
                             <button onclick="selectElement('shock')" id="elem-shock" style="--c:#38bdf8" class="pick flex-1 py-2 text-xs font-bold rounded">SHOCK</button>
@@ -154,6 +155,7 @@
                     <div class="flex flex-wrap justify-between items-baseline gap-2 mb-2">
                         <div class="pixel-font text-[10px] text-yellow-400">-- LOADOUT --</div>
                         <div class="text-[11px] text-slate-400">Every run starts with one primary, one special and one heavy weapon &bull; primary ammo is infinite</div>
+                        <button onclick="openInventory()" class="px-3 py-1.5 saturn-button pixel-font text-sky-300 text-[9px] rounded">INVENTORY <span class="key-only">[I]</span></button>
                     </div>
                     <div id="loadout" class="grid grid-cols-1 md:grid-cols-3 gap-2"></div>
                 </div>
@@ -185,13 +187,13 @@
             </div>
 
             <div class="touch-only text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
-                Left stick: move (up aims up, down crouches) &bull; Right stick: hold to fire, drag to aim &bull; JUMP (hold: double jump / hover / glide; stick down + JUMP drops through ledges)
+                Left stick: move (up aims up, down crouches) &bull; Right stick: hold to fire, drag to aim &bull; INV opens the inventory &bull; JUMP (hold: double jump / hover / glide; stick down + JUMP drops through ledges)
                 &bull; DASH &bull; GREN &bull; MELEE &bull; SKILL (class ability) &bull; SUPER &bull; SWAP weapon &bull; RELOAD &bull; II pause
             </div>
             <div class="key-only text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
                 [A/D] Move &bull; [Shift] Dash &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold: double jump / hover / glide, S+Jump drops through ledges)
                 &bull; [Mouse] Aim &bull; [Left click / K] Fire (hold) &bull; [1/2/3 or Wheel] Primary / Special / Heavy &bull; [R] Reload
-                &bull; [Q] Grenade &bull; [E] Melee &bull; [F] Class ability &bull; [T] Super &bull; [P/Esc] Pause
+                &bull; [Q] Grenade &bull; [E] Melee &bull; [F] Class ability &bull; [T] Super &bull; [I/Tab] Inventory &bull; [P/Esc] Pause
             </div>
         </div>
     </div>
@@ -243,6 +245,29 @@
             <div class="flex justify-end mt-5">
                 <button onclick="closeArmory()" class="px-8 py-3 saturn-button pixel-font text-yellow-300 text-xs font-bold uppercase rounded">BACK</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ================= INVENTORY ================= -->
+    <div id="inventory" class="absolute inset-0 z-[45] bg-slate-950/95 hidden flex flex-col items-center p-4 overflow-y-auto">
+        <div class="my-auto w-full max-w-5xl saturn-panel p-4 rounded-lg">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                <div>
+                    <div class="pixel-font text-yellow-400 text-sm">INVENTORY</div>
+                    <div id="inv-context" class="text-[12px] text-slate-400"></div>
+                </div>
+                <button onclick="closeInventory()" id="inv-close" class="px-4 py-2 saturn-button pixel-font text-yellow-300 text-[10px] rounded">CLOSE</button>
+            </div>
+            <div class="pixel-font text-[10px] text-yellow-400 mb-1">-- SUBCLASS --</div>
+            <div id="inv-subclass-note" class="text-[12px] text-slate-400 mb-2"></div>
+            <div id="inv-subclass" class="grid grid-cols-3 gap-2 mb-4"></div>
+            <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- WEAPONS --</div>
+            <div id="inv-weapons" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4"></div>
+            <div class="flex flex-wrap justify-between items-baseline gap-2 mb-2">
+                <div class="pixel-font text-[10px] text-yellow-400">-- EQUIPMENT --</div>
+                <div class="text-[11px] text-slate-400">Upgrade armor pieces in the Armory</div>
+            </div>
+            <div id="inv-armor" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
         </div>
     </div>
 
@@ -302,7 +327,7 @@
 
         <div class="hud-bottom bg-slate-950/90 px-3 py-1.5 border-t border-sky-900/60 flex justify-between items-center text-[10px] text-slate-400 gap-2">
             <div>RESERVES: <span id="hud-reserves" class="text-white">-</span> &bull; CREDITS <span id="hud-credits" class="text-emerald-400 font-bold">0</span></div>
-            <div class="hidden md:block">[CLICK/K] FIRE &bull; [SHIFT] DASH &bull; [1-3] WEAPON &bull; [Q] GRENADE &bull; [E] MELEE &bull; [F] ABILITY &bull; [T] SUPER &bull; [R] RELOAD &bull; [P] PAUSE</div>
+            <div class="hidden md:block">[CLICK/K] FIRE &bull; [SHIFT] DASH &bull; [1-3] WEAPON &bull; [Q] GRENADE &bull; [E] MELEE &bull; [F] ABILITY &bull; [T] SUPER &bull; [R] RELOAD &bull; [I] INVENTORY &bull; [P] PAUSE</div>
         </div>
     </div>
 
@@ -319,6 +344,7 @@
         <button class="tbtn small" data-act="swap" style="--c:#7dd3fc; right:max(14px, env(safe-area-inset-right)); top:calc(min(9vh,34px) + 8px)">SWAP</button>
         <button class="tbtn small" data-act="reload" style="--c:#94a3b8; right:calc(max(14px, env(safe-area-inset-right)) + min(10vh,44px) + 8px); top:calc(min(9vh,34px) + 8px)">RELOAD</button>
         <button class="tbtn small" data-act="pause" style="--c:#facc15; left:max(14px, env(safe-area-inset-left)); top:calc(min(9vh,34px) + 8px)">II</button>
+        <button class="tbtn small" data-act="inv" style="--c:#7dd3fc; left:calc(max(14px, env(safe-area-inset-left)) + min(10vh,44px) + 8px); top:calc(min(9vh,34px) + 8px)">INV</button>
         <div id="touch-pause">
             <button data-act="resume">RESUME</button>
             <button data-act="abandon" id="touch-abandon">ABANDON</button>
@@ -1188,6 +1214,112 @@
         persist(); initAudio(); playSound('reload');
         renderLoadout();
     }
+    // =====================================================================
+    //  INVENTORY: pick weapons per slot, check your armor and change subclass, from the menu or mid-mission.
+    //  Mid-mission it holds the game paused. Changing subclass there resets your grenade, melee,
+    //  class ability and super, which then recharge from zero.
+    // =====================================================================
+    let invOpen = false, invInGame = false;
+    function openInventory() {
+        if (invOpen) return;
+        invInGame = state === 'playing' || state === 'paused';
+        if (state === 'playing') togglePause();
+        invOpen = true;
+        document.body.classList.add('inv');
+        for (const k in keys) keys[k] = false;
+        mouse.down = false; touch.fire = false; touch.aim = null;
+        document.getElementById('inventory').classList.remove('hidden');
+        initAudio();
+        renderInventoryScreen();
+    }
+    function closeInventory() {
+        if (!invOpen) return;
+        invOpen = false;
+        document.body.classList.remove('inv');
+        document.getElementById('inventory').classList.add('hidden');
+        if (invInGame) { if (state === 'paused') togglePause(); }
+        else if (!document.getElementById('main-menu').classList.contains('hidden')) renderMenu();
+    }
+    function renderInventoryScreen() {
+        fixLoadout(save);
+        const inGame = invInGame && player;
+        document.getElementById('inv-context').textContent = inGame
+            ? `MISSION PAUSED • ${stage.horde ? 'HORDE MODE' : stageLabel(stage.idx) + ' ' + stage.name} • changes apply right away`
+            : 'Choose what you take into the next mission';
+        document.getElementById('inv-close').textContent = inGame ? 'RESUME' : 'CLOSE';
+        document.getElementById('inv-subclass-note').innerHTML = inGame
+            ? '<span class="text-amber-300">Changing subclass now resets your grenade, melee, class ability and super to zero; they recharge from there.</span>'
+            : 'Your shots, grenade, melee and super use your subclass element. Match it to a shield\'s colour to shatter the shield.';
+        document.getElementById('inv-subclass').innerHTML = ELEMENT_IDS.map(id => {
+            const el = ELEMENTS[id], sel = id === selectedElement;
+            return `<button onclick="setSubclass('${id}')" style="--c:${el.color}" class="pick ${sel ? 'sel' : ''} py-3 rounded">
+                <div class="pixel-font text-[10px]" style="color:${el.color}">${el.label}</div>
+                <div class="text-[11px] mt-1">${sel ? 'EQUIPPED' : 'Select'}</div></button>`;
+        }).join('');
+        document.getElementById('inv-weapons').innerHTML = LOADOUT_SLOTS.map((slot, i) => {
+            const eligible = save.inventory.filter(it => ammoOf(it) === slot.ammo)
+                .sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) || b.level - a.level);
+            return `<div>
+                <div class="pixel-font text-[8px] mb-1" style="color:${AMMO_COLORS[slot.ammo]}">[${i + 1}] ${slot.label} (${eligible.length})</div>
+                <div class="flex flex-col gap-1.5">${eligible.map(it => {
+                    const on = save.loadout[i] === it.uid, c = RARITIES[it.rarity].color;
+                    return `<button onclick="equipFromInventory(${i}, '${it.uid}')" class="text-left bg-slate-950/70 border-2 rounded p-2 ${on ? '' : 'opacity-80 hover:opacity-100'}"
+                        style="border-color:${on ? c : '#1e293b'}; ${on ? `box-shadow:0 0 12px -3px ${c}` : ''}">
+                        <div class="flex justify-between gap-2 text-[12px]"><span style="color:${c}" class="font-bold">${RARITIES[it.rarity].name} ${WEAPONS[it.wid].name}</span>
+                            <span class="${on ? 'text-yellow-300' : 'text-slate-500'} pixel-font text-[7px] mt-1">${on ? 'EQUIPPED' : 'EQUIP'}</span></div>
+                        <div class="text-[11px] text-slate-400">LV ${it.level} &bull; +${Math.round((itemDmgMult(it) - 1) * 100)}% DMG</div>
+                        <div class="text-[11px] leading-snug">${perkHtml(it)}</div>${xpBarHtml(it)}</button>`;
+                }).join('')}</div></div>`;
+        }).join('');
+        const ab = CLASS_ABILITIES[selectedClass];
+        document.getElementById('inv-armor').innerHTML = ARMOR_IDS.map(k => {
+            const lvl = save.armor[k], pc = ARMOR_PIECES[k];
+            return `<div class="bg-slate-950/70 border border-slate-800 rounded p-2">
+                <div class="flex justify-between items-center"><span class="pixel-font text-[8px]" style="color:${gearColor(k)}">${pc.name}</span>
+                    <span>${Array.from({ length: MAX_UPGRADE }, (_, n) => `<span class="pip ${n < lvl ? 'on' : ''}"></span>`).join('')}</span></div>
+                <div class="text-[11px] text-slate-400 mt-1">${pc.desc}</div></div>`;
+        }).join('') + `<div class="bg-slate-950/70 border border-slate-800 rounded p-2">
+                <div class="pixel-font text-[8px] text-fuchsia-300">CLASS ABILITY: ${ab.name}</div>
+                <div class="text-[11px] text-slate-400 mt-1">${ab.desc} &bull; ${Math.round(ab.cd / 60)} s recharge</div></div>`;
+    }
+    function setSubclass(el) {
+        if (el === selectedElement || !ELEMENTS[el]) return;
+        selectElement(el);
+        playSound('pickup');
+        if (invInGame && player) { // a mid-mission swap restarts every ability's charge
+            const p = player;
+            p.superEnergy = 0;
+            p.grenadeCd = p.grenadeMax;
+            p.meleeCd = MELEE_CD;
+            p.abilityCd = CLASS_ABILITIES[selectedClass].cd;
+            popText(p.x - 40, p.y - 22, `SUBCLASS: ${ELEMENTS[el].label} • ABILITIES RECHARGING`, ELEMENTS[el].color);
+        }
+        renderInventoryScreen();
+    }
+    function equipFromInventory(i, uid) {
+        if (save.loadout[i] === uid) return;
+        save.loadout[i] = uid;
+        fixLoadout(save);
+        persist(); playSound('reload');
+        if (invInGame && player) applyLoadoutToPlayer();
+        renderInventoryScreen();
+        renderLoadout();
+    }
+    // Mid-mission weapon swap: reserves are shared per ammo type; a newly equipped weapon comes loaded
+    function applyLoadoutToPlayer() {
+        const p = player, gear = save.loadout.map(uid => save.inventory.find(it => it.uid === uid)).filter(Boolean);
+        const slot = Math.max(0, LOADOUT_SLOTS.findIndex(sl => sl.ammo === WEAPONS[p.weapon].ammo));
+        for (const it of gear) {
+            if (p.owned.includes(it.wid)) continue;
+            p.magSize[it.wid] = magSizeOf(it); p.mags[it.wid] = p.magSize[it.wid];
+        }
+        p.owned = gear.map(it => it.wid);
+        p.items = Object.fromEntries(gear.map(it => [it.wid, it]));
+        for (const it of gear) { p.magSize[it.wid] = magSizeOf(it); p.mags[it.wid] = Math.min(p.mags[it.wid], p.magSize[it.wid]); }
+        p.weaponIdx = Math.min(slot, p.owned.length - 1); p.weapon = p.owned[p.weaponIdx];
+        p.reloadTimer = 0; p.burstLeft = 0; p.switchTimer = 12;
+    }
+
     function resetProgress() {
         if (!confirm('Erase all progress, credits, weapons and armor?')) return;
         save = defaultSave(); legacyRefund = 0;
@@ -1996,6 +2128,7 @@
         renderMenu();
     }
     function togglePause() {
+        if (invOpen) return;
         if (state === 'playing') state = 'paused';
         else if (state === 'paused') { state = 'playing'; lastTs = 0; }
         if (music.playing && musicOn) musicVolume(state === 'paused' ? MUSIC_VOL * 0.3 : MUSIC_VOL, 0.25); // duck while paused
@@ -2006,7 +2139,16 @@
     //  INPUT
     // =====================================================================
     window.addEventListener('keydown', e => {
+        if (invOpen) { // the inventory takes the keyboard while it is open
+            if (['Escape', 'KeyI', 'Tab'].includes(e.code)) { e.preventDefault(); if (!e.repeat) closeInventory(); }
+            return;
+        }
+        if (e.code === 'KeyI' && !e.repeat && (state === 'menu' || state === 'playing' || state === 'paused')
+            && document.getElementById('armory').classList.contains('hidden') && document.getElementById('main-menu').classList.contains('hidden') === (state !== 'menu')) {
+            e.preventDefault(); openInventory(); return;
+        }
         if (state === 'menu' || state === 'over') return;
+        if (e.code === 'Tab' && !e.repeat) { e.preventDefault(); openInventory(); return; }
         if (GAME_KEYS.has(e.code)) e.preventDefault();
         keys[e.code] = true;
         if (e.repeat) return;
@@ -2136,6 +2278,7 @@
                 e.preventDefault(); initAudio();
                 if (act === 'pause' || act === 'resume') { if (state === 'playing' || state === 'paused') togglePause(); return; }
                 if (act === 'abandon') { if (state === 'paused') abandonMission(); return; }
+                if (act === 'inv') { if (state === 'playing' || state === 'paused') openInventory(); return; }
                 if (state !== 'playing' || !player) return;
                 pid = e.pointerId;
                 try { btn.setPointerCapture(pid); } catch (err) {}
@@ -2317,10 +2460,11 @@
         ctx.globalAlpha = 1;
     }
 
+    const MELEE_CD = 35;
     function performMelee() {
         const p = player;
         if (p.meleeCd > 0) return;
-        p.meleeCd = 35; p.meleeAnim = 10;
+        p.meleeCd = MELEE_CD; p.meleeAnim = 10;
         playSound('hit');
         const hb = { x: p.facing > 0 ? p.x + p.w - 2 : p.x - 26, y: p.y - 4, w: 28, h: p.h + 6 };
         let hit = false;
@@ -2797,7 +2941,7 @@
         const btn = (label, fn) => `<button onclick="${fn}" class="flex-1 py-3 saturn-button pixel-font text-yellow-300 text-[10px] font-bold uppercase rounded">${label}</button>`;
         document.getElementById('end-buttons').innerHTML =
             (r.horde ? btn('RETRY', 'startGame(true)') : r.won && !last ? btn('NEXT ' + stageLabel(r.idx + 1), 'nextStage()') : btn(r.won ? 'REPLAY' : 'RETRY', 'startGame()')) +
-            btn('ARMORY', "openArmory('results')") + btn('MENU', 'returnToMenu()');
+            btn('INVENTORY', 'openInventory()') + btn('ARMORY', "openArmory('results')") + btn('MENU', 'returnToMenu()');
         document.getElementById('game-over-screen').classList.remove('hidden');
     }
 
