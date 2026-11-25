@@ -17,24 +17,29 @@ All editions are the same game with the same saves; cycle between them with the 
 
 ## Features
 - **Skill first:** headshots are critical hits (+75%, sniper +150%), boss cores are weak points, and a dash that avoids a hit is a Perfect Dodge (+25% damage for 3s, dash refunded). Gear stat bonuses are deliberately small
-- **Class abilities [F]:** Ranger's Hunter's Mark (every hit crits for 4 s), Sentinel's Barricade (a wall that blocks enemy shots for 6 s), Arcanist's Rift (regenerate and deal +20% damage while standing in it)
+- **3 classes, chosen before a run:**
+  - **Ranger:** agile and stealthy, built for mobility, precision and burst damage (+15% critical damage). Double and triple jump. Class ability: a dodge (Marksman's reloads every weapon, Gambler's recharges your melee) that also makes enemies lose track of you; crouching keeps distant enemies from spotting you
+  - **Sentinel:** frontline fighter with toughness (15% less damage taken) and heavy melee (+60%, big knockback). Its jump is a jet thruster that glides in a straight line. Class ability: a Towering Barricade that blocks shots, or a low Rally Barricade that reloads your weapons
+  - **Arcanist:** the mage, focused on ability uptime and support: faster grenade, ability and super. Long glide. Class ability: a Healing Rift or an Empowering Rift (+30% damage)
+- **Origin:** play as a Human (man, woman or other), a Machine (a rebel AI: man, woman or asexual) or a Being of Light (man, woman or asexual). Each has its own look and lore
 - **Lives and checkpoints:** each stage starts with 3 lives on Easy, 2 on Normal and 1 on Hard, and every champion you defeat grants one more. Abandoning or restarting the mission resets them. Losing one returns you to the last checkpoint and costs 15% of your score and 20% of the run's credits; losing the last one fails the mission (credits from kills are kept)
 - **Contractors:** Commander Vex (combat), Quartermaster Iro (salvage and exploration) and Seer Nyla (style and skill) each offer their own contracts. Accept up to 4; progress carries across stages and horde runs, and you claim credits, gold and a contractor bonus (gear, a sigil key or extra gold) back at the menu
 - **Sealed chests & keys:** carry sealed chests home from the field; each opens only with a key of its own sigil (Ember, Frost, Storm, Umbra). Keys hide on ledges, drop from champions and come from Iro's contracts. Sealed loot takes the best of three rarity rolls
 - **Gold & cosmetics:** clearing stages, contracts and sealed chests pays gold, spent on premium armor colours and weapon skins (some recolour your shots)
 - **Secret stage: Nimays Sanctum.** Find the Echo Shard hidden in a secret bunker in 4-2 Hall of Echoes (or finish the campaign) to unlock Nimays, a 500,000 HP boss. She stays immune until you solve her puzzle: watch the order in which she lights her four sigil crystals, then shoot them in that order (in reverse below 25% HP). A wrong crystal or running out of time punishes you. Each solve shatters her ward and opens a short window where your hits are amplified, and every ward adds a step to the next sequence. Beating her pays an Exotic, a key of every sigil and 30 gold
 - **Horde mode:** endless waves in an arena with one life, a new world every 5 waves, elite waves with champions and loot, and a saved best wave
-- **Difficulty:** Easy, Normal or Hard changes enemy health and damage, champion count, credits and loot odds
-- **3 classes:** Ranger (double jump), Sentinel (hover, extra shield), Arcanist (glide, faster super)
-- **3 subclasses:** Fire, Shock, Void. Your element; match an enemy's shield colour to shatter it
-- **4 worlds, 12 long stages:** Iron Yard, Crimson Dunes, Frozen Moon, Void Citadel, each ending in a boss, with 24–44 hostiles per stage
+- **Difficulty:** Easy, Normal or Hard changes the number of enemies, their health and movement speed, the damage you take, champion count, credits and loot odds
+- **4 subclasses:** Fire, Shock, Void and Stasis. Your element; match an enemy's shield colour to shatter it. Stasis chills what it hits, slowing enemies until they freeze (frozen enemies take 30% more damage)
+- **8 worlds, 41 stages (4 to 6 per world):** Iron Yard, Crimson Dunes, Frozen Moon, Void Citadel, Verdant Maw, Molten Forge, Tempest Reach and the Astral Throne, each ending in a boss
+- **A changing map:** each later stage of a world is rougher and darker, with more pits and height changes; from the second stage ledges crumble under you (and come back later), and from the third debris falls from above
+- **Cover and hiding:** low walls to crouch behind (they stop enemy shots) and open shelters to stand in; hidden, enemies lose track of you until you fire
 - **Champions:** random Barrier, Overload and Unstoppable variants (at most 2 types per stage), plus mid-stage warp-ins, each countered by its own weapon: Piercer Rifle, Arc Disruptor, Breacher Slug
 - **Shuffled stages:** every run rebuilds each stage from randomly ordered modules (pits, climbs, lifts across wide gaps, elevator towers, secret bunkers)
 - **Treasure & secrets:** ride elevators to tower-roof chests, find supply caches on lookouts, and walk through cracked false walls for secret stashes
 - **Armor:** upgrade the helmet, gauntlets, chest, legs and class item separately, and paint each piece in the Paint Shop
 - **Crouch to dodge:** level enemy shots fly over you while you crouch
 - **Loot & gear levels:** chests drop weapons as Common (74%), Rare (20%), Legendary (5%) or Exotic (1%) items with perks; kills level them up to LV 20
-- **Inventory [I / Tab]:** a full-screen menu, from the main menu, the results screen or mid-mission (it pauses the game), to pick the weapon in each slot, review your armor and class ability, and change subclass (Fire, Shock or Void). Swapping weapons mid-mission keeps your ammo reserves; changing subclass mid-mission resets your grenade, melee, class ability and super, which recharge from zero
+- **Inventory [I / Tab]:** a full-screen menu, from the main menu, the results screen or mid-mission (it pauses the game), to pick the weapon in each slot, review your armor, pick your class ability version, and change subclass (Fire, Shock, Void or Stasis; your class stays fixed for the run). Swapping weapons mid-mission keeps your ammo reserves; changing subclass mid-mission resets your grenade, melee, class ability and super, which recharge from zero
 - **Loadout:** every run starts with exactly three weapons, one primary, one special and one heavy, picked on the main menu. Primary ammo is infinite; special and heavy refill every stage and drop from enemies (15% / 9%)
 - **Epic soundtrack:** an original score synthesized live (no audio files): a faster, heavier arrangement for boss fights and a different key per world
 - **11 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher, Fusion Rifle, plus the three anti-champion weapons
