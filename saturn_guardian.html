@@ -329,7 +329,7 @@
         <div id="canvas-wrap" class="relative w-full aspect-[16/9] bg-black">
             <canvas id="gameCanvas" width="480" height="270" class="w-full h-full block"></canvas>
             <div id="boss-hud" class="absolute top-3 left-1/2 -translate-x-1/2 w-72 bg-slate-950/90 border-2 border-red-600 p-1.5 rounded hidden shadow-2xl">
-                <div class="flex justify-between text-[10px] pixel-font text-red-400 mb-1">
+                <div class="flex justify-between gap-2 text-[10px] pixel-font text-red-400 mb-1">
                     <span id="boss-hud-name">BOSS</span>
                     <span id="boss-hud-status" class="text-yellow-400">VULNERABLE</span>
                 </div>
@@ -856,10 +856,10 @@
         tyrant:   { name: 'DUNE TYRANT',   hp: 3200, r: 34 },
         hive:     { name: 'HIVE MOTHER',   hp: 3600, r: 30 },
         herald:   { name: 'VOID HERALD',   hp: 4800, r: 28 },
-        thorn:       { name: 'THORN QUEEN',   hp: 5600, r: 32, base: 'hive',     hue: -70 },
-        forgemaster: { name: 'FORGEMASTER',   hp: 6400, r: 36, base: 'tyrant',   hue: -22 },
-        titan:       { name: 'TEMPEST TITAN', hp: 7400, r: 30, base: 'overseer', hue: 215 },
-        arbiter:     { name: 'THE ARBITER',   hp: 8800, r: 30, base: 'herald',   hue: 140 },
+        thorn:       { name: 'THORN QUEEN',   hp: 5600, r: 32 },
+        forgemaster: { name: 'FORGEMASTER',   hp: 6400, r: 34 },
+        titan:       { name: 'TEMPEST TITAN', hp: 7400, r: 30 },
+        arbiter:     { name: 'THE ARBITER',   hp: 8800, r: 30 },
         nimays:   { name: 'NIMAYS',        hp: 500000, r: 30 }, // the secret stage's boss: fixed HP on every difficulty
     };
 
@@ -2221,7 +2221,7 @@
         const d = BOSSES[type], ax = stage.arenaX, hp = type === 'nimays' ? d.hp : Math.round(d.hp * dcfg().hp);
         type = d.base || type; // later worlds' bosses fight like an earlier one, recoloured (hue)
         return {
-            type, hue: d.hue || 0, name: d.name, x: ax + 420, y: type === 'tyrant' ? 190 : 110, r: d.r, hp, maxHp: hp,
+            type, hue: d.hue || 0, name: d.name, x: ax + 420, y: { tyrant: 190, forgemaster: 186, thorn: 170 }[type] || 110, r: d.r, hp, maxHp: hp, parts: [],
             // Nimays' puzzle: the crystal sequence, how far the player has got, and how many wards were broken
             seq: [], step: 0, inputIdx: 0, lit: -1, cycle: 0, reverse: false, lastPylon: -1,
             immune: type === 'nimays', phaseTimer: 0, attackTimer: 0, spreadTimer: 0, specialTimer: type === 'hive' ? 200 : 0,
@@ -2687,7 +2687,8 @@
             if (!en.t.flying) en.x += p.facing * (selectedClass === 'sentinel' ? 18 : 8);
             hit = true;
         }
-        if (bossHittable() && circleRect(boss.x, boss.y, boss.r, hb)) { damageBoss(meleeDmg); hit = true; }
+        if (bossHittable() && circleRect(boss.x, boss.y, boss.r, hb)) { damageBoss(meleeDmg, selectedElement); hit = true; }
+        if (boss && boss.parts) for (const q of boss.parts) if (q.hp > 0 && circleRect(q.x, q.y, q.r, hb)) { hitBossPart(q, meleeDmg); hit = true; }
         if (hit) shake = Math.max(shake, 2);
     }
 
@@ -2848,17 +2849,24 @@
         const el = document.getElementById('boss-hud-status');
         if (!boss) return;
         if (boss.dead) { el.textContent = 'DESTROYED'; el.className = 'text-emerald-400'; return; }
-        if (boss.type === 'nimays') return; // her puzzle status is written every frame by updateHud
+        if (boss.type === 'nimays' || LIVE_STATUS[boss.type]) return; // written every frame by updateHud
         el.textContent = boss.immune ? 'IMMUNE' : 'VULNERABLE';
         el.className = boss.immune ? 'text-sky-400' : 'text-yellow-400';
     }
 
-    function damageBoss(dmg) {
+    function damageBoss(dmg, element) {
         if (!bossHittable()) return false;
         if (boss.immune) {
             playSound('immune');
             burst(boss.x, boss.y, 2, '#7dd3fc', 2, 10);
             return false;
+        }
+        const note = (text, color) => { if (frame - (boss.noteAt || -99) > 50) { boss.noteAt = frame; popText(boss.x - 22, boss.y - boss.r - 12, text, color); } };
+        if (boss.type === 'forgemaster' && boss.state !== 'vent') { dmg *= 0.2; note('ARMORED', '#a8a29e'); } // only an overheated Forgemaster takes full damage
+        if (boss.type === 'arbiter') { // only his ward's element really hurts him
+            const weak = element && element === boss.ward;
+            dmg *= weak ? 1.5 : 0.25;
+            note(weak ? 'WEAK!' : 'RESISTED', weak ? ELEMENTS[boss.ward].color : '#94a3b8');
         }
         if (boss.type === 'nimays') dmg *= NIMAYS_DMG_MULT; // only reachable while her ward is broken
         boss.hp -= dmg;
@@ -2883,7 +2891,8 @@
             const d = Math.hypot(en.x + en.w / 2 - x, en.y + en.h / 2 - y), reach = r + en.w / 2;
             if (d < reach) damageEnemy(en, dmg * (1 - 0.5 * d / reach), element, kind, wid);
         }
-        if (bossHittable() && Math.hypot(boss.x - x, boss.y - y) < r + boss.r) damageBoss(dmg);
+        if (bossHittable() && Math.hypot(boss.x - x, boss.y - y) < r + boss.r) damageBoss(dmg, element);
+        if (boss && boss.parts) for (const q of boss.parts) if (q.hp > 0 && Math.hypot(q.x - x, q.y - y) < r + q.r) hitBossPart(q, dmg);
         explosionFx(x, y, r, element ? ELEMENTS[element].color : '#f97316');
     }
 
@@ -2929,6 +2938,8 @@
                 boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.02);
                 nimaysShow(boss);
             } else boss.hp = Math.min(boss.maxHp, boss.hp + boss.maxHp * 0.15);
+            if (boss.type === 'titan') boss.parts = [];
+            boss.floodT = boss.floodWarn = 0; boss.beam = null; boss.gust = 0;
         } else if (stage.cp) { p.x = stage.cp.x - p.w / 2; p.y = stage.cp.y - p.h - 4; }
         else { p.x = 60; p.y = 190; }
         p.hp = p.maxHp; p.shield = p.maxShield; p.vx = 0; p.vy = 0;
@@ -3477,7 +3488,240 @@
         } else if (b.immune && b.phaseTimer > imm) { b.immune = false; b.phaseTimer = 0; setBossStatus(); }
     }
 
+    // ---- the later worlds' bosses: their parts, live status and hints ----
+    function hitBossPart(q, dmg) {
+        if (!boss || !boss.active || boss.dead || q.hp <= 0) return;
+        q.hp -= dmg; q.hurt = 4;
+        playSound('hit');
+        if (q.hp <= 0) {
+            q.hp = 0;
+            explosionFx(q.x, q.y, 18, q.kind === 'pod' ? '#84cc16' : '#93c5fd');
+            if (BOSS_PART_DOWN[boss.type]) BOSS_PART_DOWN[boss.type](boss, q);
+        }
+    }
+    const BOSS_PART_DOWN = {
+        thorn(b, q) { // the last pod opens her heart
+            if (b.parts.some(o => o.hp > 0)) { popText(q.x - 22, q.y - 18, 'POD DESTROYED', '#86efac'); return; }
+            b.state = 'bloom'; b.bloomDur = b.stateT = b.hp < b.maxHp * 0.5 ? 360 : 420; b.immune = false;
+            popText(b.x - 46, b.y - b.r - 24, 'HER HEART BLOOMS! STRIKE IT!', '#f9a8d4');
+            playSound('clear'); spawnItem(b.x - 70, b.y - 20, 'orb');
+        },
+        titan(b) { // a storm orb shot down overloads him
+            b.state = 'stunned'; b.stateT = 420; b.immune = false; b.parts = []; b.attackTimer = 0; b.gust = 0;
+            popText(b.x - 30, b.y - b.r - 22, 'OVERLOADED!', '#fde047');
+            playSound('clear'); shake = Math.max(shake, 5); spawnItem(b.x, b.y + 30, 'special');
+        },
+    };
+    const ELEMENT_TEXT = { fire: 'text-red-400', shock: 'text-sky-400', void: 'text-purple-400', stasis: 'text-teal-300' };
+    const secs = t => Math.ceil(t / 60) + 's';
+    const LIVE_STATUS = {
+        thorn: b => b.state === 'bloom' ? [`BLOOMING ${secs(b.stateT)}`, 'text-yellow-400'] : [`PODS ${b.parts.filter(q => q.hp > 0).length}/3`, 'text-emerald-400'],
+        forgemaster: b => b.state === 'vent' ? [`OVERHEATED ${secs(b.stateT)}`, 'text-yellow-400'] : [`HEAT ${Math.floor(b.heat)}%`, 'text-orange-400'],
+        titan: b => b.state === 'stunned' ? [`OVERLOADED ${secs(b.stateT)}`, 'text-yellow-400'] : [b.parts.length ? 'SHOOT THE ORB' : 'SHIELDED', 'text-sky-400'],
+        arbiter: b => b.state === 'ascend' ? ['ASCENDING', 'text-sky-400'] : [`WEAK: ${ELEMENTS[b.ward].label}`, ELEMENT_TEXT[b.ward]],
+    };
+    const BOSS_HINTS = {
+        thorn: ['DESTROY HER THREE SPORE PODS', 'TO OPEN HER HEART'],
+        forgemaster: ['ARMORED UNTIL HE OVERHEATS: HIT HIS FURNACE', 'CLIMB ONTO A LEDGE WHEN THE FORGE FLOODS'],
+        titan: ['SHOOT DOWN HIS STORM ORBS', 'TO BREAK HIS SHIELD'],
+        arbiter: ['ONLY HIS WEAK ELEMENT HURTS: CHANGE SUBCLASS (INVENTORY)', 'DASH THROUGH HIS LIGHT BEAM'],
+    };
+    // arcing shots aimed at a point (they fall with gravity)
+    function lobAt(b, tx, ty, n, gap, dmg, extra) {
+        const T = 52;
+        for (let i = 0; i < n; i++) {
+            const x = tx + (i - (n - 1) / 2) * gap, y0 = b.y - 30;
+            bullets.push(Object.assign({ x: b.x, y: y0, vx: (x - b.x) / T, vy: (ty - y0 - 0.1 * T * T) / T, owner: 'enemy', kind: 'bullet', dmg, life: 200, grav: true, big: true }, extra));
+        }
+        playSound('grenade');
+    }
+
     const BOSS_AI = {
+        // THORN QUEEN: rooted, her heart sealed in a thorn carapace. Her three spore pods (two on the ledges,
+        // one on the floor) feed it: destroy all three and she blooms, open to damage, until they regrow.
+        thorn(b, enraged) {
+            const ax = stage.arenaX;
+            if (!b.init) {
+                b.init = true; b.home = ax + 470; b.state = 'armored'; b.immune = true;
+                const hp = Math.round(110 * dcfg().hp);
+                b.parts = [[ax + 155, 165], [ax + 300, 219], [ax + 545, 165]].map(([x, y], i) => ({ kind: 'pod', x, y, r: 9, hp, maxHp: hp, hurt: 0, t: i * 70 }));
+                setBossStatus();
+            }
+            b.x = b.home + Math.sin(b.t * 0.006) * 40; b.y = 170 + Math.sin(b.t * 0.04) * 3;
+            for (const q of b.parts) {
+                if (q.hurt > 0) q.hurt--;
+                if (q.hp > 0 && ++q.t % (enraged ? 150 : 210) === 0) // the pods puff slow spores at you
+                    enemyShot(q.x, q.y, Math.atan2(player.y + 15 - q.y, player.x + 8 - q.x), 1.3, 12, { spore: true, life: 300 });
+            }
+            if (b.state === 'bloom' && --b.stateT <= 0) { // the heart closes and the pods regrow
+                b.state = 'armored'; b.immune = true;
+                for (const q of b.parts) { q.hp = q.maxHp; burst(q.x, q.y, 8, '#86efac', 2); }
+                popText(b.x - 40, b.y - b.r - 24, 'THE PODS REGROW', '#86efac'); playSound('shield');
+            }
+            if (++b.attackTimer > (enraged ? 110 : 150)) { b.attackTimer = 0; lobAt(b, player.x + player.w / 2, player.y + player.h - 6, enraged ? 4 : 3, 38, 14, { spore: true }); }
+            if (++b.spreadTimer > (enraged ? 170 : 230)) { // thorns burst out of the floor around you
+                b.spreadTimer = 0;
+                const pcx = player.x + player.w / 2;
+                for (const d of enraged ? [-70, 0, 70] : [-45, 0, 45]) hazards.push({ x: clamp(pcx + d, ax + 20, ax + 680), warn: 50, fire: 30, kind: 'thorns', low: true, dmg: 22 });
+            }
+            if (enraged && ++b.specialTimer > 600 && enemies.filter(e => e.minion && !e.dead).length < 2) { // thorn hounds
+                b.specialTimer = 0;
+                for (const ex of [ax + 60, ax + 640]) { const m = makeEnemy('charger', ex, 230 - 28, null); m.minion = true; enemies.push(m); burst(ex + 11, 215, 10, '#4ade80', 2); }
+                popText(b.x - 36, b.y - b.r - 24, 'THORN HOUNDS!', '#86efac');
+            }
+        },
+        // FORGEMASTER: his armor takes only 20% damage. He heats up as he works (and when you hit his furnace
+        // core); at 100% heat he overheats and vents, taking full damage. Now and then the forge floods the
+        // arena floor with slag: only the two ledges are safe.
+        forgemaster(b, enraged) {
+            const ax = stage.arenaX;
+            if (!b.init) { b.init = true; b.state = 'idle'; b.heat = 0; b.floodT = 0; b.floodWarn = 0; b.floodTimer = 0; setBossStatus(); }
+            b.facing = player.x > b.x ? 1 : -1;
+            if (b.floodWarn > 0 && --b.floodWarn === 0) { b.floodT = enraged ? 220 : 180; playSound('explosion'); shake = Math.max(shake, 5); }
+            if (b.floodT > 0) {
+                b.floodT--;
+                const p = player;
+                if (p.grounded && p.ground && p.ground.ground && p.x + p.w > ax) hurtPlayer(16);
+                if (frame % 3 === 0) particles.push({ x: ax + Math.random() * 700, y: 226, vx: 0, vy: -1 - Math.random(), life: 20, max: 20, color: Math.random() < 0.5 ? '#f97316' : '#fde047', size: 2 });
+                if (b.floodT === 0) b.heat = Math.min(100, b.heat + 15);
+            }
+            if (b.state === 'vent') { // overheated: armor open, no attacks while he cools down
+                b.y = 186; b.heat = Math.max(0, b.heat - 100 / 360);
+                if (frame % 4 === 0) particles.push({ x: b.x + (Math.random() - 0.5) * 50, y: b.y - 30, vx: (Math.random() - 0.5) * 0.6, vy: -1.2, life: 30, max: 30, color: '#e2e8f0', size: 3 });
+                if (--b.stateT <= 0) { b.state = 'idle'; b.heat = 0; popText(b.x - 36, b.y - b.r - 26, 'ARMOR SEALED', '#fdba74'); playSound('shield'); }
+                return;
+            }
+            b.heat = Math.min(100, b.heat + 0.07);
+            if (b.heat >= 100) {
+                b.state = 'vent'; b.stateT = 360; b.attackTimer = 0; b.y = 186;
+                popText(b.x - 46, b.y - b.r - 26, 'OVERHEATED! STRIKE NOW', '#fde047'); playSound('clear');
+                spawnItem(b.x, b.y - 40, Math.random() < 0.5 ? 'heavy' : 'special');
+                return;
+            }
+            if (b.state === 'idle') {
+                b.y = 186;
+                b.x += b.vx * (enraged ? 1.4 : 1);
+                if (b.x < ax + 160 || b.x > ax + 600) { b.vx = -b.vx; b.x = clamp(b.x, ax + 160, ax + 600); }
+                if (++b.attackTimer > (enraged ? 95 : 125)) { b.attackTimer = 0; lobAt(b, player.x + player.w / 2, player.y + player.h - 6, 4, 34, 15); } // molten rain
+                if (++b.specialTimer > (enraged ? 150 : 210)) { b.specialTimer = 0; b.state = 'slam'; b.stateT = 40; }
+                if (++b.floodTimer > (enraged ? 720 : 900) && !b.floodT && !b.floodWarn) {
+                    b.floodTimer = 0; b.floodWarn = 100;
+                    popText(player.x - 60, player.y - 30, 'THE FORGE FLOODS! GET ON A LEDGE!', '#fb923c'); playSound('beam');
+                }
+            } else if (b.state === 'slam') { // hammer slam: shockwaves along the floor
+                b.y = 186 - Math.sin((40 - b.stateT) / 40 * Math.PI) * 22;
+                if (--b.stateT <= 0) {
+                    b.y = 186; b.state = 'idle'; b.heat = Math.min(100, b.heat + 6);
+                    for (const d of [-1, 1]) {
+                        bullets.push({ x: b.x + d * b.r, y: 222, vx: d * 3.4, vy: 0, owner: 'enemy', kind: 'wave', dmg: 20, life: 260, hw: 6, hh: 8 });
+                        if (enraged) bullets.push({ x: b.x + d * b.r, y: 222, vx: d * 2.1, vy: 0, owner: 'enemy', kind: 'wave', dmg: 20, life: 360, hw: 6, hh: 8 });
+                    }
+                    shake = Math.max(shake, 6); playSound('explosion'); burst(b.x, 228, 20, '#fdba74', 3);
+                }
+            }
+        },
+        // TEMPEST TITAN: wrapped in a storm shield. He sends storm orbs that home in on you: shoot one down
+        // and he overloads (open to damage); let it reach you and it bursts. Lightning strikes and gales
+        // that push you across the arena keep you moving.
+        titan(b, enraged) {
+            const ax = stage.arenaX;
+            if (!b.init) { b.init = true; b.home = ax + 350; b.state = 'storm'; b.immune = true; b.orbTimer = 200; b.gust = 0; b.gustTimer = 500; b.windDir = 1; setBossStatus(); }
+            for (const q of b.parts) if (q.hurt > 0) q.hurt--;
+            if (b.state === 'stunned') {
+                b.x += (b.home - 60 + Math.sin(b.t * 0.02) * 30 - b.x) * 0.04; b.y += (150 - b.y) * 0.05;
+                if (frame % 5 === 0) burst(b.x + (Math.random() - 0.5) * 40, b.y + (Math.random() - 0.5) * 30, 2, '#bfdbfe', 2, 10);
+                if (--b.stateT <= 0) { b.state = 'storm'; b.immune = true; b.orbTimer = 160; popText(b.x - 46, b.y - b.r - 22, 'THE STORM SHIELD RETURNS', '#93c5fd'); playSound('shield'); }
+                return;
+            }
+            b.x += (b.home + Math.sin(b.t * 0.007) * 200 - b.x) * 0.05; b.y += (85 + Math.sin(b.t * 0.03) * 14 - b.y) * 0.05;
+            if (--b.orbTimer <= 0 && b.parts.length < (enraged ? 2 : 1)) {
+                b.orbTimer = enraged ? 300 : 400;
+                const hp = Math.round(150 * dcfg().hp);
+                b.parts.push({ kind: 'orb', x: b.x, y: b.y + b.r, r: 10, hp, maxHp: hp, hurt: 0, life: 660 });
+                popText(b.x - 46, b.y + b.r + 14, 'STORM ORB! SHOOT IT DOWN', '#bfdbfe'); playSound('beam');
+            }
+            for (const q of b.parts) {
+                const tx = player.x + player.w / 2, ty = player.y + 12, d = Math.hypot(tx - q.x, ty - q.y) || 1, sp = enraged ? 0.95 : 0.75;
+                q.x += (tx - q.x) / d * sp; q.y += (ty - q.y) / d * sp;
+                if (d < 16 || --q.life <= 0) { // it reached you (or ran out): a surge of lightning
+                    q.hp = 0; explosionFx(q.x, q.y, 34, '#93c5fd');
+                    if (d < 40) hurtPlayer(32);
+                    popText(q.x - 30, q.y - 20, 'STORM SURGE', '#93c5fd');
+                }
+            }
+            b.parts = b.parts.filter(q => q.hp > 0);
+            if (++b.spreadTimer > (enraged ? 110 : 160)) { // lightning strikes, one on you
+                b.spreadTimer = 0;
+                const cols = [player.x + player.w / 2];
+                for (let i = 0; i < (enraged ? 3 : 2); i++) cols.push(ax + 30 + Math.random() * 640);
+                cols.forEach(x => hazards.push({ x, warn: 45, fire: 14, kind: 'bolt', dmg: 28 }));
+            }
+            if (++b.attackTimer > (enraged ? 60 : 90)) { b.attackTimer = 0; bossAimed(b, 3.8, 13, { bolt: true }); playSound('enemyShot'); }
+            if (b.gust > 0) { // gale: the wind shoves you toward the arena's edge
+                b.gust--;
+                if (player.dashT <= 0) player.x = clamp(player.x + b.windDir * 1.15, minArenaX(), stage.levelW - player.w);
+            } else if (--b.gustTimer <= 0) {
+                b.gustTimer = enraged ? 480 : 640; b.gust = 200; b.windDir = player.x + player.w / 2 > ax + 350 ? 1 : -1;
+                popText(player.x - 24, player.y - 26, b.windDir > 0 ? 'GALE  >>>' : '<<<  GALE', '#e2e8f0');
+            }
+        },
+        // THE ARBITER: his ward takes the colour of one element and only that element really hurts him
+        // (x1.5; any other x0.25). It shifts every 10 s, so change subclass in the Inventory or wait.
+        // His prism beam sweeps the whole floor (dash through it); at 66% and 33% he ascends and his echoes fight.
+        arbiter(b, enraged) {
+            const ax = stage.arenaX;
+            if (!b.init) { b.init = true; b.state = 'judge'; b.ward = ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)]; b.wardT = 600; b.beam = null; b.beamTimer = 300; setBossStatus(); }
+            if (b.state === 'ascend') {
+                b.y += (60 - b.y) * 0.05; b.x += (ax + 350 - b.x) * 0.05;
+                if (--b.stateT <= 0) { b.state = 'judge'; b.immune = false; bossRing(b, 16, 2.4, 13); }
+                return;
+            }
+            b.x += (ax + 350 + Math.sin(b.t * 0.01) * 160 - b.x) * 0.05; b.y += (90 + Math.sin(b.t * 0.02) * 20 - b.y) * 0.05;
+            if (--b.wardT <= 0) {
+                let n; do { n = ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)]; } while (n === b.ward);
+                b.ward = n; b.wardT = enraged ? 420 : 600;
+                popText(b.x - 36, b.y - b.r - 22, `WEAK TO ${ELEMENTS[n].label}`, ELEMENTS[n].color); playSound('shield');
+                rings.push({ x: b.x, y: b.y, r: b.r, maxR: b.r + 40, life: 20, max: 20, color: ELEMENTS[n].color });
+            }
+            if (b.beam) { // prism sweep
+                const bm = b.beam;
+                if (bm.warn > 0) { bm.warn--; bm.a = bm.a0; }
+                else {
+                    bm.t++; bm.a = bm.a0 + (bm.a1 - bm.a0) * bm.t / bm.dur;
+                    const px = player.x + player.w / 2 - b.x, py = player.y + player.h / 2 - b.y;
+                    const proj = px * Math.cos(bm.a) + py * Math.sin(bm.a), perp = Math.abs(-px * Math.sin(bm.a) + py * Math.cos(bm.a));
+                    if (proj > 0 && perp < 8) hurtPlayer(30);
+                    if (bm.t >= bm.dur) b.beam = null;
+                }
+            } else if (--b.beamTimer <= 0) {
+                b.beamTimer = enraged ? 330 : 440;
+                const left = Math.random() < 0.5, fx = left ? ax + 30 : ax + 670, tx = left ? ax + 670 : ax + 30;
+                b.beam = { a0: Math.atan2(230 - b.y, fx - b.x), a1: Math.atan2(230 - b.y, tx - b.x), a: 0, warn: 60, t: 0, dur: 150 };
+                if (!b.beamHinted) { b.beamHinted = true; popText(player.x - 44, player.y - 30, 'DASH THROUGH THE LIGHT!', '#fde047'); }
+                playSound('beam');
+            }
+            if (++b.spreadTimer > (enraged ? 150 : 210)) { // judgment pillars
+                b.spreadTimer = 0;
+                const cols = [player.x + player.w / 2];
+                for (let i = 0; i < (enraged ? 4 : 2); i++) cols.push(ax + 30 + Math.random() * 640);
+                cols.forEach(x => hazards.push({ x, warn: 55, fire: 20, kind: 'judgment', dmg: 30 }));
+            }
+            if (!b.beam && ++b.attackTimer > (enraged ? 55 : 80)) { // halo volley
+                b.attackTimer = 0;
+                const a = Math.atan2(player.y + 15 - b.y, player.x + 8 - b.x);
+                for (const d of [-0.36, -0.18, 0, 0.18, 0.36]) enemyShot(b.x, b.y, a + d, 3, 13, { big: true, holy: true });
+                playSound('enemyShot');
+            }
+            const frac = b.hp / b.maxHp;
+            if ((frac < 0.66 && b.adds < 1) || (frac < 0.33 && b.adds < 2)) { // ascension: untouchable while his echoes fight
+                b.adds++; b.state = 'ascend'; b.stateT = 200; b.immune = true; b.beam = null;
+                for (const ex of [ax + 150, ax + 550]) {
+                    const m = makeEnemy('phantom', ex, 230 - 30, ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)]);
+                    m.minion = true; m.tpTimer = 60; enemies.push(m); burst(ex + 9, 215, 12, '#fde047', 2);
+                }
+                popText(b.x - 40, b.y - b.r - 22, 'THE ARBITER ASCENDS', '#fef08a');
+            }
+        },
         overseer(b, enraged) {
             b.y = 110 + Math.sin(b.t * 0.03) * 22;
             b.x = b.home + Math.sin(b.t * 0.011) * 90;
@@ -3699,7 +3943,7 @@
         }
         b.t++;
         if (b.hurt > 0) b.hurt--;
-        const enraged = b.hp < b.maxHp * (b.type === 'herald' ? 0.4 : 0.5);
+        const enraged = b.hp < b.maxHp * (b.type === 'herald' || b.type === 'arbiter' ? 0.4 : 0.5);
         BOSS_AI[b.type](b, enraged);
         if (b.alpha > 0.5 && circleRect(b.x, b.y, b.r - 4, playerBox())) hurtPlayer(20);
     }
@@ -3732,7 +3976,7 @@
             if (h.warn > 0) { if (--h.warn === 0) { playSound('beam'); shake = Math.max(shake, 2); } }
             else {
                 h.fire--;
-                if (Math.abs(pcx - h.x) < 13) hurtPlayer(25);
+                if (Math.abs(pcx - h.x) < 13 && (!h.low || player.y + player.h > 214)) hurtPlayer(h.dmg || 25); // low hazards (thorns) only reach the floor
             }
         }
         hazards = hazards.filter(h => h.warn > 0 || h.fire > 0);
@@ -3771,6 +4015,14 @@
                 if (stage.pylons && boss && boss.active && !boss.dead) {
                     const py = stage.pylons.find(q => b.x > q.x - 2 && b.x < q.x + q.w + 2 && b.y > q.y - 2 && b.y < q.y + q.h);
                     if (py) { if (isExplosive(b)) detonate(b); else b.dead = true; hitPylon(py); continue; }
+                }
+                if (boss && boss.parts.length && boss.active && !boss.dead) {
+                    const q = boss.parts.find(o => o.hp > 0 && Math.hypot(b.x - o.x, b.y - o.y) < o.r + 2 && !(b.hit && b.hit.has(o)));
+                    if (q) {
+                        if (isExplosive(b)) { detonate(b); continue; }
+                        hitBossPart(q, b.dmg); burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
+                        if (b.hit) b.hit.add(q); else { b.dead = true; continue; }
+                    }
                 }
                 const box = { x: b.x - 2, y: b.y - 2, w: 4, h: 4 };
                 if (isExplosive(b)) {
@@ -3813,7 +4065,8 @@
                     if (dist < boss.r) {
                         // the boss core (inner 45% of its radius) is its weak point
                         const core = (dist < boss.r * 0.45 || player.markT > 0) && (b.kind === 'bullet' || b.kind === 'precision');
-                        if (damageBoss(b.dmg * (core ? BOSS_CRIT_MULT : 1)) && core) {
+                        if (core && boss.type === 'forgemaster' && boss.state !== 'vent') boss.heat = Math.min(100, boss.heat + 1.5); // striking the furnace heats it
+                        if (damageBoss(b.dmg * (core ? BOSS_CRIT_MULT : 1), b.element) && core) {
                             playSound('crit'); burst(b.x, b.y, 4, '#fde047', 2, 10);
                             if (frame - (boss.critAt || -99) > 30) { boss.critAt = frame; popText(boss.x - 8, boss.y - boss.r - 8, 'CRIT', '#fde047'); }
                         }
@@ -3967,6 +4220,9 @@
                         : b.state === 'fail' ? ['IMMUNE • FAILED', 'text-red-400'] : ['IMMUNE • WATCH', 'text-sky-400'];
                     setHud('boss-hud-status', st[0], st[1]);
                 }
+            } else if (LIVE_STATUS[boss.type] && boss.init && !boss.dead) {
+                const st = LIVE_STATUS[boss.type](boss);
+                setHud('boss-hud-status', st[0], st[1]);
             }
         }
     }
@@ -4449,7 +4705,8 @@
         ctx.globalAlpha = b.dead ? Math.max(0, (victoryTimer - 40) / 100) : b.alpha;
         const white = b.hurt > 0;
         const ea = Math.atan2(player.y + 15 - b.y, player.x + 8 - b.x);
-        const glowColor = { overseer: '239,68,68', tyrant: '251,146,60', hive: '103,232,249', herald: '192,132,252', nimays: '232,121,249' }[b.type];
+        const glowColor = { overseer: '239,68,68', tyrant: '251,146,60', hive: '103,232,249', herald: '192,132,252', nimays: '232,121,249',
+                            thorn: '132,204,22', forgemaster: '249,115,22', titan: '96,165,250', arbiter: '253,224,71' }[b.type];
         const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, b.r + 24);
         glow.addColorStop(0, `rgba(${glowColor},0.35)`); glow.addColorStop(1, `rgba(${glowColor},0)`);
         ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, b.r + 24, 0, Math.PI * 2); ctx.fill();
@@ -4505,6 +4762,81 @@
                 ctx.strokeStyle = `rgba(253,224,71,${0.5 + 0.3 * Math.sin(frame * 0.3)})`; ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-2, 2); ctx.lineTo(-6, 10); ctx.moveTo(6, -10); ctx.lineTo(2, 0); ctx.lineTo(8, 8); ctx.stroke();
             }
+        } else if (b.type === 'thorn') {
+            ctx.strokeStyle = '#3f2d1c'; ctx.lineWidth = 3; // roots
+            for (let i = 0; i < 6; i++) {
+                const tx = -35 + i * 14;
+                ctx.beginPath(); ctx.moveTo(tx * 0.5, 14); ctx.quadraticCurveTo(tx, 40, tx * 1.3 + Math.sin(b.t * 0.03 + i) * 3, 62); ctx.stroke();
+            }
+            const open = b.state === 'bloom' ? Math.min(1, (b.bloomDur - b.stateT) / 20, b.stateT / 20) : 0;
+            for (let i = 0; i < 7; i++) { // petals spread wide while she blooms
+                const a = -Math.PI / 2 + (i - 3) * (0.45 + open * 0.4);
+                ctx.save(); ctx.rotate(a); ctx.translate(0, -(b.r * 0.35 + open * b.r * 0.5));
+                ctx.fillStyle = white ? '#fff' : open > 0.5 ? '#be185d' : '#15803d';
+                ctx.beginPath(); ctx.ellipse(0, -6, 8, 18, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#a3e635'; ctx.fillRect(-1, -25, 2, 6); // thorn tip
+                ctx.restore();
+            }
+            ctx.fillStyle = white ? '#fff' : '#9d174d'; // the heart
+            ctx.beginPath(); ctx.arc(0, 0, b.r * 0.55, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#fbcfe8'; ctx.beginPath(); ctx.arc(Math.cos(ea) * 4, Math.sin(ea) * 4, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#500724'; ctx.fillRect(Math.cos(ea) * 6 - 2, Math.sin(ea) * 6 - 2, 4, 4);
+            if (open < 1) { // the thorn carapace over the heart
+                const ga = ctx.globalAlpha; ctx.globalAlpha = ga * (1 - open);
+                ctx.fillStyle = white ? '#fff' : '#14532d'; ctx.beginPath(); ctx.arc(0, 0, b.r * 0.7, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#a3e635';
+                for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 + b.t * 0.01; ctx.fillRect(Math.cos(a) * b.r * 0.66 - 1.5, Math.sin(a) * b.r * 0.66 - 1.5, 3, 3); }
+                ctx.strokeStyle = '#052e16'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-14, -8); ctx.lineTo(0, 4); ctx.lineTo(14, -8); ctx.moveTo(0, 4); ctx.lineTo(0, 16); ctx.stroke();
+                ctx.globalAlpha = ga;
+            }
+        } else if (b.type === 'forgemaster') {
+            const vent = b.state === 'vent', heat = b.heat / 100;
+            ctx.fillStyle = '#1c1917';
+            for (const lx of [-26, 14]) ctx.fillRect(lx, 10, 12, 34 + (186 - b.y)); // legs
+            ctx.fillStyle = white ? '#fff' : '#44403c'; roundRectPath(-40, -30, 80, 44, 6); ctx.fill();
+            ctx.fillStyle = white ? '#fff' : '#292524'; ctx.fillRect(-36, -26, 72, 6);
+            // the furnace core: glows hotter as heat builds, white-hot and open while he vents
+            ctx.fillStyle = vent ? '#fef08a' : `rgb(${Math.round(120 + 135 * heat)},${Math.round(40 + 120 * heat * heat)},20)`;
+            ctx.fillRect(-14, -14, 28, 20);
+            ctx.fillStyle = '#1c1917'; for (let i = 0; i < 4; i++) ctx.fillRect(-14, -12 + i * 5, 28, vent ? 1 : 2);
+            ctx.fillStyle = white ? '#fff' : '#57534e'; ctx.fillRect(-12, -42, 24, 14); // head
+            ctx.fillStyle = vent ? '#fef08a' : '#f97316'; ctx.fillRect(-9 + b.facing * 2, -37, 18, 3);
+            ctx.save(); ctx.translate(b.facing * 40, -18); ctx.rotate(b.facing * (b.state === 'slam' ? -1.2 : 0.4)); // hammer arm
+            ctx.fillStyle = '#57534e'; ctx.fillRect(-3, 0, 6, 30); ctx.fillStyle = white ? '#fff' : '#292524'; ctx.fillRect(-12, 28, 24, 14);
+            ctx.fillStyle = '#f97316'; ctx.fillRect(-12, 28, 24, 2); ctx.restore();
+            if (vent) { ctx.fillStyle = '#fde047'; ctx.fillRect(-38, -30, 6, 10); ctx.fillRect(32, -30, 6, 10); }
+            ctx.fillStyle = 'rgba(15,23,42,0.8)'; ctx.fillRect(-30, -56, 60, 4); // heat gauge
+            ctx.fillStyle = vent ? '#fef08a' : '#f97316'; ctx.fillRect(-30, -56, 60 * heat, 4);
+        } else if (b.type === 'titan') {
+            const stun = b.state === 'stunned';
+            ctx.fillStyle = white ? '#fff' : stun ? '#1e293b' : '#475569'; // a body of storm clouds
+            for (const [cx, cy, cr] of [[-22, 6, 16], [22, 6, 16], [0, -6, 22], [-12, 14, 14], [12, 14, 14]]) {
+                ctx.beginPath(); ctx.arc(cx + Math.sin(b.t * 0.03 + cx) * 2, cy, cr, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.fillStyle = white ? '#fff' : stun ? '#334155' : '#64748b'; ctx.beginPath(); ctx.arc(0, -10, 14, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = stun ? '#64748b' : '#e0f2fe'; // eyes of lightning
+            ctx.fillRect(-9 + Math.cos(ea) * 2, -13, 6, 3); ctx.fillRect(3 + Math.cos(ea) * 2, -13, 6, 3);
+            if (!stun && b.t % 20 < 10) { // crackling arms
+                ctx.strokeStyle = '#bfdbfe'; ctx.lineWidth = 1.5; ctx.beginPath();
+                ctx.moveTo(-30, 10); ctx.lineTo(-36, 22); ctx.lineTo(-31, 26); ctx.lineTo(-38, 40);
+                ctx.moveTo(30, 10); ctx.lineTo(36, 22); ctx.lineTo(31, 26); ctx.lineTo(38, 40); ctx.stroke();
+            }
+        } else if (b.type === 'arbiter') {
+            const wc = ELEMENTS[b.ward || 'fire'].color, ga = ctx.globalAlpha;
+            ctx.strokeStyle = 'rgba(254,240,138,0.7)'; ctx.lineWidth = 2; // wings of light
+            for (let i = 0; i < 4; i++) for (const sd of [-1, 1]) {
+                ctx.beginPath(); ctx.moveTo(sd * 8, -8); ctx.lineTo(sd * (26 + i * 10), -30 + i * 9 + Math.sin(b.t * 0.05 + i) * 2); ctx.stroke();
+            }
+            ctx.fillStyle = white ? '#fff' : '#fef9c3';
+            ctx.beginPath(); ctx.moveTo(0, -b.r); ctx.lineTo(b.r * 0.55, 0); ctx.lineTo(b.r * 0.3, b.r + 14); ctx.lineTo(-b.r * 0.3, b.r + 14); ctx.lineTo(-b.r * 0.55, 0); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = white ? '#fff' : '#fbbf24';
+            ctx.beginPath(); ctx.moveTo(0, -b.r + 10); ctx.lineTo(b.r * 0.3, 2); ctx.lineTo(0, b.r); ctx.lineTo(-b.r * 0.3, 2); ctx.fill();
+            ctx.fillStyle = wc; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); // the ward core shows his weak element
+            ctx.fillStyle = '#fff'; ctx.fillRect(Math.cos(ea) * 3 - 1.5, Math.sin(ea) * 3 - 1.5, 3, 3);
+            ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, -b.r - 6, 12, 3.5, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = ga * 0.6; ctx.strokeStyle = wc; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(0, 0, b.r + 8 + Math.sin(b.t * 0.1) * 2, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = ga;
         } else if (b.type === 'hive') {
             ctx.strokeStyle = '#155e75'; ctx.lineWidth = 3;
             for (let i = 0; i < 5; i++) {
@@ -4547,6 +4879,51 @@
         ctx.restore();
     }
 
+    function drawBossFx() {
+        const b = boss;
+        if (!b || !b.active || b.dead) return;
+        const ax = stage.arenaX;
+        if (b.type === 'forgemaster') { // the flooding forge
+            if (b.floodWarn > 0) { ctx.fillStyle = `rgba(249,115,22,${b.floodWarn % 16 < 8 ? 0.55 : 0.2})`; ctx.fillRect(ax, 226, 700, 4); }
+            if (b.floodT > 0) {
+                ctx.fillStyle = 'rgba(234,88,12,0.85)'; ctx.fillRect(ax, 223, 700, 12);
+                ctx.fillStyle = '#fde047';
+                for (let x = ax; x < ax + 700; x += 18) ctx.fillRect(x + (frame * 0.6 + x) % 18, 223 + Math.sin(frame * 0.1 + x) * 1.5, 7, 2);
+            }
+        }
+        if (b.type === 'titan' && b.gust > 0) { // wind streaks
+            ctx.strokeStyle = 'rgba(226,232,240,0.35)'; ctx.lineWidth = 1; ctx.beginPath();
+            for (let i = 0; i < 14; i++) {
+                const y = 30 + (i * 37) % 200, x = cameraX + ((i * 97 + frame * 6 * b.windDir) % (W + 60) + W + 60) % (W + 60) - 30;
+                ctx.moveTo(x, y); ctx.lineTo(x - b.windDir * 22, y);
+            }
+            ctx.stroke();
+        }
+        if (b.type === 'arbiter' && b.beam) { // the prism beam (a thin guide while it charges)
+            const bm = b.beam, L = 900, ex = b.x + Math.cos(bm.a) * L, ey = b.y + Math.sin(bm.a) * L;
+            ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(ex, ey);
+            if (bm.warn > 0) { ctx.strokeStyle = `rgba(253,224,71,${bm.warn % 10 < 5 ? 0.6 : 0.25})`; ctx.lineWidth = 1; ctx.stroke(); }
+            else {
+                ctx.strokeStyle = 'rgba(250,204,21,0.45)'; ctx.lineWidth = 12; ctx.stroke();
+                ctx.strokeStyle = '#fefce8'; ctx.lineWidth = 4; ctx.stroke();
+            }
+        }
+        for (const q of b.parts) { // spore pods and storm orbs, with their health
+            if (q.hp <= 0) continue;
+            if (q.kind === 'pod') {
+                ctx.fillStyle = q.hurt > 0 ? '#fff' : '#4d7c0f'; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#bef264'; ctx.fillRect(q.x - 4, q.y - 3, 2, 2); ctx.fillRect(q.x + 2, q.y + 1, 2, 2); ctx.fillRect(q.x - 1, q.y + 4, 2, 2);
+                ctx.fillStyle = '#365314'; ctx.fillRect(q.x - 1, q.y + q.r - 1, 2, 4);
+            } else {
+                ctx.fillStyle = q.hurt > 0 ? '#fff' : 'rgba(147,197,253,0.85)'; ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#eff6ff'; ctx.lineWidth = 1; ctx.beginPath();
+                for (let i = 0; i < 3; i++) { const a = frame * 0.2 + i * 2.1; ctx.moveTo(q.x, q.y); ctx.lineTo(q.x + Math.cos(a) * (q.r + 4), q.y + Math.sin(a) * (q.r + 4)); }
+                ctx.stroke();
+            }
+            ctx.strokeStyle = q.kind === 'pod' ? '#a3e635' : '#e0f2fe'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(q.x, q.y, q.r + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * q.hp / q.maxHp); ctx.stroke();
+        }
+    }
     // Nimays' four sigil crystals, the beam to the one she is showing, and the sequence pips above her
     function drawPylons() {
         if (!stage.pylons) return;
@@ -4612,13 +4989,36 @@
                 }
                 continue;
             }
+            if (h.kind === 'thorns') { // green marks on the floor, then spikes
+                if (h.warn > 0) {
+                    ctx.fillStyle = `rgba(132,204,22,${h.warn % 10 < 5 ? 0.7 : 0.3})`;
+                    for (let i = -2; i <= 2; i++) ctx.fillRect(h.x + i * 5 - 1, 227, 2, 3);
+                } else {
+                    const k = Math.min(1, (30 - h.fire) / 6) * Math.min(1, h.fire / 6);
+                    ctx.fillStyle = '#365314';
+                    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(h.x + i * 5 - 3, 230); ctx.lineTo(h.x + i * 5, 230 - (14 + (i % 2 ? 0 : 10)) * k); ctx.lineTo(h.x + i * 5 + 3, 230); ctx.fill(); }
+                    ctx.fillStyle = '#a3e635'; for (let i = -2; i <= 2; i++) ctx.fillRect(h.x + i * 5 - 0.5, 230 - (14 + (i % 2 ? 0 : 10)) * k, 1, 3);
+                }
+                continue;
+            }
+            if (h.kind === 'bolt') { // a lightning strike
+                if (h.warn > 0) {
+                    ctx.fillStyle = `rgba(147,197,253,${h.warn % 10 < 5 ? 0.45 : 0.15})`; ctx.fillRect(h.x - 1, 0, 2, H);
+                } else {
+                    ctx.strokeStyle = '#eff6ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(h.x, 0);
+                    for (let y = 20; y <= 232; y += 20) ctx.lineTo(h.x + (Math.random() - 0.5) * 14, y);
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(96,165,250,0.25)'; ctx.fillRect(h.x - 13, 0, 26, H);
+                }
+                continue;
+            }
             if (h.warn > 0) {
-                ctx.fillStyle = `rgba(239,68,68,${h.warn % 10 < 5 ? 0.5 : 0.2})`;
+                ctx.fillStyle = h.kind === 'judgment' ? `rgba(253,224,71,${h.warn % 10 < 5 ? 0.5 : 0.2})` : `rgba(239,68,68,${h.warn % 10 < 5 ? 0.5 : 0.2})`;
                 ctx.fillRect(h.x - 1, 0, 2, H);
                 ctx.fillStyle = 'rgba(239,68,68,0.12)'; ctx.fillRect(h.x - 13, 0, 26, H);
             } else {
-                ctx.fillStyle = 'rgba(168,85,247,0.6)'; ctx.fillRect(h.x - 13, 0, 26, H);
-                ctx.fillStyle = '#f5d0fe'; ctx.fillRect(h.x - 4, 0, 8, H);
+                ctx.fillStyle = h.kind === 'judgment' ? 'rgba(250,204,21,0.55)' : 'rgba(168,85,247,0.6)'; ctx.fillRect(h.x - 13, 0, 26, H);
+                ctx.fillStyle = h.kind === 'judgment' ? '#fefce8' : '#f5d0fe'; ctx.fillRect(h.x - 4, 0, 8, H);
             }
         }
     }
@@ -4707,7 +5107,7 @@
                     continue;
                 }
                 const r = b.big ? 4 : 3;
-                const col = b.ice ? '#67e8f9' : b.voidOrb ? '#c084fc' : b.grav ? '#fb923c' : b.big ? '#fb923c' : '#f87171';
+                const col = b.spore ? '#84cc16' : b.bolt ? '#93c5fd' : b.holy ? '#fde047' : b.ice ? '#67e8f9' : b.voidOrb ? '#c084fc' : b.grav ? '#fb923c' : b.big ? '#fb923c' : '#f87171';
                 ctx.globalAlpha = 0.35; ctx.fillStyle = col;
                 ctx.beginPath(); ctx.arc(b.x, b.y, r + 2, 0, Math.PI * 2); ctx.fill();
                 ctx.globalAlpha = 1;
@@ -5022,7 +5422,7 @@
             if (en.champ) light(en.x + en.w / 2, en.y + en.h / 2, en.w * 1.6 + (en.barrier > 0 ? 10 : 0), CHAMPIONS[en.champ].color, (en.barrier > 0 ? 0.35 : 0.22) * en.alpha);
         }
         if (boss && boss.active && !boss.dead) {
-            const gc = { overseer: '#ef4444', tyrant: '#fb923c', hive: '#67e8f9', herald: '#c084fc', nimays: '#e879f9' }[boss.type];
+            const gc = { overseer: '#ef4444', tyrant: '#fb923c', hive: '#67e8f9', herald: '#c084fc', nimays: '#e879f9', thorn: '#84cc16', forgemaster: '#f97316', titan: '#60a5fa', arbiter: '#fde047' }[boss.type];
             light(boss.x, boss.y, boss.r + 50, gc, 0.3 * boss.alpha);
         }
         if (stage.pylons) for (const py of stage.pylons) {
@@ -5162,6 +5562,7 @@
         drawItems();
         for (const en of enemies) if (en.x + en.w > cameraX - 20 && en.x < cameraX + W + 20) { drawEnemy(en); if (en.chill > 0 || en.frozen > 0) drawChill(en); }
         drawBoss();
+        drawBossFx();
         drawHazards();
         if (!player.dead) drawPlayer();
         drawBullets();
@@ -5229,6 +5630,8 @@
             centerText('WARNING', 100, 14, '#ef4444');
             centerText(boss.name + ' APPROACHING', 122, 7, '#fca5a5');
         }
+        if (boss && BOSS_HINTS[boss.type] && boss.active && !boss.dead && boss.t < 720 && bossIntro <= 0)
+            BOSS_HINTS[boss.type].forEach((line, i) => centerText(line, 228 + i * 9, 5, '#e2e8f0'));
         // Nimays' first ward: spell out the rule once
         if (boss && boss.type === 'nimays' && boss.active && !boss.dead && boss.cycle === 0 && bossIntro <= 0 && boss.state !== 'broken')
             centerText(boss.state === 'input' ? 'SHOOT THE CRYSTALS IN THE SAME ORDER' : 'WATCH THE ORDER OF THE CRYSTALS', 236, 5, '#f5d0fe');

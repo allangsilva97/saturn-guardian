@@ -31,6 +31,11 @@ All editions are the same game with the same saves; cycle between them with the 
 - **Difficulty:** Easy, Normal or Hard changes the number of enemies, their health and movement speed, the damage you take, champion count, credits and loot odds
 - **4 subclasses:** Fire, Shock, Void and Stasis. Your element; match an enemy's shield colour to shatter it. Stasis chills what it hits, slowing enemies until they freeze (frozen enemies take 30% more damage)
 - **8 worlds, 41 stages (4 to 6 per world):** Iron Yard, Crimson Dunes, Frozen Moon, Void Citadel, Verdant Maw, Molten Forge, Tempest Reach and the Astral Throne, each ending in a boss
+- **Boss fights with their own rules in the new worlds:**
+  - **Thorn Queen:** her heart is sealed until you destroy her three spore pods; thorns erupt from the floor and thorn hounds join below half health
+  - **Forgemaster:** armored (20% damage) until he overheats; hitting his furnace core heats him up, and when the forge floods with slag only the ledges are safe
+  - **Tempest Titan:** shielded until you shoot down one of his homing storm orbs; lightning strikes and gales push you around
+  - **The Arbiter:** only his ward's current element really hurts him (change subclass in the inventory), his prism beam sweeps the floor (dash through it), and he ascends at 66% and 33%
 - **A changing map:** each later stage of a world is rougher and darker, with more pits and height changes; from the second stage ledges crumble under you (and come back later), and from the third debris falls from above
 - **Cover and hiding:** low walls to crouch behind (they stop enemy shots) and open shelters to stand in; hidden, enemies lose track of you until you fire
 - **Champions:** random Barrier, Overload and Unstoppable variants (at most 2 types per stage), plus mid-stage warp-ins, each countered by its own weapon: Piercer Rifle, Arc Disruptor, Breacher Slug
