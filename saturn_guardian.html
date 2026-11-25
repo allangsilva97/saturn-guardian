@@ -921,6 +921,8 @@
         if (!SPECIES[s.species]) s.species = P2_DEFAULT.species;
         if (!['m', 'f', 'x'].includes(s.body)) s.body = 'x';
         if (!Array.isArray(s.loadout)) s.loadout = null;
+        if (!Array.isArray(s.dev) || s.dev.length !== 2 || !s.dev.every(d => d === 'kb' || d === 'pad')) s.dev = ['kb', 'pad']; // Player 1, Player 2
+        if (s.mouse !== 1) s.mouse = 0; // who aims with the mouse when both play on the keyboard
         if (!s.ability || typeof s.ability !== 'object') s.ability = {};
         return s;
     }
@@ -939,6 +941,7 @@
         return save.loadout.includes(uid) || !!(save.p2 && save.p2.on && Array.isArray(save.p2.loadout) && save.p2.loadout.includes(uid));
     }
     function toggleCoop() { const s = p2cfg(); s.on = !s.on; persist(); renderCoop(); }
+    function setDev(i, d) { const s = p2cfg(); s.dev = s.dev.slice(); s.dev[i] = d === 'pad' ? 'pad' : 'kb'; persist(); renderCoop(); }
     function setP2(k, v) { p2cfg()[k] = v; persist(); renderCoop(); }
     function connectedPads() {
         try { return navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(g => g && g.connected).length : 0; } catch (e) { return 0; }
@@ -948,14 +951,21 @@
         if (!box) return;
         const s = p2cfg(), n = connectedPads();
         const pick = (on, color, call, label) => `<button onclick="${call}" style="--c:${color}" class="pick ${on ? 'sel' : ''} flex-1 py-1.5 text-[10px] font-bold rounded">${label}</button>`;
-        const pads = n >= 2 ? 'Two gamepads: one for each player (Player 1 can also use the mouse and keyboard).'
-            : n === 1 ? 'One gamepad: Player 2 uses it, Player 1 the mouse and keyboard.'
-            : 'No gamepad found (press a button on it to wake it up). Player 2 can play on the arrow keys and the number pad.';
+        const need = s.dev.filter(d => d === 'pad').length, bothKb = s.dev[0] === 'kb' && s.dev[1] === 'kb';
+        const uses = i => s.dev[i] === 'pad' ? `gamepad ${s.dev.slice(0, i + 1).filter(d => d === 'pad').length}`
+            : !bothKb ? 'the keyboard and mouse (all keys)' : (i ? 'the arrows and number pad' : 'the left keys') + (s.mouse === i ? ' + the mouse' : '');
+        const pads = `Player 1: ${uses(0)} • Player 2: ${uses(1)}.` + (need > n
+            ? ` <span class="text-amber-300">${need} gamepad${need > 1 ? 's' : ''} needed, ${n} connected (press a button on it to wake it up): until then, that player uses the keyboard.</span>` : '');
         box.innerHTML = `
             <div class="flex items-center gap-2 mb-2">
                 <button onclick="toggleCoop()" id="coop-btn" class="px-3 py-2 saturn-button pixel-font text-[9px] rounded shrink-0 ${s.on ? 'text-orange-300' : 'text-slate-300'}">2 PLAYERS: ${s.on ? 'ON' : 'OFF'}</button>
                 <div class="text-[11px] text-slate-400 leading-snug">${s.on ? pads : 'A second Guardian joins you on the same screen, for the campaign and Horde mode.'}</div>
             </div>` + (!s.on ? '' : `
+            <div class="grid grid-cols-2 gap-2 mb-2">${[0, 1].map(i => `<div><div class="text-[10px] ${i ? 'text-orange-300' : 'text-sky-300'} mb-1">PLAYER ${i + 1} PLAYS WITH</div>
+                <div class="flex gap-1">${pick(s.dev[i] === 'kb', '#38bdf8', `setDev(${i},'kb')`, 'KEYBOARD + MOUSE')}${pick(s.dev[i] === 'pad', '#fb923c', `setDev(${i},'pad')`, 'GAMEPAD')}</div></div>`).join('')}</div>
+            ${bothKb ? `<div class="flex items-center gap-2 mb-1"><span class="text-[10px] text-slate-400 shrink-0">THE MOUSE AIMS FOR</span>${pick(s.mouse === 0, '#38bdf8', `setP2('mouse',0)`, 'PLAYER 1')}${pick(s.mouse === 1, '#fb923c', `setP2('mouse',1)`, 'PLAYER 2')}</div>
+            <div class="text-[11px] text-slate-500 leading-snug mb-2">Both on the keyboard: Player 1 uses the left keys and Player 2 the arrows and number pad (Player 2 can also plug in a second keyboard and use those keys on it).
+                A computer sees every mouse as the same cursor, so only one player can aim with it; the other aims with their keys.</div>` : ''}
             <div class="flex items-center justify-between gap-2 mb-1"><span class="text-[11px] text-orange-300">PLAYER 2 (orange helmet)</span>
                 <button onclick="invWho = 1; openInventory()" class="px-2 py-1 saturn-button pixel-font text-[8px] text-orange-300 rounded">P2 INVENTORY</button></div>
             <div class="flex gap-2 mb-2">${Object.keys(CLASSES).map(c => pick(s.cls === c, CLASSES[c].color, `setP2('cls','${c}')`, CLASSES[c].label)).join('')}</div>
@@ -2592,6 +2602,7 @@
         const online = net.role === 'host' && netReady() && !!net.cfg; // online, Player 2 takes local co-op's place
         coop = online || !!p2cfg().on;
         localCoop = coop && !online;
+        inputDev = p2cfg().dev.slice(); mouseFor = p2cfg().mouse;
         score = 0; kills = 0; credits = 0; deaths = 0; frame = 0;
         livesLeft = dcfg().lives;
         cameraX = 0; shake = 0; flash = 0; hurtFlash = 0; bossIntro = 0; stageIntro = 180; victoryTimer = 0;
@@ -2666,14 +2677,14 @@
         if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; // typing (the room code)
         if (net.role === 'guest' && guestViewOpen() && !invOpen) { guestKey(e, true); return; } // online Player 2: keys go to the host
         if (infuseTarget && e.code === 'Escape') { closeInfuse(); return; }
-        const a1 = KB1_ACTION[e.code], a2 = localCoop ? KB2_ACTION[e.code] : null, a = a2 || a1; // Player 2's keys win in local co-op
+        const route = keyRoute(e.code), a = route && route.a; // which player and action this key is (see the co-op devices)
         if (invOpen) { // the inventory takes the keyboard while it is open
             if (e.code === 'Escape' || a === 'inventory') { e.preventDefault(); if (!e.repeat) closeInventory(); }
             return;
         }
         if (a === 'inventory' && !e.repeat && (state === 'playing' || state === 'paused' || (state === 'menu' && e.code !== 'Tab'))
             && document.getElementById('armory').classList.contains('hidden') && document.getElementById('main-menu').classList.contains('hidden') === (state !== 'menu')) {
-            e.preventDefault(); invWho = a2 === 'inventory' ? 1 : 0; openInventory(); return;
+            e.preventDefault(); invWho = route.pid && localCoop ? 1 : 0; openInventory(); return;
         }
         if (state === 'menu' || state === 'over') return;
         if (GAME_KEYS.has(e.code) || a) e.preventDefault();
@@ -2682,19 +2693,17 @@
         if (e.code === 'Escape' || a === 'pause') { togglePause(); return; }
         if (state === 'paused' && e.code === 'KeyM') { abandonMission(); return; } // quit the mission
         if (state !== 'playing') return;
-        if (a2) { const p2 = players[1]; if (p2 && !p2.dead) asPlayer(p2, () => playerAction(a2, true)); return; }
-        if (!a1 || player.dead) return;
-        if (a1 === 'fire' || a1 === 'up') mouse.active = false; // back to keyboard aim
-        playerAction(a1, true);
+        const p = route && players[route.pid];
+        if (!p || p.dead) return;
+        if ((a === 'fire' || a === 'up') && route.pid === mouseOwner()) mouse.active = false; // back to keyboard aim
+        asPlayer(p, () => playerAction(a, true));
     });
     window.addEventListener('keyup', e => {
         if (controlsOpen) return;
         if (net.role === 'guest' && guestViewOpen() && !invOpen) { guestKey(e, false); return; }
         keys[e.code] = false;
-        const a2 = localCoop ? KB2_ACTION[e.code] : null;
-        if (a2) { if (players[1]) asPlayer(players[1], () => playerAction(a2, false)); return; }
-        const a1 = KB1_ACTION[e.code];
-        if (a1 === 'grenade' || a1 === 'super') releaseAim(a1); // let go: throw where you aimed
+        const route = keyRoute(e.code), p = route && players[route.pid];
+        if (p && (route.a === 'grenade' || route.a === 'super')) asPlayer(p, () => playerAction(route.a, false)); // let go: throw where you aimed
     });
     window.addEventListener('blur', () => {
         for (const k in keys) keys[k] = false;
@@ -2714,15 +2723,21 @@
             if (state !== 'playing') return;
             initAudio(); mouse.active = true;
             if (e.button === 0) mouse.down = true;
-            if (e.button === 2) beginAim('grenade');
+            const mp = players[mouseOwner()];
+            if (e.button === 2 && mp && !mp.dead) asPlayer(mp, () => beginAim('grenade'));
         });
-        window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; if (e.button === 2) releaseAim('grenade'); });
+        window.addEventListener('mouseup', e => {
+            if (e.button === 0) mouse.down = false;
+            const mp = players[mouseOwner()];
+            if (e.button === 2 && mp) asPlayer(mp, () => releaseAim('grenade'));
+        });
         cv.addEventListener('contextmenu', e => e.preventDefault());
         cv.addEventListener('wheel', e => {
             e.preventDefault();
-            if (state !== 'playing' || player.owned.length < 2) return;
-            const n = player.owned.length;
-            switchWeapon((player.weaponIdx + (e.deltaY > 0 ? 1 : -1) + n) % n);
+            const mp = players[mouseOwner()];
+            if (state !== 'playing' || !mp || mp.dead || mp.owned.length < 2) return;
+            const n = mp.owned.length;
+            asPlayer(mp, () => switchWeapon((mp.weaponIdx + (e.deltaY > 0 ? 1 : -1) + n) % n));
         }, { passive: false });
     })();
 
@@ -2742,9 +2757,32 @@
             return { b, prev, ax: g.axes };
         });
     }
+    // Local co-op: each player plays with the keyboard (and mouse) or a gamepad, as picked in the co-op panel.
+    // Gamepads go to the players who picked one, in order; a player whose gamepad isn't connected uses the keyboard.
+    let inputDev = ['kb', 'pad'], mouseFor = 0;
     function padOf(pid) {
         if (!localCoop) return pid ? null : pads[0] || null;
-        return (pads.length >= 2 ? pads[pid] : pid ? pads[0] : null) || null;
+        const k = [0, 1].filter(i => inputDev[i] === 'pad').indexOf(pid);
+        return k < 0 ? null : pads[k] || null;
+    }
+    const onKeyboard = pid => !padOf(pid); // picked the keyboard, or their gamepad isn't there
+    function kbOwner(set) { // which player a keyboard layout (kb1: left keys, kb2: arrows and number pad) drives
+        if (!localCoop) return set === 'kb1' ? 0 : null;
+        const k0 = onKeyboard(0), k1 = onKeyboard(1);
+        if (k0 && !k1) return 0; // Player 2 on a gamepad: the whole keyboard is Player 1's
+        if (k1 && !k0) return 1; // Player 1 on a gamepad: the whole keyboard is Player 2's
+        return set === 'kb1' ? 0 : 1; // both on the keyboard (or both on gamepads): split
+    }
+    function mouseOwner() {
+        if (!localCoop) return 0;
+        const k0 = onKeyboard(0), k1 = onKeyboard(1);
+        return k0 && k1 ? mouseFor : k1 ? 1 : 0;
+    }
+    function keyRoute(code) { // { pid, a }: the player and action a key drives right now
+        const a1 = KB1_ACTION[code], a2 = KB2_ACTION[code], o1 = kbOwner('kb1'), o2 = kbOwner('kb2');
+        if (a2 && o2 != null && (o2 !== o1 || !a1)) return { pid: o2, a: a2 }; // split keyboard: Player 2's keys win
+        if (a1 && o1 != null) return { pid: o1, a: a1 };
+        return null;
     }
     function padHeld(pad, a) {
         if (!pad) return false;
@@ -2919,10 +2957,13 @@
         if (player && player.remote) return !!(net.remote && net.remote.h & G_BITS[a]); // online Player 2
         const pid = player ? player.pid : 0;
         if (padHeld(padOf(pid), a)) return true;
-        if (pid) return controls.kb2[a].some(k => k && keys[k]);
-        if (controls.kb1[a].some(k => k && keys[k] && !(localCoop && KB2_ALL.has(k)))) return true;
-        if (keys[TOUCH_HELD[a]]) return true;
-        return a === 'fire' && (mouse.down || touch.fire);
+        for (const set of ['kb1', 'kb2']) for (const k of controls[set][a]) {
+            if (!k || !keys[k]) continue;
+            const r = keyRoute(k);
+            if (r && r.pid === pid && r.a === a) return true;
+        }
+        if (!pid && keys[TOUCH_HELD[a]]) return true;
+        return a === 'fire' && ((pid === mouseOwner() && mouse.down) || (!pid && touch.fire));
     }
     const held = {
         left: () => heldBy('left'), right: () => heldBy('right'), up: () => heldBy('up'),
@@ -3049,7 +3090,7 @@
             if (r.m) { const dx = r.m[0] + cameraX - (p.x + p.w / 2), dy = r.m[1] - (p.y + (p.crouch ? 26 : 13)), d = Math.hypot(dx, dy) || 1; return [dx / d, dy / d]; }
         }
         if (!pid && touch.aim && player) return touch.aim;
-        if (!pid && mouse.active && player) { // free 360° aim toward the cursor
+        if (pid === mouseOwner() && mouse.active && player) { // free 360° aim toward the cursor
             const p = player, dx = mouse.x + cameraX - (p.x + p.w / 2), dy = mouse.y - (p.y + (p.crouch ? 26 : 13));
             const d = Math.hypot(dx, dy) || 1;
             return [dx / d, dy / d];
@@ -3922,9 +3963,9 @@
             const r = net.remote;
             if (r && r.a) { if (Math.abs(r.a[0]) > 0.15) p.facing = r.a[0] > 0 ? 1 : -1; }
             else if (r && r.m) p.facing = r.m[0] + cameraX >= p.x + p.w / 2 ? 1 : -1;
-        } else if (!p.pid) {
-            if (mouse.active) p.facing = mouse.x + cameraX >= p.x + p.w / 2 ? 1 : -1; // face the cursor
-            if (touch.aim && Math.abs(touch.aim[0]) > 0.15) p.facing = touch.aim[0] > 0 ? 1 : -1; // face the fire stick
+        } else {
+            if (p.pid === mouseOwner() && mouse.active) p.facing = mouse.x + cameraX >= p.x + p.w / 2 ? 1 : -1; // face the cursor
+            if (!p.pid && touch.aim && Math.abs(touch.aim[0]) > 0.15) p.facing = touch.aim[0] > 0 ? 1 : -1; // face the fire stick
         }
 
         if (p.grounded) p.coyote = 6; else if (p.coyote > 0) p.coyote--;
@@ -6028,7 +6069,7 @@
         }
         if (state !== 'playing') return;
         for (const q of players) { // aim reticles for gamepads and Player 2's keyboard (the mouse has its crosshair)
-            if (q.dead || !(q.pid || padAim(padOf(0)))) continue;
+            if (q.dead || (q.pid === mouseOwner() && !q.remote && mouse.active && !padAim(padOf(q.pid)))) continue; // the mouse player has the crosshair
             asPlayer(q, () => {
                 const [ax, ay] = getAim(), mx = q.x + q.w / 2 - cameraX + ax * 40, my = q.y + (q.crouch ? 26 : 13) + ay * 40;
                 ctx.strokeStyle = q.pid ? '#fb923c' : ELEMENTS[selectedElement].color; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
@@ -6382,7 +6423,7 @@
         // crosshair (the system cursor is hidden over the canvas while mouse-aiming)
         canvas.style.cursor = mouse.active && state === 'playing' ? 'none' : '';
         if (mouse.active && state === 'playing') {
-            const mx = mouse.x, my = mouse.y, c = ELEMENTS[selectedElement].color;
+            const mo = players[mouseOwner()], mx = mouse.x, my = mouse.y, c = ELEMENTS[mo ? mo.el : selectedElement].color; // in the mouse player's colour
             ctx.strokeStyle = '#000'; ctx.lineWidth = 2.5;
             ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI * 2); ctx.stroke();
             ctx.strokeStyle = c; ctx.lineWidth = 1;
