@@ -74,11 +74,11 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | Left click or K | Fire (hold) |
 | 1 / 2 / 3 or mouse wheel | Primary / special / heavy weapon |
 | R | Reload |
-| Q (or right click) | Grenade |
+| Q (or right click) | Grenade: hold to aim (mouse, W/S or the fire stick) and see its arc, release to throw |
 | E | Melee |
 | F | Class ability |
 | I / Tab | Inventory (weapons, equipment, subclass) |
-| T | Super |
+| T | Super: hold to aim, release to cast (Deadeye and Singularity fly along the aim; the Sentinel leaps along it and slams down where it lands) |
 | P / Esc | Pause (then M abandons the mission, keeping credits) |
 
 ### Touch controls
@@ -87,8 +87,8 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | Left stick | Move (push up to aim up, down to crouch or aim down in the air) |
 | Right stick (FIRE) | Hold to fire; drag to aim in any direction |
 | JUMP | Jump (hold: double jump / hover / glide; left stick down + JUMP drops through ledges) |
-| DASH, GREN, MELEE | Dash, grenade, melee |
-| SKILL, SUPER | Class ability, super |
+| DASH, GREN, MELEE | Dash, grenade (hold and drag to aim), melee |
+| SKILL, SUPER | Class ability, super (hold and drag to aim) |
 | SWAP, RELOAD | Next weapon, reload |
 | II | Pause (then RESUME or ABANDON) |
 | INV | Inventory |

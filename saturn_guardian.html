@@ -200,12 +200,12 @@
 
             <div class="touch-only text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
                 Left stick: move (up aims up, down crouches) &bull; Right stick: hold to fire, drag to aim &bull; INV opens the inventory &bull; JUMP (hold: double jump / hover / glide; stick down + JUMP drops through ledges)
-                &bull; DASH &bull; GREN &bull; MELEE &bull; SKILL (class ability) &bull; SUPER &bull; SWAP weapon &bull; RELOAD &bull; II pause
+                &bull; DASH &bull; GREN &bull; MELEE &bull; SKILL (class ability) &bull; SUPER (hold GREN or SUPER and drag to aim) &bull; SWAP weapon &bull; RELOAD &bull; II pause
             </div>
             <div class="key-only text-[11px] text-slate-500 text-center tracking-wider max-w-4xl">
                 [A/D] Move &bull; [Shift] Dash &bull; [W] Aim up &bull; [S] Crouch / aim down in air &bull; [J/Space] Jump (hold: double jump / hover / glide, S+Jump drops through ledges)
                 &bull; [Mouse] Aim &bull; [Left click / K] Fire (hold) &bull; [1/2/3 or Wheel] Primary / Special / Heavy &bull; [R] Reload
-                &bull; [Q] Grenade &bull; [E] Melee &bull; [F] Class ability &bull; [T] Super &bull; [I/Tab] Inventory &bull; [P/Esc] Pause
+                &bull; [Q / Right click] Grenade &bull; [E] Melee &bull; [F] Class ability &bull; [T] Super (hold Q or T to aim, release to throw) &bull; [I/Tab] Inventory &bull; [P/Esc] Pause
             </div>
         </div>
     </div>
@@ -2322,6 +2322,7 @@
     }
     function togglePause() {
         if (invOpen) return;
+        if (player) player.aiming = null;
         if (state === 'playing') state = 'paused';
         else if (state === 'paused') { state = 'playing'; lastTs = 0; }
         if (music.playing && musicOn) musicVolume(state === 'paused' ? MUSIC_VOL * 0.3 : MUSIC_VOL, 0.25); // duck while paused
@@ -2352,14 +2353,18 @@
         if (e.code === 'KeyK' || e.code === 'KeyZ' || e.code === 'KeyW' || e.code === 'ArrowUp') mouse.active = false; // back to keyboard aim
         if (e.code === 'Space' || e.code === 'KeyJ') player.jumpBuffer = 8;
         // Q grenade · E melee · F class ability · T super · 1/2/3 weapons (primary / special / heavy)
-        if (e.code === 'KeyQ') throwGrenade();
+        if (e.code === 'KeyQ') beginAim('grenade');
         if (e.code === 'KeyE') performMelee();
         if (e.code === 'KeyF') useClassAbility();
-        if (e.code === 'KeyT') castSuper();
+        if (e.code === 'KeyT') beginAim('super');
         if (e.code === 'KeyR') startReload();
         if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') switchWeapon(+e.code.slice(5) - 1);
     });
-    window.addEventListener('keyup', e => { keys[e.code] = false; });
+    window.addEventListener('keyup', e => {
+        keys[e.code] = false;
+        if (e.code === 'KeyQ') releaseAim('grenade');
+        if (e.code === 'KeyT') releaseAim('super');
+    });
     window.addEventListener('blur', () => {
         for (const k in keys) keys[k] = false;
         mouse.down = false;
@@ -2378,9 +2383,9 @@
             if (state !== 'playing') return;
             initAudio(); mouse.active = true;
             if (e.button === 0) mouse.down = true;
-            if (e.button === 2) throwGrenade();
+            if (e.button === 2) beginAim('grenade');
         });
-        window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
+        window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; if (e.button === 2) releaseAim('grenade'); });
         cv.addEventListener('contextmenu', e => e.preventDefault());
         cv.addEventListener('wheel', e => {
             e.preventDefault();
@@ -2456,10 +2461,10 @@
         const ACTIONS = {
             jump: () => { keys.TouchJump = true; player.jumpBuffer = 8; },
             dash: () => startDash(),
-            gren: () => throwGrenade(),
+            gren: () => beginAim('grenade'),
             melee: () => performMelee(),
             ability: () => useClassAbility(),
-            super: () => castSuper(),
+            super: () => beginAim('super'),
             reload: () => startReload(),
             swap: () => { const n = player.owned.length; if (n > 1) switchWeapon((player.weaponIdx + 1) % n); },
         };
@@ -2476,12 +2481,21 @@
                 pid = e.pointerId;
                 try { btn.setPointerCapture(pid); } catch (err) {}
                 btn.classList.add('held');
+                sx = e.clientX; sy = e.clientY;
                 ACTIONS[act]();
+            });
+            let sx = 0, sy = 0;
+            const aimKind = { gren: 'grenade', super: 'super' }[act];
+            if (aimKind) btn.addEventListener('pointermove', e => { // drag away from the button to aim
+                if (e.pointerId !== pid || !player || player.aiming !== aimKind) return;
+                const dx = e.clientX - sx, dy = e.clientY - sy, d = Math.hypot(dx, dy);
+                player.aimDrag = d > 14 ? [dx / d, dy / d] : null;
             });
             const up = e => {
                 if (e.pointerId !== pid) return;
                 pid = null; btn.classList.remove('held');
                 if (act === 'jump') keys.TouchJump = false;
+                if (aimKind) releaseAim(aimKind);
             };
             btn.addEventListener('pointerup', up);
             btn.addEventListener('pointercancel', up);
@@ -2692,34 +2706,87 @@
         if (hit) shake = Math.max(shake, 2);
     }
 
-    function throwGrenade() {
+    // Grenade and super are aimed: hold the key (or right mouse button, or the touch button) to see where
+    // they will go, aim with the mouse, the fire stick, W/S or by dragging the touch button, then let go.
+    function beginAim(kind) {
+        const p = player;
+        if (!p || state !== 'playing' || (kind === 'grenade' ? p.grenadeCd > 0 : p.superEnergy < 100)) return;
+        p.aiming = kind; p.aimDrag = null;
+    }
+    function releaseAim(kind) {
+        const p = player;
+        if (!p || p.aiming !== kind) return;
+        const aim = p.aimDrag || getAim();
+        p.aiming = null; p.aimDrag = null;
+        if (state !== 'playing') return;
+        if (kind === 'grenade') throwGrenade(aim); else castSuper(aim);
+    }
+    const grenadeVelocity = ([ax, ay]) => [ax * 4.6 + player.vx * 0.4, ay * 4.6 - 2.2]; // a lob along the aim
+    const novaVelocity = ([ax, ay]) => [ax * 3.5, ay * 3.5 - 1.4];
+    const slamVelocity = ([ax, ay]) => [ax * 5.5, Math.min(-3, ay * 7 - 3)]; // the Sentinel leaps along the aim
+    function throwGrenade(aim) {
         const p = player;
         if (p.grenadeCd > 0) return;
         p.grenadeCd = p.grenadeMax;
         playSound('grenade');
-        bullets.push({ x: p.x + p.w / 2, y: p.y + 8, vx: p.facing * 3.6 + p.vx * 0.5, vy: -3.6,
+        const [vx, vy] = grenadeVelocity(aim || getAim());
+        bullets.push({ x: p.x + p.w / 2, y: p.y + 8, vx, vy,
             owner: 'player', kind: 'grenade', element: selectedElement, dmg: 70 * p.dmgMult, life: 120 });
     }
+    // Dotted trajectory while aiming (grenade arc, super line or the Sentinel's leap)
+    function drawAimPreview() {
+        const p = player;
+        if (!p || !p.aiming || p.dead || state !== 'playing') return;
+        const aim = p.aimDrag || getAim(), el = ELEMENTS[selectedElement].color;
+        const hitsFloor = (x, y0, y1) => platforms.some(pl => !pl.gone && x > pl.x && x < pl.x + pl.w && y0 <= pl.y && y1 >= pl.y);
+        let x = p.x + p.w / 2, y, vx, vy, g, n, endR = 0;
+        if (p.aiming === 'grenade') { y = p.y + 8; [vx, vy] = grenadeVelocity(aim); g = 0.2; n = 120; endR = 48; }
+        else if (selectedClass === 'arcanist') { y = p.y + p.h / 2 - 4; [vx, vy] = novaVelocity(aim); g = 0.05; n = 70; }
+        else if (selectedClass === 'sentinel') { y = p.y + p.h; [vx, vy] = slamVelocity(aim); g = GRAVITY * theme.gravity; n = 90; endR = 140; }
+        else { y = p.y + p.h / 2 - 2; vx = aim[0] * 11; vy = aim[1] * 11; g = 0; n = 14; }
+        ctx.fillStyle = el;
+        for (let i = 0; i < n; i++) {
+            const py = y;
+            vy += g; x += vx; y += vy;
+            if (i % 3 === 0) { ctx.globalAlpha = 0.95 - 0.5 * i / n; ctx.fillRect(x - 1.5, y - 1.5, 3, 3); }
+            if (g && vy > 0 && hitsFloor(x, py + 3, y + 3)) break;
+            if (y > H || x < cameraX - 20 || x > cameraX + W + 20) break;
+        }
+        ctx.globalAlpha = 0.6;
+        if (endR) { ctx.strokeStyle = el; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, Math.min(endR, 48), 0, Math.PI * 2); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+    }
 
-    function castSuper() {
+    function castSuper(aim) {
         const p = player;
         if (p.superEnergy < 100) return;
         p.superEnergy = 0;
         playSound('super');
         shake = Math.max(shake, 4); flash = 8;
         const cx = p.x + p.w / 2, cy = p.y + p.h / 2, el = selectedElement;
-        if (selectedClass === 'ranger') {
+        aim = aim || getAim();
+        if (selectedClass === 'ranger') { // Deadeye: three golden rounds along the aim
+            const a = Math.atan2(aim[1], aim[0]);
+            if (Math.abs(aim[0]) > 0.15) p.facing = aim[0] > 0 ? 1 : -1;
             for (let i = -1; i <= 1; i++) {
-                bullets.push({ x: cx, y: cy - 2, vx: p.facing * 11, vy: i * 0.9, owner: 'player', kind: 'golden',
+                bullets.push({ x: cx, y: cy - 2, vx: Math.cos(a + i * 0.08) * 11, vy: Math.sin(a + i * 0.08) * 11, owner: 'player', kind: 'golden',
                     element: el, dmg: 160 * p.dmgMult, life: 60, hit: new Set() });
             }
-        } else if (selectedClass === 'sentinel') {
-            explode(cx, cy, 140, 220 * p.dmgMult, el, 'super');
-            p.vy = -4;
-        } else {
-            bullets.push({ x: cx, y: cy - 4, vx: p.facing * 3.5, vy: -1.4, owner: 'player', kind: 'nova', element: el, dmg: 260 * p.dmgMult, life: 180 });
+        } else if (selectedClass === 'sentinel') { // Shockwave: leap along the aim and slam down where you land
+            [p.slamVx, p.vy] = slamVelocity(aim);
+            p.slam = 90; p.grounded = false; p.invuln = Math.max(p.invuln, 50);
+        } else { // Singularity: the nova flies along the aim
+            const [vx, vy] = novaVelocity(aim);
+            bullets.push({ x: cx, y: cy - 4, vx, vy, owner: 'player', kind: 'nova', element: el, dmg: 260 * p.dmgMult, life: 180 });
         }
         burst(cx, cy, 25, ELEMENTS[el].color, 4, 35);
+    }
+    function sentinelSlam() {
+        const p = player, cx = p.x + p.w / 2, foot = p.y + p.h;
+        p.slam = 0;
+        explode(cx, foot - 8, 140, 220 * p.dmgMult, selectedElement, 'super');
+        shake = Math.max(shake, 7); playSound('explosion');
+        burst(cx, foot, 20, ELEMENTS[selectedElement].color, 4, 30);
     }
 
     // =====================================================================
@@ -2943,7 +3010,7 @@
         } else if (stage.cp) { p.x = stage.cp.x - p.w / 2; p.y = stage.cp.y - p.h - 4; }
         else { p.x = 60; p.y = 190; }
         p.hp = p.maxHp; p.shield = p.maxShield; p.vx = 0; p.vy = 0;
-        p.invuln = 120; p.reloadTimer = 0; p.burstLeft = 0; p.dashT = 0; p.dashCd = 0; p.focusT = 0;
+        p.invuln = 120; p.reloadTimer = 0; p.burstLeft = 0; p.dashT = 0; p.dashCd = 0; p.focusT = 0; p.slam = 0; p.aiming = null;
         p.safeX = p.x; p.safeY = p.y + 4;
         cameraX = clamp(p.x - W * 0.4, minArenaX(), stage.levelW - W);
         bullets = bullets.filter(b => b.owner === 'player');
@@ -3249,6 +3316,7 @@
 
         p.vx += (dir * p.speed - p.vx) * (p.grounded ? 0.35 * theme.friction : 0.2);
         if (Math.abs(p.vx) < 0.05) p.vx = 0;
+        if (p.slam > 0) p.vx = p.slamVx;
         if (dir !== 0) p.facing = dir;
         if (mouse.active) p.facing = mouse.x + cameraX >= p.x + p.w / 2 ? 1 : -1; // face the cursor
         if (touch.aim && Math.abs(touch.aim[0]) > 0.15) p.facing = touch.aim[0] > 0 ? 1 : -1; // face the fire stick
@@ -3298,6 +3366,7 @@
         p.y += p.vy;
         const plat = landOnPlatforms(p, prevBottom, p.dropTimer > 0);
         p.ground = plat;
+        if (p.slam > 0 && (plat || --p.slam <= 0)) sentinelSlam();
         if (plat) {
             p.jumpsUsed = 0; p.liftFuel = p.liftMax; p.airDashed = false;
             if (!plat.move) { // never respawn onto a moving platform's old position
@@ -5564,7 +5633,7 @@
         drawBoss();
         drawBossFx();
         drawHazards();
-        if (!player.dead) drawPlayer();
+        if (!player.dead) { drawPlayer(); drawAimPreview(); }
         drawBullets();
         drawCovers();
         drawBunkers();
