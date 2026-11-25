@@ -1,5 +1,16 @@
 const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
+
+// The game was called Saturn Vanguard before 2.8.0. Its save lives in the app's userData
+// folder, which is named after productName, so copy the old folder over before anything opens it (older exes keep theirs).
+(() => {
+    const appData = app.getPath('appData');
+    const oldDir = path.join(appData, 'Saturn Vanguard'), newDir = path.join(appData, 'Saturn Guardian');
+    if (!fs.existsSync(oldDir) || fs.existsSync(newDir)) return;
+    try { fs.cpSync(oldDir, newDir, { recursive: true }); }
+    catch { fs.rmSync(newDir, { recursive: true, force: true }); app.setPath('userData', oldDir); } // half a copy is worse than the old folder
+})();
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -8,7 +19,7 @@ function createWindow() {
         minWidth: 640,
         minHeight: 400,
         backgroundColor: '#020617',
-        title: 'Saturn Vanguard',
+        title: 'Saturn Guardian',
         autoHideMenuBar: true,
         webPreferences: {
             contextIsolation: true,

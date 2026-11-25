@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const src = path.join(here, '..', 'saturn_vanguard.html');
+const src = path.join(here, '..', 'saturn_guardian.html');
 const vendor = path.join(here, 'vendor');
 const out = path.join(here, 'app');
 
@@ -55,12 +55,14 @@ async function main() {
     html = html.replace(/<script src="https:\/\/cdn\.tailwindcss\.com[^"]*"><\/script>/, '<script src="tailwind.js"></script>');
     html = html.replace(/<link href="https:\/\/fonts\.googleapis\.com[^"]*" rel="stylesheet">/, '<link href="fonts.css" rel="stylesheet">');
     if (html === before || /https:\/\/(cdn\.tailwindcss|fonts\.googleapis)/.test(html)) {
-        throw new Error('Could not replace the CDN links in saturn_vanguard.html');
+        throw new Error('Could not replace the CDN links in saturn_guardian.html');
     }
+    // The web app manifest and icon only matter for installing from the website
+    html = html.replace(/\s*<link rel="(manifest|apple-touch-icon)"[^>]*>/g, '');
     // Graphics mode the exe starts in: `node build-app.mjs 64` (default), `128` or `256`
     const mode = ['128', '256'].includes(process.argv[2]) ? process.argv[2] : '64';
     html = html.replace('<script src="tailwind.js"></script>', `<script>window.SV_DEFAULT_MODE = '${mode}';</script>\n    <script src="tailwind.js"></script>`);
-    if (mode !== '64') html = html.replace('<title>Saturn Vanguard</title>', `<title>Saturn Vanguard ${mode}</title>`);
+    if (mode !== '64') html = html.replace('<title>Saturn Guardian</title>', `<title>Saturn Guardian ${mode}</title>`);
     console.log(`Graphics mode: ${mode}-bit`);
 
     await writeFile(path.join(out, 'index.html'), html);

@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saturn Vanguard</title>
+    <title>Saturn Guardian</title>
+    <meta name="theme-color" content="#020617">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
@@ -30,28 +33,29 @@
 <body>
 <main>
     <div class="tag">CHOOSE YOUR ERA</div>
-    <h1>SATURN VANGUARD</h1>
+    <h1>SATURN GUARDIAN</h1>
     <div class="grid">
-        <a class="card" href="saturn_vanguard.html?mode=64" style="--c:#38bdf8">
+        <a class="card" href="saturn_guardian.html?mode=64" style="--c:#38bdf8">
             <div class="bits">64-BIT</div>
             <div class="name">CLASSIC EDITION</div>
             <div class="desc">Chunky pixel art, CRT scanlines and the original retro look.</div>
             <span class="play">PLAY</span>
         </a>
-        <a class="card" href="saturn_vanguard.html?mode=128" style="--c:#facc15">
+        <a class="card" href="saturn_guardian.html?mode=128" style="--c:#facc15">
             <div class="bits">128-BIT</div>
             <div class="name">REMASTERED EDITION</div>
             <div class="desc">3&times; resolution, dynamic lighting, bloom, shadows, richer skies and more particles.</div>
             <span class="play">PLAY</span>
         </a>
-        <a class="card" href="saturn_vanguard.html?mode=256" style="--c:#e879f9">
+        <a class="card" href="saturn_guardian.html?mode=256" style="--c:#e879f9">
             <div class="bits">256-BIT</div>
             <div class="name">ULTRA EDITION</div>
             <div class="desc">1080p rendering with everything in 128-bit plus mirror reflections, volumetric fog, wide bloom and denser particles.</div>
             <span class="play">PLAY</span>
         </a>
     </div>
-    <footer>Keyboard required &bull; Same game, same saves &bull; <a href="https://github.com/allangsilva97/saturn-vanguard/releases/latest">Windows downloads</a></footer>
+    <footer>Keyboard &amp; mouse or touch screen &bull; On a phone, play in landscape and use <b>Add to Home screen</b> to install it &bull; Same game, same saves &bull; <a href="https://github.com/allangsilva97/saturn-vanguard/releases/latest">Windows downloads</a></footer>
 </main>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
 </html>

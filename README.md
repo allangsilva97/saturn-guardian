@@ -1,13 +1,17 @@
-# Saturn Vanguard
+# Saturn Guardian
 
-A retro 2D run-and-gun platformer in a single HTML file. No build step: open `saturn_vanguard.html` in a browser.
+*Formerly Saturn Vanguard. Saves carry over.*
 
-**▶ Play in your browser:** https://allangsilva97.github.io/saturn-vanguard/ (keyboard required). Pick an edition:
+A retro 2D run-and-gun platformer in a single HTML file. No build step: open `saturn_guardian.html` in a browser.
+
+**▶ Play in your browser:** https://allangsilva97.github.io/saturn-vanguard/ on a computer (keyboard and mouse) or a phone or tablet (touch). Pick an edition:
 - **64-bit Classic:** chunky 480×270 pixel art with CRT scanlines
 - **128-bit Remastered:** 3× resolution, dynamic lighting, bloom, shadows, richer skies and more particles
 - **256-bit Ultra:** 1080p rendering with everything in 128-bit plus mirror reflections, volumetric fog, a wide second bloom pass and denser particles
 
 All editions are the same game with the same saves; cycle between them with the **GFX** button on the main menu.
+
+**📱 Phones and tablets:** open the site, turn the phone sideways and play with on-screen controls. Use **Add to Home screen** (Android Chrome or iPhone Safari) to install it as a full-screen app that also works offline. The 64-bit edition runs best on most phones.
 
 **⬇ Windows download:** [latest release](https://github.com/allangsilva97/saturn-vanguard/releases/latest)
 
@@ -44,7 +48,7 @@ node node_modules/electron/install.js
 npm run dist
 ```
 
-This writes `SaturnVanguard-64bit.exe`, `SaturnVanguard-128bit.exe` and `SaturnVanguard-256bit.exe` to `desktop/release/` (`npm run dist:64`, `dist:128` or `dist:256` build just one). `npm start`, `npm run start:128` and `npm run start:256` run the app without packaging it. F11 toggles fullscreen.
+This writes `SaturnGuardian-64bit.exe`, `SaturnGuardian-128bit.exe` and `SaturnGuardian-256bit.exe` to `desktop/release/` (`npm run dist:64`, `dist:128` or `dist:256` build just one). `npm start`, `npm run start:128` and `npm run start:256` run the app without packaging it. F11 toggles fullscreen.
 
 The exes are not code-signed, so Windows SmartScreen asks for **More info → Run anyway**, and PCs with Windows 11 Smart App Control turned on may block them outright.
 
@@ -64,3 +68,14 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | F | Class ability |
 | T | Super |
 | P / Esc | Pause (then M abandons the mission, keeping credits) |
+
+### Touch controls
+| Control | Action |
+|---|---|
+| Left stick | Move (push up to aim up, down to crouch or aim down in the air) |
+| Right stick (FIRE) | Hold to fire; drag to aim in any direction |
+| JUMP | Jump (hold: double jump / hover / glide; left stick down + JUMP drops through ledges) |
+| DASH, GREN, MELEE | Dash, grenade, melee |
+| SKILL, SUPER | Class ability, super |
+| SWAP, RELOAD | Next weapon, reload |
+| II | Pause (then RESUME or ABANDON) |
