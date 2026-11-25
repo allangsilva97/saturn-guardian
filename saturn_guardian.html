@@ -51,6 +51,17 @@
         .pip { display: inline-block; width: 10px; height: 6px; margin-right: 2px; background: #1e293b; border: 1px solid #334155; }
         .pip.on { background: #facc15; border-color: #fde047; }
 
+        /* ---- Screen size (keyboard and mouse): LARGE drops the 960 px cap, FULL fills the window (the desktop app always does) ---- */
+        body.screen-large:not(.touch) #game-container { width: min(98vw, calc((100vh - 64px) * 16 / 9)) !important; }
+        body.screen-full:not(.touch) #game-container { position: fixed; inset: 0; width: 100vw !important; height: 100vh; border: 0; border-radius: 0;
+            box-shadow: none; background: #000; align-items: center; }
+        body.screen-full:not(.touch) #game-container > .hud-top { width: 100%; height: 30px; flex: none; box-sizing: border-box; }
+        body.screen-full:not(.touch) #game-container > .hud-bottom { display: none; }
+        body.screen-full:not(.touch) #canvas-wrap { flex: none; width: min(100vw, calc((100vh - 30px) * 16 / 9)); margin: auto 0; }
+        /* ---- Online co-op: what Player 2 sees on their computer (the host's game, streamed) ---- */
+        #net-video-wrap { width: min(100vw, calc((100vh - 30px) * 16 / 9)); aspect-ratio: 16 / 9; cursor: crosshair; }
+        #net-video { image-rendering: pixelated; }
+
         /* ---- Touch (phones and tablets): full-screen game, on-screen sticks and buttons ---- */
         .touch-only, #touch-ui, #rotate-hint { display: none; }
         body.touch .touch-only { display: block; }
@@ -101,6 +112,7 @@
                 <div class="flex justify-center gap-2 mb-2">
                     <button onclick="openArmory('menu')" class="px-5 py-2 saturn-button pixel-font text-amber-300 text-[10px] font-bold uppercase rounded">SHOP</button>
                     <button onclick="openInventory()" class="px-5 py-2 saturn-button pixel-font text-sky-300 text-[10px] font-bold uppercase rounded">INVENTORY</button>
+                    <button onclick="openControls()" class="px-5 py-2 saturn-button pixel-font text-emerald-300 text-[10px] font-bold uppercase rounded">CONTROLS</button>
                 </div>
                 <p id="gfx-edition" class="text-sm text-slate-400 tracking-widest uppercase">8 Worlds &bull; 41 Stages &bull; 64-Bit Enhanced Edition</p>
             </div>
@@ -166,6 +178,8 @@
                         <div id="difficulty-desc" class="text-[11px] text-slate-400 leading-snug"></div>
                         <div class="pixel-font text-[10px] text-yellow-400 mt-4 mb-2">-- LOCAL CO-OP --</div>
                         <div id="coop-panel"></div>
+                        <div class="pixel-font text-[10px] text-yellow-400 mt-4 mb-2">-- ONLINE CO-OP (BETA) --</div>
+                        <div id="net-panel"></div>
                     </div>
                 </div>
 
@@ -189,6 +203,7 @@
                 <div class="flex flex-wrap gap-3 justify-between items-center mt-5">
                     <div class="flex flex-wrap gap-2">
                         <button onclick="toggleGfx()" id="gfx-btn" class="px-3 py-2 bg-slate-800 border border-sky-700 text-xs text-sky-300 rounded hover:bg-slate-700">GFX: 64-BIT</button>
+                        <button onclick="cycleScreen()" id="screen-btn" class="key-only px-3 py-2 bg-slate-800 border border-sky-700 text-xs text-sky-300 rounded hover:bg-slate-700">SCREEN: NORMAL</button>
                         <button onclick="toggleCRT()" id="crt-toggle-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">CRT: ON</button>
                         <button onclick="toggleMusic()" id="music-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">MUSIC: ON</button>
                         <button onclick="toggleMute()" id="mute-btn" class="px-3 py-2 bg-slate-800 border border-slate-600 text-xs text-slate-300 rounded hover:bg-slate-700">SOUND: ON</button>
@@ -276,7 +291,11 @@
                     <div class="pixel-font text-yellow-400 text-sm">INVENTORY</div>
                     <div id="inv-context" class="text-[12px] text-slate-400"></div>
                 </div>
-                <button onclick="closeInventory()" id="inv-close" class="px-4 py-2 saturn-button pixel-font text-yellow-300 text-[10px] rounded">CLOSE</button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <div id="inv-who" class="flex gap-2"></div>
+                    <button onclick="openControls()" class="px-3 py-2 saturn-button pixel-font text-emerald-300 text-[10px] rounded">CONTROLS</button>
+                    <button onclick="closeInventory()" id="inv-close" class="px-4 py-2 saturn-button pixel-font text-yellow-300 text-[10px] rounded">CLOSE</button>
+                </div>
             </div>
             <div class="pixel-font text-[10px] text-yellow-400 mb-1">-- SUBCLASS --</div>
             <div id="inv-subclass-note" class="text-[12px] text-slate-400 mb-2"></div>
@@ -294,6 +313,26 @@
                 <div class="text-[11px] text-slate-400">Upgrade armor pieces in the Armory</div>
             </div>
             <div id="inv-armor" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
+        </div>
+    </div>
+
+    <!-- ================= CONTROLS ================= -->
+    <div id="controls" class="fixed inset-0 z-[75] bg-slate-950/95 hidden flex flex-col items-center p-4 overflow-y-auto">
+        <div class="my-auto w-full max-w-4xl saturn-panel p-4 rounded-lg">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                <div>
+                    <div class="pixel-font text-yellow-400 text-sm">CONTROLS</div>
+                    <div class="text-[12px] text-slate-400">Click a slot, then press the key (or gamepad button) for it &bull; Esc cancels &bull; Backspace or Delete empties the slot</div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="resetControls()" class="px-3 py-2 bg-slate-900 border border-red-900 text-xs text-red-400 rounded hover:bg-red-950">RESET TO DEFAULTS</button>
+                    <button onclick="closeControls()" class="px-4 py-2 saturn-button pixel-font text-yellow-300 text-[10px] rounded">DONE</button>
+                </div>
+            </div>
+            <div id="controls-table" class="overflow-x-auto"></div>
+            <div class="text-[11px] text-slate-400 leading-snug mt-2">Fixed: the mouse aims, left click fires, right click throws a grenade and the wheel swaps weapons (Player 1);
+                a gamepad's left stick and D-pad move and its right stick aims; Esc always pauses. A key can do one thing per player: binding it moves it.
+                Player 2's keys are for local co-op and win over Player 1's. Online, Player 2 plays with the Player 1 keys of their own computer. Saved on this device.</div>
         </div>
     </div>
 
@@ -364,7 +403,20 @@
 
         <div class="hud-bottom bg-slate-950/90 px-3 py-1.5 border-t border-sky-900/60 flex justify-between items-center text-[10px] text-slate-400 gap-2">
             <div>RESERVES: <span id="hud-reserves" class="text-white">-</span> &bull; CREDITS <span id="hud-credits" class="text-emerald-400 font-bold">0</span></div>
-            <div class="hidden md:block">[CLICK/K] FIRE &bull; [SHIFT] DASH &bull; [1-3] WEAPON &bull; [Q] GRENADE &bull; [E] MELEE &bull; [F] ABILITY &bull; [T] SUPER &bull; [R] RELOAD &bull; [I] INVENTORY &bull; [P] PAUSE</div>
+            <div id="hud-help" class="hidden md:block">[CLICK/K] FIRE &bull; [SHIFT] DASH &bull; [1-3] WEAPON &bull; [Q] GRENADE &bull; [E] MELEE &bull; [F] ABILITY &bull; [T] SUPER &bull; [R] RELOAD &bull; [I] INVENTORY &bull; [P] PAUSE</div>
+        </div>
+    </div>
+
+    <!-- ================= ONLINE CO-OP: PLAYER 2'S VIEW ================= -->
+    <div id="net-guest" class="hidden fixed inset-0 z-[60] bg-black flex flex-col items-center">
+        <div class="w-full h-[30px] flex-none flex items-center justify-between gap-3 px-3 bg-slate-950/90 border-b-2 border-sky-900 text-xs">
+            <div class="pixel-font text-[9px] text-orange-300 shrink-0">ONLINE &bull; PLAYER 2</div>
+            <div id="net-guest-status" class="text-slate-300 truncate"></div>
+            <button onclick="leaveOnline()" class="shrink-0 px-2 py-0.5 bg-slate-900 border border-red-900 text-[11px] text-red-400 rounded hover:bg-red-950">LEAVE</button>
+        </div>
+        <div id="net-video-wrap" class="relative my-auto bg-black">
+            <video id="net-video" autoplay playsinline class="w-full h-full block"></video>
+            <div id="net-guest-msg" class="absolute inset-0 flex items-center justify-center text-center pixel-font text-[11px] text-yellow-300 bg-slate-950/80 p-6 leading-loose" style="white-space:pre-line"></div>
         </div>
     </div>
 
@@ -435,6 +487,13 @@
         crystal3:  { type: 'sine',     f0: 988, f1: 995, dur: 0.30, vol: 0.13 },
         wrong:     { type: 'sawtooth', f0: 220, f1: 70,  dur: 0.45, vol: 0.12 },
     };
+    // Everything you hear goes through one bus, so online co-op can stream it to Player 2 as well
+    let soundBus = null;
+    function speakers(ac) {
+        if (ac !== audioCtx) return ac.destination;
+        if (!soundBus) { soundBus = ac.createGain(); soundBus.connect(ac.destination); }
+        return soundBus;
+    }
     function playSound(name) {
         if (!audioCtx || muted) return;
         const s = SFX[name];
@@ -450,7 +509,7 @@
             else o.frequency.linearRampToValueAtTime(s.f1, now + s.dur);
             g.gain.setValueAtTime(s.vol, now);
             g.gain.exponentialRampToValueAtTime(0.001, now + s.dur);
-            o.connect(g); g.connect(audioCtx.destination);
+            o.connect(g); g.connect(speakers(audioCtx));
             o.start(now); o.stop(now + s.dur + 0.02);
         } catch (e) {}
     }
@@ -484,7 +543,7 @@
         const out = ac.createGain(); out.gain.value = 0;
         const comp = ac.createDynamicsCompressor();
         comp.threshold.value = -16; comp.ratio.value = 4;
-        out.connect(comp); comp.connect(ac.destination);
+        out.connect(comp); comp.connect(speakers(ac));
         const echo = ac.createDelay(1), fb = ac.createGain(), wet = ac.createGain();
         echo.delayTime.value = 0.28; fb.gain.value = 0.32; wet.gain.value = 0.28;
         echo.connect(fb); fb.connect(echo); echo.connect(wet); wet.connect(out);
@@ -790,8 +849,8 @@
             empowering: { name: 'EMPOWERING RIFT', short: 'RIFT', cd: 720, desc: 'A rift on the ground: weapons and abilities deal +30% damage while you stand in it, for 6 s' },
         },
     };
-    const classAbilityId = () => {
-        const ids = Object.keys(CLASS_ABILITIES[selectedClass]), v = save.ability && save.ability[selectedClass];
+    const classAbilityId = () => { // ctxAbility: the version a second Guardian picked (see asPlayer)
+        const ids = Object.keys(CLASS_ABILITIES[selectedClass]), v = ctxAbility || (save.ability && save.ability[selectedClass]);
         return ids.includes(v) ? v : ids[0];
     };
     const classAbility = () => CLASS_ABILITIES[selectedClass][classAbilityId()];
@@ -853,13 +912,31 @@
 
     // ---- Local co-op (menu): Player 2 picks their own class, subclass and origin and shares the loadout and armor ----
     const P2_DEFAULT = { on: false, cls: 'sentinel', el: 'shock', species: 'machine', body: 'x' };
-    function p2cfg() {
-        const s = save.p2 = Object.assign({}, P2_DEFAULT, save.p2);
+    function p2cfg() { // fills in and checks save.p2 in place (callers may hold on to it)
+        if (!save.p2 || typeof save.p2 !== 'object') save.p2 = {};
+        const s = save.p2;
+        for (const k in P2_DEFAULT) if (!hasOwn(s, k)) s[k] = P2_DEFAULT[k];
         if (!CLASSES[s.cls]) s.cls = P2_DEFAULT.cls;
         if (!ELEMENTS[s.el]) s.el = P2_DEFAULT.el;
         if (!SPECIES[s.species]) s.species = P2_DEFAULT.species;
         if (!['m', 'f', 'x'].includes(s.body)) s.body = 'x';
+        if (!Array.isArray(s.loadout)) s.loadout = null;
+        if (!s.ability || typeof s.ability !== 'object') s.ability = {};
         return s;
+    }
+    function p2Loadout() { // Player 2's three weapons (from the shared inventory); an empty or missing slot takes Player 1's
+        const s = p2cfg();
+        fixLoadout(save);
+        const lo = s.loadout || [];
+        return LOADOUT_SLOTS.map((sl, i) => { const it = save.inventory.find(x => x.uid === lo[i]); return it && ammoOf(it) === sl.ammo ? it.uid : save.loadout[i]; });
+    }
+    const p2LoadoutItems = () => p2Loadout().map(uid => save.inventory.find(i => i.uid === uid)).filter(Boolean);
+    function p2AbilityId() {
+        const s = p2cfg(), ids = Object.keys(CLASS_ABILITIES[s.cls]);
+        return ids.includes(s.ability[s.cls]) ? s.ability[s.cls] : ids[0];
+    }
+    function isEquipped(uid) { // by Player 1, or by Player 2 in local co-op
+        return save.loadout.includes(uid) || !!(save.p2 && save.p2.on && Array.isArray(save.p2.loadout) && save.p2.loadout.includes(uid));
     }
     function toggleCoop() { const s = p2cfg(); s.on = !s.on; persist(); renderCoop(); }
     function setP2(k, v) { p2cfg()[k] = v; persist(); renderCoop(); }
@@ -879,14 +956,15 @@
                 <button onclick="toggleCoop()" id="coop-btn" class="px-3 py-2 saturn-button pixel-font text-[9px] rounded shrink-0 ${s.on ? 'text-orange-300' : 'text-slate-300'}">2 PLAYERS: ${s.on ? 'ON' : 'OFF'}</button>
                 <div class="text-[11px] text-slate-400 leading-snug">${s.on ? pads : 'A second Guardian joins you on the same screen, for the campaign and Horde mode.'}</div>
             </div>` + (!s.on ? '' : `
-            <div class="text-[11px] text-orange-300 mb-1">PLAYER 2 (orange helmet)</div>
+            <div class="flex items-center justify-between gap-2 mb-1"><span class="text-[11px] text-orange-300">PLAYER 2 (orange helmet)</span>
+                <button onclick="invWho = 1; openInventory()" class="px-2 py-1 saturn-button pixel-font text-[8px] text-orange-300 rounded">P2 INVENTORY</button></div>
             <div class="flex gap-2 mb-2">${Object.keys(CLASSES).map(c => pick(s.cls === c, CLASSES[c].color, `setP2('cls','${c}')`, CLASSES[c].label)).join('')}</div>
             <div class="flex gap-2 mb-2">${ELEMENT_IDS.map(e => pick(s.el === e, ELEMENTS[e].color, `setP2('el','${e}')`, ELEMENTS[e].label)).join('')}</div>
             <div class="flex gap-2 mb-2">${SPECIES_IDS.map(id => pick(s.species === id, SPECIES[id].color, `setP2('species','${id}')`, SPECIES[id].name)).join('')}</div>
             <div class="flex gap-2 mb-2">${Object.entries(SPECIES[s.species].bodies).map(([b, l]) => pick(s.body === b, SPECIES[s.species].color, `setP2('body','${b}')`, l)).join('')}</div>
             <div class="text-[11px] text-slate-400 leading-snug"><span class="text-orange-300">Gamepad:</span> left stick moves, right stick aims, RT fire, A jump, B dash, X reload,
                 Y super and LB grenade (hold to aim), RB melee, LT class ability, Back swap weapon, Start pause.
-                <span class="text-orange-300">Keyboard (Player 2):</span> arrows move and aim; number pad 0 jump, 1 fire, 2 dash, 3 reload, 4 grenade, 5 melee, 6 ability, 7 super, 9 swap.
+                <span class="text-orange-300">Keyboard (Player 2):</span> arrows move and aim; number pad 0 jump, 1 fire, 2 dash, 3 reload, 4 grenade, 5 melee, 6 ability, 7 super, 9 swap, + inventory (change any key or button in CONTROLS).
                 Lives are shared: a downed Guardian comes back beside their partner. Enemies are tougher in co-op.</div>`);
     }
     window.addEventListener('gamepadconnected', () => { if (state === 'menu') renderCoop(); });
@@ -1192,7 +1270,7 @@
     let player, platforms, enemies, bullets, particles, rings, items, texts, hazards, weather, boss;
     // Local co-op: `players` holds one or two Guardians. `player` is the Guardian being updated or drawn right now
     // (asPlayer swaps it, with its class, subclass and origin); between those swaps it is always Player 1.
-    let players = [], coop = false, ctxOrigin = null;
+    let players = [], coop = false, localCoop = false, ctxOrigin = null, ctxAbility = null; // localCoop: Player 2 is on this computer
     let structures = [], treasures = [], checkpoints = [];
     let hordeMode = false;
     let stage = null, theme = WORLDS[0], diff = { hp: 1, dmg: 1 };
@@ -1275,6 +1353,7 @@
         document.getElementById('class-desc').textContent = CLASS_INFO[selectedClass];
         renderOrigin();
         renderCoop();
+        renderNet();
         const box = document.getElementById('stage-select');
         box.innerHTML = WORLDS.map((w, wi) => `
             <div class="bg-slate-950/70 border border-slate-800 rounded p-2">
@@ -1440,8 +1519,15 @@
     //  class ability and super, which then recharge from zero.
     // =====================================================================
     let invOpen = false, invInGame = false;
+    let invWho = 0; // whose inventory is open: 0 Player 1, 1 Player 2 (local co-op)
+    function invP2Available() { // local co-op only: an online Player 2 manages their own inventory on their computer
+        if (invInGame) return !!(players[1] && !players[1].remote);
+        return p2cfg().on && net.role !== 'guest' && !(net.role === 'host' && net.cfg);
+    }
+    function setInvWho(w) { invWho = w; pendingDismantle = null; renderInventoryScreen(); }
     function openInventory() {
         if (invOpen) return;
+        document.getElementById('inventory').style.zIndex = guestViewOpen() ? 70 : ''; // over the stream, for an online Player 2
         pendingDismantle = null;
         invInGame = state === 'playing' || state === 'paused';
         if (state === 'playing') togglePause();
@@ -1458,21 +1544,28 @@
         invOpen = false;
         document.body.classList.remove('inv');
         document.getElementById('inventory').classList.add('hidden');
+        invWho = 0;
+        if (net.role === 'guest' && guestViewOpen()) netSend({ t: 'cfg', cfg: myNetCfg() }); // online: the host applies your changes
         if (invInGame) { if (state === 'paused') togglePause(); }
         else if (!document.getElementById('main-menu').classList.contains('hidden')) renderMenu();
     }
     function renderInventoryScreen() {
         fixLoadout(save);
         const inGame = invInGame && player;
-        document.getElementById('inv-context').textContent = inGame
-            ? `MISSION PAUSED • ${stage.horde ? 'HORDE MODE' : stageLabel(stage.idx) + ' ' + stage.name} • changes apply right away`
-            : 'Choose what you take into the next mission';
+        if (invWho && !invP2Available()) invWho = 0;
+        const p2 = invWho === 1, s2 = p2cfg(), invEl = p2 ? s2.el : selectedElement, invCls = p2 ? s2.cls : selectedClass, invLoadout = p2 ? p2Loadout() : save.loadout;
+        document.getElementById('inv-who').innerHTML = invP2Available() ? [0, 1].map(w => `<button onclick="setInvWho(${w})" style="--c:${w ? '#fb923c' : '#38bdf8'}"
+            class="pick ${invWho === w ? 'sel' : ''} px-3 py-2 pixel-font text-[9px] rounded">PLAYER ${w + 1}</button>`).join('') : '';
+        document.getElementById('inv-context').textContent = (p2 ? 'PLAYER 2 • ' : '') + (net.role === 'guest' && guestViewOpen()
+            ? 'ONLINE: your Guardian on the host\'s screen • changes reach the host when you close this'
+            : inGame ? `MISSION PAUSED • ${stage.horde ? 'HORDE MODE' : stageLabel(stage.idx) + ' ' + stage.name} • changes apply right away`
+            : 'Choose what you take into the next mission');
         document.getElementById('inv-close').textContent = inGame ? 'RESUME' : 'CLOSE';
         document.getElementById('inv-subclass-note').innerHTML = inGame
             ? '<span class="text-amber-300">Changing subclass now resets your grenade, melee, class ability and super to zero; they recharge from there.</span>'
             : 'Your shots, grenade, melee and super use your subclass element. Match it to a shield\'s colour to shatter the shield.';
         document.getElementById('inv-subclass').innerHTML = ELEMENT_IDS.map(id => {
-            const el = ELEMENTS[id], sel = id === selectedElement;
+            const el = ELEMENTS[id], sel = id === invEl;
             return `<button onclick="setSubclass('${id}')" style="--c:${el.color}" class="pick ${sel ? 'sel' : ''} py-3 rounded">
                 <div class="pixel-font text-[10px]" style="color:${el.color}">${el.label}</div>
                 <div class="text-[11px] mt-1">${sel ? 'EQUIPPED' : 'Select'}</div></button>`;
@@ -1483,7 +1576,7 @@
             return `<div>
                 <div class="pixel-font text-[8px] mb-1" style="color:${AMMO_COLORS[slot.ammo]}">[${i + 1}] ${slot.label} (${eligible.length})</div>
                 <div class="flex flex-col gap-1.5">${eligible.map(it => {
-                    const on = save.loadout[i] === it.uid, c = RARITIES[it.rarity].color;
+                    const on = invLoadout[i] === it.uid, c = RARITIES[it.rarity].color;
                     return `<div role="button" tabindex="0" onclick="equipFromInventory(${i}, '${it.uid}')" class="cursor-pointer text-left bg-slate-950/70 border-2 rounded p-2 ${on ? '' : 'opacity-80 hover:opacity-100'}"
                         style="border-color:${on ? c : '#1e293b'}; ${on ? `box-shadow:0 0 12px -3px ${c}` : ''}">
                         <div class="flex justify-between gap-2 text-[12px]"><span style="color:${c}" class="font-bold">${RARITIES[it.rarity].name} ${WEAPONS[it.wid].name}</span>
@@ -1492,12 +1585,12 @@
                         <div class="text-[11px] leading-snug">${perkHtml(it)}</div>${xpBarHtml(it)}${weaponActions(it)}</div>`;
                 }).join('')}</div></div>`;
         }).join('');
-        const abId = classAbilityId(), abColor = CLASSES[selectedClass].color;
-        document.getElementById('inv-class-title').textContent = `-- CLASS: ${CLASSES[selectedClass].label} --`;
+        const abId = p2 ? p2AbilityId() : classAbilityId(), abColor = CLASSES[invCls].color;
+        document.getElementById('inv-class-title').textContent = `-- CLASS: ${CLASSES[invCls].label} --`;
         document.getElementById('inv-class-note').textContent = inGame
             ? 'Your class is fixed for this run. Changing the ability version now resets its charge.'
             : 'Choose your class on the main menu before a run; pick its ability version here.';
-        document.getElementById('inv-ability').innerHTML = Object.entries(CLASS_ABILITIES[selectedClass]).map(([id, a]) => `
+        document.getElementById('inv-ability').innerHTML = Object.entries(CLASS_ABILITIES[invCls]).map(([id, a]) => `
             <button onclick="setAbilityVersion('${id}')" style="--c:${abColor}" class="pick ${id === abId ? 'sel' : ''} text-left p-2 rounded">
                 <div class="flex justify-between gap-2"><span class="pixel-font text-[8px]">${a.name}</span><span class="pixel-font text-[7px] ${id === abId ? 'text-yellow-300' : 'text-slate-500'}">${id === abId ? 'EQUIPPED' : 'EQUIP'}</span></div>
                 <div class="text-[11px] mt-1">${a.desc} &bull; ${Math.round(a.cd / 60)} s recharge</div></button>`).join('');
@@ -1509,7 +1602,25 @@
                 <div class="text-[11px] text-slate-400 mt-1">${pc.desc}</div></div>`;
         }).join('');
     }
+    // A mid-mission change restarts the charges of the Guardian who changed
+    function restartCharges(p, msg, color) {
+        asPlayer(p, () => {
+            p.superEnergy = 0; p.grenadeCd = p.grenadeMax; p.meleeCd = MELEE_CD; p.abilityCd = classAbility().cd;
+            popText(p.x - 40, p.y - 22, msg, color);
+        });
+    }
+    const localP2 = () => invInGame && players[1] && !players[1].remote ? players[1] : null;
     function setAbilityVersion(id) {
+        if (invWho === 1) { // Player 2
+            const s = p2cfg();
+            if (!hasOwn(CLASS_ABILITIES[s.cls], id) || id === p2AbilityId()) return;
+            s.ability = Object.assign({}, s.ability, { [s.cls]: id });
+            persist(); playSound('pickup');
+            const q = localP2();
+            if (q) asPlayer(q, () => { q.abilityV = ctxAbility = id; q.abilityCd = classAbility().cd; popText(q.x - 30, q.y - 22, `${classAbility().name} • RECHARGING`, '#e9d5ff'); });
+            renderInventoryScreen();
+            return;
+        }
         if (!CLASS_ABILITIES[selectedClass][id] || id === classAbilityId()) return;
         save.ability = Object.assign({}, save.ability, { [selectedClass]: id });
         persist(); playSound('pickup');
@@ -1520,6 +1631,15 @@
         renderInventoryScreen();
     }
     function setSubclass(el) {
+        if (invWho === 1) { // Player 2
+            const s = p2cfg();
+            if (el === s.el || !hasOwn(ELEMENTS, el)) return;
+            s.el = el; persist(); playSound('pickup');
+            const q = localP2();
+            if (q) { q.el = el; restartCharges(q, `P2 SUBCLASS: ${ELEMENTS[el].label} • ABILITIES RECHARGING`, ELEMENTS[el].color); }
+            renderInventoryScreen();
+            return;
+        }
         if (el === selectedElement || !ELEMENTS[el]) return;
         selectElement(el);
         playSound('pickup');
@@ -1534,6 +1654,16 @@
         renderInventoryScreen();
     }
     function equipFromInventory(i, uid) {
+        if (invWho === 1) { // Player 2
+            const s = p2cfg(), lo = p2Loadout();
+            if (lo[i] === uid) return;
+            lo[i] = uid; s.loadout = lo;
+            persist(); playSound('reload');
+            const q = localP2();
+            if (q) asPlayer(q, () => applyLoadoutToPlayer(p2LoadoutItems()));
+            renderInventoryScreen();
+            return;
+        }
         if (save.loadout[i] === uid) return;
         save.loadout[i] = uid;
         fixLoadout(save);
@@ -1543,8 +1673,8 @@
         renderLoadout();
     }
     // Mid-mission weapon swap: reserves are shared per ammo type; a newly equipped weapon comes loaded
-    function applyLoadoutToPlayer() {
-        const p = player, gear = save.loadout.map(uid => save.inventory.find(it => it.uid === uid)).filter(Boolean);
+    function applyLoadoutToPlayer(items) { // items: another Guardian's weapons (Player 2)
+        const p = player, gear = items || save.loadout.map(uid => save.inventory.find(it => it.uid === uid)).filter(Boolean);
         const slot = Math.max(0, LOADOUT_SLOTS.findIndex(sl => sl.ammo === WEAPONS[p.weapon].ammo));
         for (const it of gear) {
             if (p.owned.includes(it.wid)) continue;
@@ -1777,7 +1907,7 @@
         const donors = infuseDonors(t).filter(d => !donorUid || d.uid === donorUid);
         document.getElementById('infuse-target').innerHTML = `Into: <span style="color:${RARITIES[t.rarity].color}">${itemName(t)}</span> · LV ${t.level}`;
         document.getElementById('infuse-list').innerHTML = donors.length ? donors.map(d => {
-            const cost = INFUSE_COST * (d.level - t.level), ok = save.credits >= cost, eq = save.loadout.includes(d.uid);
+            const cost = INFUSE_COST * (d.level - t.level), ok = save.credits >= cost, eq = isEquipped(d.uid);
             return `<button ${ok ? '' : 'disabled'} onclick="doInfuse('${t.uid}', '${d.uid}')" class="pick text-left p-2 rounded" style="--c:#f59e0b">
                 <div class="flex justify-between gap-2 text-[12px]"><span style="color:${RARITIES[d.rarity].color}" class="font-bold">${itemName(d)} · LV ${d.level}${eq ? ' (EQUIPPED)' : ''}</span>
                 <span class="${ok ? 'text-emerald-400' : 'text-red-400'}">${cost} CR</span></div>
@@ -1807,7 +1937,7 @@
     let pendingDismantle = null; // first click asks, second click dismantles
     function dismantleItem(uid) {
         const it = save.inventory.find(i => i.uid === uid);
-        if (!it || save.loadout.includes(uid)) return;
+        if (!it || isEquipped(uid)) return;
         if (pendingDismantle !== uid) { pendingDismantle = uid; refreshItemViews(); return; }
         pendingDismantle = null;
         save.gold += dismantleGold(it);
@@ -1817,7 +1947,7 @@
     }
     // the INFUSE / DISMANTLE buttons under a weapon card
     function weaponActions(it) {
-        const equipped = save.loadout.includes(it.uid), donors = infuseDonors(it), g = dismantleGold(it), ask = pendingDismantle === it.uid;
+        const equipped = isEquipped(it.uid), donors = infuseDonors(it), g = dismantleGold(it), ask = pendingDismantle === it.uid;
         const b = (label, fn, cls) => `<button onclick="event.stopPropagation(); ${fn}" class="px-2 py-1 text-[10px] font-bold rounded border whitespace-nowrap ${cls}">${label}</button>`;
         const parts = [];
         if (donors.length) parts.push(b(`INFUSE ▲ LV ${donors[0].level}`, `openInfuse('${it.uid}')`, 'border-amber-600 text-amber-300 bg-amber-950/40 hover:bg-amber-900/40'));
@@ -1835,7 +1965,7 @@
         const items = save.inventory.slice().sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) || b.level - a.level);
         document.getElementById('inventory-count').textContent = items.length;
         document.getElementById('armory-inventory').innerHTML = items.map(it => {
-            const r = RARITIES[it.rarity], w = WEAPONS[it.wid], equipped = save.loadout.includes(it.uid);
+            const r = RARITIES[it.rarity], w = WEAPONS[it.wid], equipped = isEquipped(it.uid);
             return `<div class="bg-slate-950/70 border rounded p-2 flex justify-between gap-2" style="border-color:${r.color}55">
                 <div class="min-w-0 flex-1">
                     <div class="pixel-font text-[8px]" style="color:${r.color}">${r.name} &bull; LV ${it.level}</div>
@@ -1887,10 +2017,10 @@
     // Runs fn as Guardian p: `player`, the class, the subclass and the origin become theirs, then are restored.
     // Player shots fired meanwhile are tagged with who fired them (kills, super energy and weapon XP go to the shooter).
     function asPlayer(p, fn) {
-        const prev = [player, selectedClass, selectedElement, ctxOrigin], list = bullets, n0 = list ? list.length : 0;
-        player = p; selectedClass = p.cls; selectedElement = p.el; ctxOrigin = p.pid ? p.origin : null;
+        const prev = [player, selectedClass, selectedElement, ctxOrigin, ctxAbility], list = bullets, n0 = list ? list.length : 0;
+        player = p; selectedClass = p.cls; selectedElement = p.el; ctxOrigin = p.pid ? p.origin : null; ctxAbility = p.pid ? p.abilityV || null : null;
         try { return fn(p); } finally {
-            [player, selectedClass, selectedElement, ctxOrigin] = prev;
+            [player, selectedClass, selectedElement, ctxOrigin, ctxAbility] = prev;
             if (p.pid && list && list === bullets) for (let i = n0; i < list.length; i++) if (list[i].owner === 'player' && list[i].pid == null) list[i].pid = p.pid;
         }
     }
@@ -2408,14 +2538,14 @@
     // =====================================================================
     //  SETUP
     // =====================================================================
-    function makePlayer() {
+    function makePlayer(opts = {}) { // opts.gear / opts.armor: an online Player 2's own weapons and armor
         const cls = CLASSES[selectedClass];
         fixLoadout(save);
-        const gearItems = save.loadout.map(uid => save.inventory.find(i => i.uid === uid)).filter(Boolean);
+        const gearItems = opts.gear || save.loadout.map(uid => save.inventory.find(i => i.uid === uid)).filter(Boolean);
         const owned = gearItems.map(it => it.wid);
         const maxAmmo = { primary: Infinity, special: AMMO_MAX.special, heavy: AMMO_MAX.heavy };
         const maxShield = cls.maxShield, maxHp = 100;
-        const a = save.armor, liftMax = Math.round(80 * (1 + (selectedClass === 'sentinel' ? 0.2 * a.classItem : 0)));
+        const a = opts.armor || save.armor, liftMax = Math.round(80 * (1 + (selectedClass === 'sentinel' ? 0.2 * a.classItem : 0)));
         return {
             x: 60, y: 190, w: 16, h: 30, vx: 0, vy: 0, speed: cls.speed * (1 + 0.04 * a.legs), jumpForce: -7.2 * (1 + 0.02 * a.legs),
             grounded: false, ground: null, jumpsUsed: 0, coyote: 0, jumpBuffer: 0, dropTimer: 0,
@@ -2445,20 +2575,23 @@
             pid: 0, cls: selectedClass, el: selectedElement, origin: null, respawnT: 0,
         };
     }
-    // Player 2: their own class, subclass and origin (set in the menu), the same loadout and armor as Player 1
-    function makeSecondPlayer() {
-        const s = p2cfg(), prev = [selectedClass, selectedElement];
+    // Player 2: their own class, subclass and origin (set in the menu), the same loadout and armor as Player 1.
+    // Online (remote), Player 2 plays the Guardian from their own save, with their weapons and armor.
+    function makeSecondPlayer(s = p2cfg(), remote = false) {
+        const prev = [selectedClass, selectedElement];
         selectedClass = s.cls; selectedElement = s.el;
         try {
-            const p = makePlayer();
-            Object.assign(p, { pid: 1, origin: { species: s.species, body: s.body } });
+            const p = makePlayer(remote ? { gear: s.gear, armor: s.armor } : { gear: p2LoadoutItems() });
+            Object.assign(p, { pid: 1, remote, origin: { species: s.species, body: s.body }, abilityV: remote ? s.ability : p2AbilityId() });
             Object.assign(p.gear, { helmet: '#fb923c', arms: '#fed7aa' }); // the orange helmet tells the two apart
             return p;
         } finally { [selectedClass, selectedElement] = prev; }
     }
 
     function resetGame() {
-        coop = !!p2cfg().on;
+        const online = net.role === 'host' && netReady() && !!net.cfg; // online, Player 2 takes local co-op's place
+        coop = online || !!p2cfg().on;
+        localCoop = coop && !online;
         score = 0; kills = 0; credits = 0; deaths = 0; frame = 0;
         livesLeft = dcfg().lives;
         cameraX = 0; shake = 0; flash = 0; hurtFlash = 0; bossIntro = 0; stageIntro = 180; victoryTimer = 0;
@@ -2467,7 +2600,7 @@
         player = makePlayer();
         if (hordeMode) player.x = 470;
         players = [player];
-        if (coop) { const p2 = makeSecondPlayer(); p2.x = p2.safeX = player.x - 24; players.push(p2); }
+        if (coop) { const p2 = online ? makeSecondPlayer(net.cfg, true) : makeSecondPlayer(); p2.x = p2.safeX = player.x - 24; players.push(p2); }
         notifiedContracts.clear();
         initBackground();
         weather = Array.from({ length: theme.weather ? 50 + 15 * Math.min(5, stage.sub || 0) : 0 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: Math.random() }));
@@ -2482,6 +2615,7 @@
         hordeMode = horde === true;
         initAudio();
         goFullscreenLandscape();
+        if (!desktopApp && screenMode === 'full') enterFullscreen();
         ['main-menu', 'game-over-screen', 'armory'].forEach(id => document.getElementById(id).classList.add('hidden'));
         document.getElementById('game-container').classList.remove('hidden');
         if (!canvas) {
@@ -2490,6 +2624,7 @@
         }
         applyGfx();
         resetGame();
+        document.getElementById('hud-help').textContent = controlsHint();
         state = 'playing';
         syncTouchUi();
         lastTs = 0; acc = 0;
@@ -2523,44 +2658,43 @@
     //  INPUT
     // =====================================================================
     window.addEventListener('keydown', e => {
-        if (infuseTarget && e.code === 'Escape') { closeInfuse(); return; }
-        if (invOpen) { // the inventory takes the keyboard while it is open
-            if (['Escape', 'KeyI', 'Tab'].includes(e.code)) { e.preventDefault(); if (!e.repeat) closeInventory(); }
+        if (controlsOpen) { // the CONTROLS menu: a slot waiting for a key, or Esc to close it
+            e.preventDefault();
+            if (remap) remapKey(e); else if (e.code === 'Escape' && !e.repeat) closeControls();
             return;
         }
-        if (e.code === 'KeyI' && !e.repeat && (state === 'menu' || state === 'playing' || state === 'paused')
+        if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; // typing (the room code)
+        if (net.role === 'guest' && guestViewOpen() && !invOpen) { guestKey(e, true); return; } // online Player 2: keys go to the host
+        if (infuseTarget && e.code === 'Escape') { closeInfuse(); return; }
+        const a1 = KB1_ACTION[e.code], a2 = localCoop ? KB2_ACTION[e.code] : null, a = a2 || a1; // Player 2's keys win in local co-op
+        if (invOpen) { // the inventory takes the keyboard while it is open
+            if (e.code === 'Escape' || a === 'inventory') { e.preventDefault(); if (!e.repeat) closeInventory(); }
+            return;
+        }
+        if (a === 'inventory' && !e.repeat && (state === 'playing' || state === 'paused' || (state === 'menu' && e.code !== 'Tab'))
             && document.getElementById('armory').classList.contains('hidden') && document.getElementById('main-menu').classList.contains('hidden') === (state !== 'menu')) {
-            e.preventDefault(); openInventory(); return;
+            e.preventDefault(); invWho = a2 === 'inventory' ? 1 : 0; openInventory(); return;
         }
         if (state === 'menu' || state === 'over') return;
-        if (e.code === 'Tab' && !e.repeat) { e.preventDefault(); openInventory(); return; }
-        if (GAME_KEYS.has(e.code) || (coop && P2_ALL.has(e.code))) e.preventDefault();
+        if (GAME_KEYS.has(e.code) || a) e.preventDefault();
         keys[e.code] = true;
         if (e.repeat) return;
-        if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
+        if (e.code === 'Escape' || a === 'pause') { togglePause(); return; }
         if (state === 'paused' && e.code === 'KeyM') { abandonMission(); return; } // quit the mission
         if (state !== 'playing') return;
-        if (coop && P2_ALL.has(e.code)) { // Player 2's keys (the arrows are theirs in co-op)
-            const a = P2_ACTIONS[e.code], p2 = players[1];
-            if (a && p2 && !p2.dead) asPlayer(p2, () => playerAction(a, true));
-            return;
-        }
-        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') startDash();
-        if (e.code === 'KeyK' || e.code === 'KeyZ' || e.code === 'KeyW' || e.code === 'ArrowUp') mouse.active = false; // back to keyboard aim
-        if (e.code === 'Space' || e.code === 'KeyJ') player.jumpBuffer = 8;
-        // Q grenade · E melee · F class ability · T super · 1/2/3 weapons (primary / special / heavy)
-        if (e.code === 'KeyQ') beginAim('grenade');
-        if (e.code === 'KeyE') performMelee();
-        if (e.code === 'KeyF') useClassAbility();
-        if (e.code === 'KeyT') beginAim('super');
-        if (e.code === 'KeyR') startReload();
-        if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') switchWeapon(+e.code.slice(5) - 1);
+        if (a2) { const p2 = players[1]; if (p2 && !p2.dead) asPlayer(p2, () => playerAction(a2, true)); return; }
+        if (!a1 || player.dead) return;
+        if (a1 === 'fire' || a1 === 'up') mouse.active = false; // back to keyboard aim
+        playerAction(a1, true);
     });
     window.addEventListener('keyup', e => {
+        if (controlsOpen) return;
+        if (net.role === 'guest' && guestViewOpen() && !invOpen) { guestKey(e, false); return; }
         keys[e.code] = false;
-        if (coop && players[1] && P2_ACTIONS[e.code]) asPlayer(players[1], () => playerAction(P2_ACTIONS[e.code], false));
-        if (e.code === 'KeyQ') releaseAim('grenade');
-        if (e.code === 'KeyT') releaseAim('super');
+        const a2 = localCoop ? KB2_ACTION[e.code] : null;
+        if (a2) { if (players[1]) asPlayer(players[1], () => playerAction(a2, false)); return; }
+        const a1 = KB1_ACTION[e.code];
+        if (a1 === 'grenade' || a1 === 'super') releaseAim(a1); // let go: throw where you aimed
     });
     window.addEventListener('blur', () => {
         for (const k in keys) keys[k] = false;
@@ -2596,7 +2730,6 @@
     // Left stick / D-pad move (up aims up, down crouches), right stick aims, A jump, B dash, X reload, Y super and
     // LB grenade (hold to aim, release to throw), RB melee, LT class ability, RT fire, Back swap weapon, Start pause.
     // Solo, Player 1 takes the first gamepad. In co-op Player 2 takes it, unless there are two (one each).
-    const PAD_ACTIONS = { 0: 'jump', 1: 'dash', 2: 'reload', 3: 'super', 4: 'grenade', 5: 'melee', 6: 'ability', 8: 'swap' };
     let pads = [];
     const padPrev = {};
     function pollPads() { // once per frame: each pad's buttons now and on the previous frame
@@ -2610,14 +2743,14 @@
         });
     }
     function padOf(pid) {
-        if (!coop) return pid ? null : pads[0] || null;
+        if (!localCoop) return pid ? null : pads[0] || null;
         return (pads.length >= 2 ? pads[pid] : pid ? pads[0] : null) || null;
     }
     function padHeld(pad, a) {
         if (!pad) return false;
         const x = pad.ax[0] || 0, y = pad.ax[1] || 0, b = pad.b;
         return a === 'left' ? x < -0.4 || b[14] : a === 'right' ? x > 0.4 || b[15] : a === 'up' ? y < -0.55 || b[12]
-            : a === 'down' ? y > 0.55 || b[13] : a === 'jump' ? b[0] : a === 'fire' ? b[7] : false;
+            : a === 'down' ? y > 0.55 || b[13] : a === 'jump' ? b[controls.pad.jump] : a === 'fire' ? b[controls.pad.fire] : false;
     }
     function padAim(pad) { // the right stick, when pushed
         if (!pad) return null;
@@ -2625,41 +2758,170 @@
         return d > 0.4 ? [x / d, y / d] : null;
     }
     function padInput() { // button presses and releases since the last frame
+        if (controlsOpen) return;
         for (let pid = 0; pid < 2; pid++) {
             const pad = padOf(pid), p = players[pid];
             if (!pad) continue;
-            if (pad.b[9] && !pad.prev[9] && !invOpen) { togglePause(); continue; }
+            const pressed = i => i != null && pad.b[i] && !pad.prev[i];
+            if (invOpen) { if (pressed(controls.pad.pause) || pressed(controls.pad.inventory)) closeInventory(); continue; }
+            if (pressed(controls.pad.pause)) { togglePause(); continue; }
+            if (pressed(controls.pad.inventory)) { invWho = pid && localCoop ? 1 : 0; openInventory(); continue; }
             if (state !== 'playing' || !p || p.dead) continue;
             asPlayer(p, () => {
-                for (const i in PAD_ACTIONS) {
-                    if (pad.b[i] && !pad.prev[i]) playerAction(PAD_ACTIONS[i], true);
-                    else if (!pad.b[i] && pad.prev[i]) playerAction(PAD_ACTIONS[i], false);
+                for (const i in PAD_ACTION) {
+                    const a = PAD_ACTION[i];
+                    if (a === 'pause' || a === 'inventory' || a === 'fire') continue;
+                    if (pad.b[i] && !pad.prev[i]) playerAction(a, true);
+                    else if (!pad.b[i] && pad.prev[i]) playerAction(a, false);
                 }
             });
         }
     }
 
-    // Held controls of the Guardian in context. Player 1: keyboard (the arrow keys too when playing solo), mouse,
-    // touch and a gamepad. Player 2 (co-op): a gamepad, or the arrow keys and the number pad.
-    const P1_HELD = {
-        left: ['KeyA', 'ArrowLeft', 'TouchLeft'], right: ['KeyD', 'ArrowRight', 'TouchRight'], up: ['KeyW', 'ArrowUp', 'TouchUp'],
-        down: ['KeyS', 'ArrowDown', 'TouchDown'], jump: ['Space', 'KeyJ', 'TouchJump'], fire: ['KeyK', 'KeyZ'],
+    // =====================================================================
+    //  CONTROLS (remappable in the CONTROLS menu)
+    // =====================================================================
+    // Two keyboard keys per action for Player 1 and for Player 2 (local co-op), and one gamepad button per action.
+    // Saved on this device, apart from the save (RESET SAVE keeps them). Fixed: the mouse, the sticks, the D-pad and Esc.
+    const CONTROLS_KEY = 'saturn-vanguard-controls';
+    const CONTROL_ACTIONS = [
+        ['left', 'Move left'], ['right', 'Move right'], ['up', 'Aim up'], ['down', 'Crouch / aim down'], ['jump', 'Jump (hold to glide)'], ['fire', 'Fire'],
+        ['dash', 'Dash'], ['grenade', 'Grenade (hold to aim)'], ['melee', 'Melee'], ['ability', 'Class ability'], ['super', 'Super (hold to aim)'],
+        ['reload', 'Reload'], ['swap', 'Next weapon'], ['w0', 'Primary weapon'], ['w1', 'Special weapon'], ['w2', 'Heavy weapon'],
+        ['pause', 'Pause'], ['inventory', 'Inventory'],
+    ];
+    const STICK_ACTIONS = new Set(['left', 'right', 'up', 'down']); // on a gamepad, the left stick and D-pad
+    const DEFAULT_CONTROLS = {
+        kb1: { left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], jump: ['Space', 'KeyJ'],
+               fire: ['KeyK', 'KeyZ'], dash: ['ShiftLeft', 'ShiftRight'], grenade: ['KeyQ', null], melee: ['KeyE', null], ability: ['KeyF', null],
+               super: ['KeyT', null], reload: ['KeyR', null], swap: [null, null], w0: ['Digit1', null], w1: ['Digit2', null], w2: ['Digit3', null],
+               pause: ['KeyP', null], inventory: ['KeyI', 'Tab'] },
+        kb2: { left: ['ArrowLeft', null], right: ['ArrowRight', null], up: ['ArrowUp', null], down: ['ArrowDown', null], jump: ['Numpad0', 'Period'],
+               fire: ['Numpad1', 'Slash'], dash: ['Numpad2', 'Comma'], grenade: ['Numpad4', 'KeyL'], melee: ['Numpad5', 'Semicolon'],
+               ability: ['Numpad6', 'Quote'], super: ['Numpad7', 'KeyO'], reload: ['Numpad3', 'BracketRight'], swap: ['Numpad9', 'BracketLeft'],
+               w0: [null, null], w1: [null, null], w2: [null, null], pause: [null, null], inventory: ['NumpadAdd', null] },
+        pad: { jump: 0, fire: 7, dash: 1, grenade: 4, melee: 5, ability: 6, super: 3, reload: 2, swap: 8, w0: null, w1: null, w2: null, pause: 9, inventory: null },
     };
-    const P2_HELD = {
-        left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'], jump: ['Numpad0', 'Period'], fire: ['Numpad1', 'Slash'],
-    };
-    // Player 2's buttons: the number pad, or the keys right of the letters on keyboards without one
-    const P2_ACTIONS = {
-        Numpad0: 'jump', Period: 'jump', Numpad2: 'dash', Comma: 'dash', Numpad3: 'reload', BracketRight: 'reload',
-        Numpad4: 'grenade', KeyL: 'grenade', Numpad5: 'melee', Semicolon: 'melee', Numpad6: 'ability', Quote: 'ability',
-        Numpad7: 'super', KeyO: 'super', Numpad9: 'swap', BracketLeft: 'swap',
-    };
-    const P2_ALL = new Set([...Object.values(P2_HELD).flat(), ...Object.keys(P2_ACTIONS)]);
+    const PAD_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'BACK', 'START', 'L3', 'R3', 'D-UP', 'D-DOWN', 'D-LEFT', 'D-RIGHT', 'HOME'];
+    const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    function loadControls() {
+        const c = JSON.parse(JSON.stringify(DEFAULT_CONTROLS));
+        try {
+            const raw = JSON.parse(localStorage.getItem(CONTROLS_KEY) || 'null');
+            if (raw && typeof raw === 'object') for (const [a] of CONTROL_ACTIONS) {
+                for (const set of ['kb1', 'kb2']) {
+                    const v = raw[set] && raw[set][a];
+                    if (Array.isArray(v)) c[set][a] = [0, 1].map(i => typeof v[i] === 'string' && /^[A-Za-z0-9]{1,24}$/.test(v[i]) ? v[i] : null);
+                }
+                if (!STICK_ACTIONS.has(a) && raw.pad && hasOwn(raw.pad, a)) { const b = raw.pad[a]; c.pad[a] = Number.isInteger(b) && b >= 0 && b < 20 ? b : null; }
+            }
+        } catch (e) {}
+        return c;
+    }
+    let controls = loadControls(), KB1_ACTION = {}, KB2_ACTION = {}, KB2_ALL = new Set(), PAD_ACTION = {};
+    function rebuildControls() { // key / button -> action lookups
+        KB1_ACTION = {}; KB2_ACTION = {}; PAD_ACTION = {};
+        for (const [a] of CONTROL_ACTIONS) {
+            for (const k of controls.kb1[a]) if (k && !KB1_ACTION[k]) KB1_ACTION[k] = a;
+            for (const k of controls.kb2[a]) if (k && !KB2_ACTION[k]) KB2_ACTION[k] = a;
+            const b = controls.pad[a];
+            if (b != null && !STICK_ACTIONS.has(a) && PAD_ACTION[b] == null) PAD_ACTION[b] = a;
+        }
+        KB2_ALL = new Set(Object.keys(KB2_ACTION));
+    }
+    rebuildControls();
+    function keyLabel(code) {
+        if (!code) return '-';
+        const named = { Space: 'SPACE', ShiftLeft: 'L-SHIFT', ShiftRight: 'R-SHIFT', ControlLeft: 'L-CTRL', ControlRight: 'R-CTRL', AltLeft: 'L-ALT', AltRight: 'R-ALT',
+            ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', ArrowUp: 'UP', ArrowDown: 'DOWN', Escape: 'ESC', Enter: 'ENTER', Tab: 'TAB', CapsLock: 'CAPS',
+            Period: '.', Comma: ',', Slash: '/', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']', Backslash: '\\', Backquote: '`', Minus: '-', Equal: '=',
+            IntlBackslash: '\\', IntlRo: '/', NumpadAdd: 'NUM +', NumpadSubtract: 'NUM -', NumpadMultiply: 'NUM *', NumpadDivide: 'NUM /', NumpadDecimal: 'NUM .', NumpadEnter: 'NUM ENTER' };
+        if (named[code]) return named[code];
+        let m;
+        if ((m = /^Key([A-Z])$/.exec(code))) return m[1];
+        if ((m = /^Digit(\d)$/.exec(code))) return m[1];
+        if ((m = /^Numpad(\d)$/.exec(code))) return 'NUM ' + m[1];
+        return code.toUpperCase().slice(0, 9);
+    }
+    const padLabel = b => b == null ? '-' : PAD_NAMES[b] || `BUTTON ${b}`;
+    const firstKey = a => keyLabel(controls.kb1[a][0] || controls.kb1[a][1]);
+    function controlsHint() { // the help line under the game
+        const w = ['w0', 'w1', 'w2'].map(firstKey).join('/');
+        return `[CLICK/${firstKey('fire')}] FIRE • [${firstKey('dash')}] DASH • [${w}] WEAPON • [${firstKey('grenade')}] GRENADE • [${firstKey('melee')}] MELEE • ` +
+               `[${firstKey('ability')}] ABILITY • [${firstKey('super')}] SUPER • [${firstKey('reload')}] RELOAD • [${firstKey('inventory')}] INVENTORY • [${firstKey('pause')}] PAUSE`;
+    }
+    let controlsOpen = false, remap = null; // remap: { set, action, slot } while waiting for a key or button
+    function openControls() {
+        controlsOpen = true; remap = null;
+        for (const k in keys) keys[k] = false;
+        mouse.down = false;
+        document.getElementById('controls').classList.remove('hidden');
+        renderControls();
+    }
+    function closeControls() {
+        controlsOpen = false; remap = null;
+        document.getElementById('controls').classList.add('hidden');
+        document.getElementById('hud-help').textContent = controlsHint();
+        if (invOpen) renderInventoryScreen();
+    }
+    function saveControls() {
+        try { localStorage.setItem(CONTROLS_KEY, JSON.stringify(controls)); } catch (e) {}
+        rebuildControls();
+    }
+    function resetControls() { controls = JSON.parse(JSON.stringify(DEFAULT_CONTROLS)); remap = null; saveControls(); renderControls(); }
+    function renderControls() {
+        const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const cell = (set, a, slot, label) => {
+            const on = remap && remap.set === set && remap.action === a && remap.slot === slot;
+            return `<td class="p-0.5"><button onclick="startRemap('${set}','${a}',${slot})" style="--c:#facc15" class="pick ${on ? 'sel' : ''} w-full min-w-[74px] py-1.5 px-1 text-[11px] font-bold rounded">${on ? (set === 'pad' ? 'PRESS BUTTON' : 'PRESS KEY') : esc(label)}</button></td>`;
+        };
+        const head = ['ACTION', 'PLAYER 1', 'P1 ALT', 'PLAYER 2 (LOCAL)', 'P2 ALT', 'GAMEPAD'].map(h => `<th class="pixel-font text-[8px] text-yellow-400 text-left px-1 pb-1">${h}</th>`).join('');
+        document.getElementById('controls-table').innerHTML = `<table class="w-full border-separate" style="border-spacing:0"><thead><tr>${head}</tr></thead><tbody>${CONTROL_ACTIONS.map(([a, name]) => `<tr>
+            <td class="pr-2 text-[12px] text-slate-300 whitespace-nowrap">${name}</td>
+            ${cell('kb1', a, 0, keyLabel(controls.kb1[a][0]))}${cell('kb1', a, 1, keyLabel(controls.kb1[a][1]))}
+            ${cell('kb2', a, 0, keyLabel(controls.kb2[a][0]))}${cell('kb2', a, 1, keyLabel(controls.kb2[a][1]))}
+            ${STICK_ACTIONS.has(a) ? '<td class="text-[11px] text-slate-500 px-1">STICK / D-PAD</td>' : cell('pad', a, 0, padLabel(controls.pad[a]))}</tr>`).join('')}</tbody></table>`;
+    }
+    function startRemap(set, action, slot) {
+        remap = { set, action, slot };
+        renderControls();
+        if (set !== 'pad') return;
+        pollPads();
+        remap.base = pads.map(pd => pd.b.map(Boolean)); // buttons already held don't count
+        const look = () => {
+            if (!remap || remap.set !== 'pad') return;
+            pollPads();
+            for (let k = 0; k < pads.length; k++) {
+                const n = pads[k].b.findIndex((v, i) => v && !(remap.base[k] && remap.base[k][i]) && i !== 12 && i !== 13 && i !== 14 && i !== 15);
+                if (n < 0) continue;
+                for (const [a] of CONTROL_ACTIONS) if (controls.pad[a] === n) controls.pad[a] = null; // one action per button
+                controls.pad[remap.action] = n;
+                remap = null; saveControls(); renderControls(); initAudio(); playSound('reload');
+                return;
+            }
+            setTimeout(look, 16);
+        };
+        setTimeout(look, 16);
+    }
+    function remapKey(e) { // the key pressed while a keyboard slot waits
+        if (e.code === 'Escape' || remap.set === 'pad') { if (e.code === 'Escape') { remap = null; renderControls(); } return; }
+        const { set, action, slot } = remap, code = e.code === 'Backspace' || e.code === 'Delete' ? null : e.code;
+        if (code && !/^[A-Za-z0-9]{1,24}$/.test(code)) return;
+        if (code) for (const [a] of CONTROL_ACTIONS) controls[set][a] = controls[set][a].map(k => k === code ? null : k); // one action per key
+        controls[set][action][slot] = code;
+        remap = null; saveControls(); renderControls(); initAudio(); playSound('reload');
+    }
+
+    // Held controls of the Guardian in context. Player 1: their keys (and touch, the mouse and a gamepad); in local
+    // co-op Player 2's keys are theirs. Player 2: a gamepad or their keys. Online Player 2: what their computer sends.
+    const TOUCH_HELD = { left: 'TouchLeft', right: 'TouchRight', up: 'TouchUp', down: 'TouchDown', jump: 'TouchJump' };
     function heldBy(a) {
+        if (player && player.remote) return !!(net.remote && net.remote.h & G_BITS[a]); // online Player 2
         const pid = player ? player.pid : 0;
         if (padHeld(padOf(pid), a)) return true;
-        if (pid) return P2_HELD[a].some(k => keys[k]);
-        if (P1_HELD[a].some(k => keys[k] && !(coop && k.startsWith('Arrow')))) return true;
+        if (pid) return controls.kb2[a].some(k => k && keys[k]);
+        if (controls.kb1[a].some(k => k && keys[k] && !(localCoop && KB2_ALL.has(k)))) return true;
+        if (keys[TOUCH_HELD[a]]) return true;
         return a === 'fire' && (mouse.down || touch.fire);
     }
     const held = {
@@ -2781,6 +3043,11 @@
     function getAim() {
         const pid = player ? player.pid : 0, pa = player && padAim(padOf(pid));
         if (pa) return pa; // a gamepad's right stick
+        if (player && player.remote && net.remote) { // online Player 2: their right stick, or their mouse over the streamed screen
+            const r = net.remote, p = player;
+            if (r.a) return r.a;
+            if (r.m) { const dx = r.m[0] + cameraX - (p.x + p.w / 2), dy = r.m[1] - (p.y + (p.crouch ? 26 : 13)), d = Math.hypot(dx, dy) || 1; return [dx / d, dy / d]; }
+        }
         if (!pid && touch.aim && player) return touch.aim;
         if (!pid && mouse.active && player) { // free 360° aim toward the cursor
             const p = player, dx = mouse.x + cameraX - (p.x + p.w / 2), dy = mouse.y - (p.y + (p.crouch ? 26 : 13));
@@ -2986,6 +3253,7 @@
         else if (a === 'melee') performMelee();
         else if (a === 'ability') useClassAbility();
         else if (a === 'swap' && p.owned.length > 1) switchWeapon((p.weaponIdx + 1) % p.owned.length);
+        else if (a === 'w0' || a === 'w1' || a === 'w2') switchWeapon(+a[1]);
     }
     function beginAim(kind) {
         const p = player;
@@ -3321,13 +3589,13 @@
         popText(p.x - 20, p.y - 22, livesLeft === 1 ? 'LAST LIFE!' : `${livesLeft} LIVES LEFT`, livesLeft === 1 ? '#f87171' : '#facc15');
         for (const o of players) if (o !== p && o.dead) revive(o, p); // co-op: a downed partner comes back with you
     }
-    function revive(p, near) { // co-op: a downed Guardian rejoins beside `near`
+    function revive(p, near, msg) { // co-op: a downed Guardian rejoins beside `near`
         Object.assign(p, { dead: false, hp: p.maxHp, shield: p.maxShield, respawnT: 0, vx: 0, vy: 0, invuln: 120, reloadTimer: 0, burstLeft: 0,
             dashT: 0, dashCd: 0, focusT: 0, slam: 0, aiming: null, grounded: false, ground: null, ghosts: [] });
         p.x = clamp(near.x - near.facing * 18, Math.max(minArenaX(), cameraX + 2), Math.min(stage.levelW, cameraX + W) - p.w - 2);
         p.y = near.y - 6; p.safeX = near.safeX; p.safeY = near.safeY;
         rings.push({ x: p.x + p.w / 2, y: p.y + p.h / 2, r: 4, maxR: 30, life: 18, max: 18, color: p.pid ? '#fb923c' : '#38bdf8' });
-        popText(p.x - 22, p.y - 14, `P${p.pid + 1} IS BACK`, '#4ade80');
+        popText(p.x - 22, p.y - 14, msg || `P${p.pid + 1} IS BACK`, '#4ade80');
         playSound('pickup');
     }
     function updateDowned() { // co-op: a downed Guardian's 3 s timer
@@ -3650,7 +3918,11 @@
         if (dir !== 0) p.facing = dir;
         const padA = padAim(padOf(p.pid));
         if (padA) { if (Math.abs(padA[0]) > 0.15) p.facing = padA[0] > 0 ? 1 : -1; } // face the right stick
-        else if (!p.pid) {
+        else if (p.remote) { // online Player 2 faces their aim
+            const r = net.remote;
+            if (r && r.a) { if (Math.abs(r.a[0]) > 0.15) p.facing = r.a[0] > 0 ? 1 : -1; }
+            else if (r && r.m) p.facing = r.m[0] + cameraX >= p.x + p.w / 2 ? 1 : -1;
+        } else if (!p.pid) {
             if (mouse.active) p.facing = mouse.x + cameraX >= p.x + p.w / 2 ? 1 : -1; // face the cursor
             if (touch.aim && Math.abs(touch.aim[0]) > 0.15) p.facing = touch.aim[0] > 0 ? 1 : -1; // face the fire stick
         }
@@ -4644,7 +4916,7 @@
         if (stage.horde) setHud('hud-lives', '1', 'text-sky-400 font-bold');
         else setHud('hud-lives', String(livesLeft), livesLeft === 1 ? 'text-red-400 font-bold animate-pulse' : 'text-sky-400 font-bold');
         const sp = Math.floor(p.superEnergy);
-        setHud('hud-super', sp >= 100 ? (touch.on ? 'READY' : 'READY [T]') : sp + '%', sp >= 100 ? 'text-yellow-300 font-bold animate-pulse' : 'text-yellow-400 font-bold');
+        setHud('hud-super', sp >= 100 ? (touch.on ? 'READY' : `READY [${firstKey('super')}]`) : sp + '%', sp >= 100 ? 'text-yellow-300 font-bold animate-pulse' : 'text-yellow-400 font-bold');
         const mag = p.mags[p.weapon], res = p.ammo[w.ammo];
         const sidearm = w.ammo === 'primary' && mag <= 0 && res <= 0;
         setHud('hud-weapon', sidearm ? 'SIDEARM' : w.short, 'font-bold');
@@ -5708,7 +5980,7 @@
         ctx.fillStyle = ready ? '#ecfeff' : '#94a3b8'; ctx.fillText('DASH', x + 3, y + 7);
         // class ability [F]: same pill style, recharge bar, lit while its effect is running
         x += dw + 3;
-        const ab = classAbility(), aLabel = touch.on ? ab.short : `F ${ab.short}`, aw = ctx.measureText(aLabel).width + 6;
+        const ab = classAbility(), aLabel = touch.on ? ab.short : `${firstKey('ability')} ${ab.short}`, aw = ctx.measureText(aLabel).width + 6;
         const aReady = p.abilityCd <= 0, aColor = { ranger: '#fde047', sentinel: '#7dd3fc', arcanist: '#c084fc' }[selectedClass];
         ctx.fillStyle = 'rgba(15,23,42,0.7)'; ctx.fillRect(x, y, aw, 9);
         ctx.globalAlpha = 0.35; ctx.fillStyle = aReady ? aColor : '#64748b';
@@ -5726,6 +5998,10 @@
         ctx.fillStyle = 'rgba(15,23,42,0.78)'; ctx.fillRect(x0, y0, bw, 32);
         ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, bw - 1, 31);
         ctx.fillStyle = '#fb923c'; ctx.fillText('P2', x0 + 4, y0 + 9);
+        if (p.remote) {
+            ctx.fillStyle = 'rgba(15,23,42,0.78)'; ctx.fillRect(x0, y0 - 9, bw, 8);
+            ctx.fillStyle = '#fdba74'; ctx.fillText(`ONLINE ${net.ping} MS  LIVES ${stage.horde ? 1 : livesLeft}`, x0 + 4, y0 - 3);
+        }
         const bar = (x, w, frac, color) => {
             ctx.fillStyle = '#1e293b'; ctx.fillRect(x, y0 + 4, w, 5);
             ctx.fillStyle = color; ctx.fillRect(x, y0 + 4, w * clamp(frac, 0, 1), 5);
@@ -6162,9 +6438,411 @@
             centerText('PAUSED', 112, 16, '#facc15');
             if (touch.on) { if (!stage.horde) centerText('ABANDONING KEEPS YOUR CREDITS', 137, 5, '#94a3b8'); }
             else {
-                centerText('P / ESC TO RESUME', 137, 7, '#cbd5e1');
+                centerText(`${firstKey('pause') !== '-' ? firstKey('pause') + ' / ' : ''}ESC TO RESUME`, 137, 7, '#cbd5e1');
                 centerText(stage.horde ? 'M TO END THE RUN' : 'M TO ABANDON MISSION (CREDITS ARE KEPT)', 152, 5, '#94a3b8');
             }
+        }
+    }
+
+    // =====================================================================
+    //  SCREEN SIZE
+    // =====================================================================
+    // Browser: NORMAL (up to 960 px wide), LARGE (as big as the window allows) or FULL (fills the window and goes
+    // full screen). The desktop app always fills its window and offers window sizes instead (WINDOW button).
+    const SCREEN_KEY = 'saturn-vanguard-screen', SCREEN_MODES = ['normal', 'large', 'full'];
+    let screenMode = (() => { try { const v = localStorage.getItem(SCREEN_KEY); return SCREEN_MODES.includes(v) ? v : 'normal'; } catch (e) { return 'normal'; } })();
+    const desktopApp = window.svDesktop || null;
+    let desktopDisplay = null; // { size, options } from the desktop app
+    const sizeLabel = sz => sz === 'fullscreen' ? 'FULLSCREEN' : String(sz).replace('x', '×');
+    function applyScreen() {
+        const mode = desktopApp ? 'full' : screenMode;
+        document.body.classList.toggle('screen-large', mode === 'large');
+        document.body.classList.toggle('screen-full', mode === 'full');
+        const btn = document.getElementById('screen-btn');
+        if (btn) btn.textContent = desktopApp ? `WINDOW: ${desktopDisplay ? sizeLabel(desktopDisplay.size) : '...'}` : `SCREEN: ${screenMode.toUpperCase()}`;
+    }
+    function enterFullscreen() {
+        const el = document.documentElement;
+        if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    }
+    async function cycleScreen() {
+        if (desktopApp) { // the next window size that fits this screen, then full screen
+            if (!desktopDisplay) return;
+            const opts = desktopDisplay.options, i = opts.indexOf(desktopDisplay.size);
+            try { desktopDisplay = await desktopApp.setDisplay(opts[(i + 1) % opts.length]); } catch (e) {}
+            applyScreen();
+            return;
+        }
+        screenMode = SCREEN_MODES[(SCREEN_MODES.indexOf(screenMode) + 1) % SCREEN_MODES.length];
+        try { localStorage.setItem(SCREEN_KEY, screenMode); } catch (e) {}
+        if (screenMode === 'full') enterFullscreen();
+        else if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        applyScreen();
+    }
+    applyScreen();
+    if (desktopApp) desktopApp.getDisplay().then(d => { desktopDisplay = d; applyScreen(); }).catch(() => {});
+
+    // =====================================================================
+    //  ONLINE CO-OP (beta)
+    // =====================================================================
+    // The host runs the game and Player 2 plays from another computer: the host's screen and sound stream to
+    // Player 2 over WebRTC, and Player 2's controls stream back (local co-op, with Player 2 far away).
+    // Rooms are found through the free PeerJS server; the game itself flows directly between the two players
+    // (or through PeerJS's relay when their networks block a direct connection).
+    const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
+    const NET_PREFIX = 'saturn-guardian-v1-', NET_VERSION = 1;
+    const NET_ACTIONS = new Set(['jump', 'dash', 'reload', 'grenade', 'super', 'melee', 'ability', 'swap', 'w0', 'w1', 'w2']);
+    const G_BITS = { left: 1, right: 2, up: 4, down: 8, jump: 16, fire: 32 };
+    const net = { role: null, peer: null, conn: null, call: null, code: '', status: '', ping: 0, cfg: null, remote: null,
+                  lastMsg: 0, timer: null, hostState: null, lastBank: null, banked: new Set(), resultId: 0, sentResult: null };
+    let netAudio = null; // the host's sound, as a stream track
+    const netReady = () => !!(net.conn && net.conn.open);
+    function netSend(m) { try { if (netReady()) net.conn.send(m); } catch (e) {} }
+    function setNetStatus(text) { net.status = text; renderNet(); updateGuestOverlay(); }
+    function netErrorText(e) {
+        return { 'peer-unavailable': 'No room with that code: check it and try again', network: 'Could not reach the online server: check your connection',
+                 'server-error': 'The online server is not responding: try again later', 'socket-error': 'The online server is not responding: try again later',
+                 'socket-closed': 'Lost the online server', 'browser-incompatible': 'This browser does not support online play' }[e && e.type] || `Online error (${e && e.type || 'unknown'})`;
+    }
+    function loadPeerJs() {
+        if (window.Peer) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const sc = document.createElement('script');
+            sc.src = PEERJS_URL;
+            sc.onload = () => resolve();
+            sc.onerror = () => reject(new Error('could not load the online library: check your internet connection'));
+            document.head.appendChild(sc);
+        });
+    }
+    function netClose() { // leaves the room, either side
+        clearInterval(net.timer);
+        try { if (net.call) net.call.close(); } catch (e) {}
+        try { if (net.conn) net.conn.close(); } catch (e) {}
+        try { if (net.peer) net.peer.destroy(); } catch (e) {}
+        Object.assign(net, { role: null, peer: null, conn: null, call: null, code: '', cfg: null, remote: null, ping: 0, timer: null, hostState: null, lastBank: null });
+    }
+    const roomCode = () => Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+    const ownKey = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+
+    // ---- Host ----
+    async function hostOnline() {
+        initAudio();
+        try { await loadPeerJs(); } catch (e) { setNetStatus('Online error: ' + e.message); return; }
+        netClose();
+        net.role = 'host'; net.code = roomCode();
+        setNetStatus('Opening a room...');
+        const peer = net.peer = new Peer(NET_PREFIX + net.code);
+        peer.on('open', () => { if (net.peer === peer) setNetStatus('Waiting for Player 2 to join'); });
+        peer.on('error', e => {
+            if (net.peer !== peer) return;
+            if (e.type === 'unavailable-id') { hostOnline(); return; } // that code is taken: pick another
+            if (e.type === 'peer-unavailable') return;
+            setNetStatus(netErrorText(e));
+        });
+        peer.on('disconnected', () => { if (net.peer === peer && !peer.destroyed) { try { peer.reconnect(); } catch (e) {} } });
+        peer.on('connection', conn => {
+            if (netReady() && net.cfg) { // one Player 2 per room
+                conn.on('open', () => { try { conn.send({ t: 'bye', why: 'That room already has a Player 2' }); } catch (e) {} setTimeout(() => conn.close(), 400); });
+                return;
+            }
+            net.conn = conn; net.lastMsg = performance.now();
+            conn.on('data', m => { if (net.conn === conn) onHostData(m); });
+            conn.on('close', () => { if (net.conn === conn) guestGone('Player 2 left'); });
+            conn.on('error', () => {});
+        });
+        net.timer = setInterval(hostTick, 500);
+    }
+    // Player 2's settings, from the other computer: only known values get through
+    function cleanNetCfg(c) {
+        c = c && typeof c === 'object' ? c : {};
+        const item = it => it && typeof it === 'object' && ownKey(WEAPONS, it.wid) && ownKey(RARITIES, it.rarity) ? {
+            uid: 'net-' + it.wid, wid: it.wid, rarity: it.rarity, level: clamp(it.level | 0, 1, MAX_ITEM_LEVEL), xp: 0,
+            perks: (Array.isArray(it.perks) ? it.perks : []).filter(k => ownKey(PERKS, k)).slice(0, RARITIES[it.rarity].slots) } : null;
+        const items = (Array.isArray(c.gear) ? c.gear.slice(0, 3) : []).map(item).filter(Boolean);
+        const starter = { primary: 'auto', special: 'shotgun', heavy: 'rocket' };
+        const gear = LOADOUT_SLOTS.map(sl => items.find(it => WEAPONS[it.wid].ammo === sl.ammo) || makeItem(starter[sl.ammo], 'common', 1));
+        const armor = Object.fromEntries(ARMOR_IDS.map(k => [k, clamp((c.armor && c.armor[k]) | 0, 0, MAX_UPGRADE)]));
+        const cls = ownKey(CLASSES, c.cls) ? c.cls : 'ranger';
+        return { cls, el: ownKey(ELEMENTS, c.el) ? c.el : 'fire', ability: ownKey(CLASS_ABILITIES[cls], c.ability) ? c.ability : Object.keys(CLASS_ABILITIES[cls])[0],
+                 species: ownKey(SPECIES, c.species) ? c.species : 'human', body: ['m', 'f', 'x'].includes(c.body) ? c.body : 'm', gear, armor };
+    }
+    function onHostData(m) {
+        if (!m || typeof m !== 'object') return;
+        net.lastMsg = performance.now();
+        const num = (v, lo, hi) => Number.isFinite(+v) ? clamp(+v, lo, hi) : 0;
+        switch (m.t) {
+            case 'hello':
+                if (m.v !== NET_VERSION) { netSend({ t: 'bye', why: 'The host is running a different version of the game: both of you need the latest one' }); return; }
+                net.cfg = cleanNetCfg(m.cfg);
+                net.remote = { h: 0, m: null, a: null };
+                netSend({ t: 'welcome', v: NET_VERSION });
+                startHostStream();
+                playSound('pickup');
+                setNetStatus(`Player 2 joined: ${CLASSES[net.cfg.cls].label} • ${ELEMENTS[net.cfg.el].label}`);
+                netJoinRun();
+                break;
+            case 'in': {
+                if (!net.cfg) return;
+                const r = { h: (m.h | 0) & 63, m: Array.isArray(m.m) ? [num(m.m[0], 0, W), num(m.m[1], 0, H)] : null, a: null };
+                if (Array.isArray(m.a)) { const x = num(m.a[0], -1, 1), y = num(m.a[1], -1, 1), d = Math.hypot(x, y); if (d > 0.1) r.a = [x / d, y / d]; }
+                net.remote = r;
+                break;
+            }
+            case 'act': {
+                const p2 = players[1];
+                if (state === 'playing' && p2 && p2.remote && !p2.dead && NET_ACTIONS.has(m.a)) asPlayer(p2, () => playerAction(m.a, !!m.d));
+                break;
+            }
+            case 'pause':
+                if ((state === 'playing' || state === 'paused') && !invOpen && players[1] && players[1].remote) togglePause();
+                break;
+            case 'pong':
+                if (Number.isFinite(+m.ts)) net.ping = Math.max(0, Math.round(performance.now() - m.ts));
+                break;
+            case 'cfg': { // Player 2 changed their inventory: subclass, ability version and weapons apply right away
+                if (!net.cfg) return;
+                const c = cleanNetCfg(m.cfg), p2 = players[1];
+                net.cfg = c;
+                if (!p2 || !p2.remote || !(state === 'playing' || state === 'paused')) return;
+                asPlayer(p2, () => {
+                    if (c.ability !== p2.abilityV && ownKey(CLASS_ABILITIES[p2.cls], c.ability)) { p2.abilityV = ctxAbility = c.ability; p2.abilityCd = classAbility().cd; }
+                    applyLoadoutToPlayer(c.gear);
+                });
+                if (c.el !== p2.el) { p2.el = c.el; restartCharges(p2, `P2 SUBCLASS: ${ELEMENTS[c.el].label}`, ELEMENTS[c.el].color); }
+                break;
+            }
+        }
+    }
+    // The game canvas (and the sound) go to Player 2 as a live video
+    function startHostStream() {
+        let stream;
+        try { stream = document.getElementById('gameCanvas').captureStream(60); } catch (e) { setNetStatus('This browser cannot stream the game'); return; }
+        try {
+            initAudio();
+            if (audioCtx && !netAudio) { netAudio = audioCtx.createMediaStreamDestination(); speakers(audioCtx).connect(netAudio); }
+            if (netAudio) netAudio.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+        } catch (e) {}
+        stream.getVideoTracks().forEach(t => { try { t.contentHint = 'motion'; } catch (e) {} });
+        try { if (net.call) net.call.close(); } catch (e) {}
+        try { net.call = net.peer.call(net.conn.peer, stream); } catch (e) { net.call = null; }
+    }
+    function hostTick() {
+        if (!netReady()) return;
+        const now = performance.now();
+        if (net.cfg && now - net.lastMsg > 8000) { const c = net.conn; guestGone('Player 2 timed out'); try { c.close(); } catch (e) {} return; }
+        netSend({ t: 'ping', ts: now });
+        const inRun = !!(players[1] && players[1].remote) && state !== 'menu';
+        netSend({ t: 'st', s: state, inRun, ping: net.ping, label: stage && state !== 'menu' ? (stage.horde ? 'HORDE MODE' : `${stageLabel(stage.idx)} ${stage.name}`) : '' });
+        if (state === 'over' && inRun && lastResult && net.sentResult !== lastResult) { // Player 2 earns the mission's credits and gold too
+            net.sentResult = lastResult;
+            netSend({ t: 'res', id: ++net.resultId, won: !!lastResult.won, horde: !!lastResult.horde, earned: lastResult.earned | 0, gold: lastResult.gold | 0 });
+        }
+    }
+    function netJoinRun() { // Player 2 drops into a mission already under way (unless local co-op has the slot)
+        if (!(state === 'playing' || state === 'paused') || players.length > 1 || !net.cfg) return;
+        const p2 = makeSecondPlayer(net.cfg, true);
+        players.push(p2); coop = true; localCoop = false;
+        revive(p2, players[0], 'P2 JOINED');
+    }
+    function guestGone(why) { // host side: Player 2 left or dropped
+        try { if (net.call) net.call.close(); } catch (e) {}
+        Object.assign(net, { conn: null, call: null, cfg: null, remote: null, ping: 0 });
+        if (players[1] && players[1].remote) { // Player 2 leaves the mission
+            const p2 = players.pop();
+            coop = false;
+            if (state === 'playing' || state === 'paused') popText(p2.x - 30, p2.y - 14, 'P2 DISCONNECTED', '#f87171');
+        }
+        if (net.role === 'host') setNetStatus(`${why}. Waiting for Player 2 to join`);
+    }
+    function closeRoom() {
+        netSend({ t: 'bye', why: 'The host closed the room' });
+        guestGone('Room closed');
+        netClose();
+        setNetStatus('');
+    }
+
+    // ---- Player 2 (guest) ----
+    const guest = { keys: {}, mouse: null, mouseOn: false, sent: '', lastSend: 0, raf: 0, wheelAt: 0 };
+    const guestViewOpen = () => !document.getElementById('net-guest').classList.contains('hidden');
+    function myNetCfg() { // the Guardian you play on the host's screen: your class, subclass, origin, loadout and armor
+        fixLoadout(save);
+        const gear = save.loadout.map(uid => save.inventory.find(i => i.uid === uid)).filter(Boolean).map(it => ({ wid: it.wid, rarity: it.rarity, level: it.level, perks: it.perks }));
+        return { cls: selectedClass, el: selectedElement, ability: classAbilityId(), species: save.species, body: save.body, gear, armor: save.armor };
+    }
+    async function joinOnline() {
+        const field = document.getElementById('net-code'), code = (field ? field.value : '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (code.length !== 6) { setNetStatus('Type the 6-character room code'); return; }
+        initAudio();
+        try { await loadPeerJs(); } catch (e) { setNetStatus('Online error: ' + e.message); return; }
+        netClose();
+        net.role = 'guest'; net.code = code; net.banked = new Set();
+        setNetStatus(`Joining room ${code}...`);
+        const peer = net.peer = new Peer();
+        peer.on('open', () => {
+            if (net.peer !== peer) return;
+            const conn = net.conn = peer.connect(NET_PREFIX + code, { reliable: true, serialization: 'json' });
+            conn.on('open', () => { net.lastMsg = performance.now(); netSend({ t: 'hello', v: NET_VERSION, cfg: myNetCfg() }); openGuestView(); });
+            conn.on('data', m => { if (net.conn === conn) onGuestData(m); });
+            conn.on('close', () => { if (net.conn === conn) leaveOnline('The connection to the host was closed'); });
+            conn.on('error', () => {});
+        });
+        peer.on('call', call => {
+            net.call = call; call.answer();
+            call.on('stream', st => { const v = document.getElementById('net-video'); v.srcObject = st; v.play().catch(() => {}); });
+        });
+        peer.on('error', e => {
+            if (net.peer !== peer) return;
+            const why = netErrorText(e);
+            if (guestViewOpen()) leaveOnline(why); else { netClose(); setNetStatus(why); }
+        });
+        net.timer = setInterval(() => { if (netReady() && performance.now() - net.lastMsg > 8000) leaveOnline('Lost the connection to the host'); }, 1000);
+    }
+    function onGuestData(m) {
+        if (!m || typeof m !== 'object') return;
+        net.lastMsg = performance.now();
+        switch (m.t) {
+            case 'ping': netSend({ t: 'pong', ts: m.ts }); break;
+            case 'welcome': setNetStatus('Connected'); break;
+            case 'st':
+                net.hostState = { s: String(m.s), inRun: !!m.inRun, ping: m.ping | 0, label: String(m.label || '').slice(0, 60) };
+                if (net.hostState.s === 'playing') net.lastBank = null;
+                updateGuestOverlay();
+                break;
+            case 'res': { // your share of the mission, banked in your own save
+                const id = m.id | 0;
+                if (net.banked.has(id)) break;
+                net.banked.add(id);
+                const earned = clamp(m.earned | 0, 0, 100000), gold = clamp(m.gold | 0, 0, 500);
+                save.credits += earned; save.gold += gold; persist();
+                net.lastBank = { won: !!m.won, horde: !!m.horde, earned, gold };
+                updateGuestOverlay();
+                break;
+            }
+            case 'bye': leaveOnline(String(m.why || 'The host closed the room').slice(0, 140)); break;
+        }
+    }
+    function openGuestView() {
+        document.getElementById('main-menu').classList.add('hidden');
+        document.getElementById('net-guest').classList.remove('hidden');
+        guest.keys = {}; guest.sent = '';
+        cancelAnimationFrame(guest.raf);
+        const tick = () => { // gamepad buttons and held controls, every frame
+            if (net.role !== 'guest') return;
+            guest.raf = requestAnimationFrame(tick);
+            pollPads();
+            const pad = pads[0];
+            if (pad && !controlsOpen) {
+                for (const i in PAD_ACTION) {
+                    const a = PAD_ACTION[i], down = !!(pad.b[i] && !pad.prev[i]), up = !!(!pad.b[i] && pad.prev[i]);
+                    if (a === 'pause') { if (down) { if (invOpen) closeInventory(); else netSend({ t: 'pause' }); } }
+                    else if (a === 'inventory') { if (down) { if (invOpen) closeInventory(); else guestInventory(); } }
+                    else if (NET_ACTIONS.has(a) && (down || up)) netSend({ t: 'act', a, d: down });
+                }
+            }
+            guestSendInput();
+        };
+        tick();
+        updateGuestOverlay();
+    }
+    function leaveOnline(why) {
+        const wasGuest = net.role === 'guest';
+        if (wasGuest) netSend({ t: 'bye' });
+        netClose();
+        cancelAnimationFrame(guest.raf);
+        document.getElementById('net-guest').classList.add('hidden');
+        const v = document.getElementById('net-video');
+        if (v) v.srcObject = null;
+        if (wasGuest && state === 'menu') { document.getElementById('main-menu').classList.remove('hidden'); renderMenu(); }
+        setNetStatus(why || '');
+    }
+    function guestHeld() {
+        let h = 0;
+        for (const a in G_BITS) if (controls.kb1[a].some(k => k && guest.keys[k]) || (a === 'fire' && guest.keys.Mouse0) || padHeld(pads[0], a)) h |= G_BITS[a];
+        return h;
+    }
+    function guestSendInput() { // held controls and aim, when they change (and twice a second anyway)
+        const pa = padAim(pads[0]);
+        const m = { t: 'in', h: guestHeld(), m: guest.mouseOn && guest.mouse ? guest.mouse.map(v => Math.round(v * 10) / 10) : null, a: pa ? pa.map(v => Math.round(v * 100) / 100) : null };
+        const key = JSON.stringify(m), now = performance.now();
+        if (key === guest.sent && now - guest.lastSend < 450) return;
+        guest.sent = key; guest.lastSend = now;
+        netSend(m);
+    }
+    function guestKey(e, down) { // your keys (your own CONTROLS, as Player 1) drive Player 2 on the host's screen
+        const a = KB1_ACTION[e.code];
+        if (GAME_KEYS.has(e.code) || a || e.code === 'Tab') e.preventDefault();
+        if (e.code === 'Escape' || a === 'pause') { if (down && !e.repeat) netSend({ t: 'pause' }); return; }
+        if (a === 'inventory') { if (down && !e.repeat) guestInventory(); return; }
+        if (down && e.repeat) return;
+        guest.keys[e.code] = down;
+        if (down && (a === 'fire' || a === 'up')) guest.mouseOn = false; // back to keyboard aim
+        if (NET_ACTIONS.has(a)) netSend({ t: 'act', a, d: down });
+        guestSendInput();
+    }
+    function guestInventory() { // your own inventory, over the stream: what you change reaches the host when you close it
+        guest.keys = {}; guest.mouseOn = false; guestSendInput();
+        invWho = 0; openInventory();
+    }
+    (() => { // the mouse over the streamed screen aims, fires (left), throws grenades (right) and swaps weapons (wheel)
+        const wrap = document.getElementById('net-video-wrap');
+        const toGame = e => { const r = wrap.getBoundingClientRect(); guest.mouse = [clamp((e.clientX - r.left) / r.width * W, 0, W), clamp((e.clientY - r.top) / r.height * H, 0, H)]; guest.mouseOn = true; };
+        wrap.addEventListener('mousemove', e => { toGame(e); guestSendInput(); });
+        wrap.addEventListener('mousedown', e => {
+            e.preventDefault(); toGame(e);
+            if (e.button === 0) guest.keys.Mouse0 = true;
+            if (e.button === 2) netSend({ t: 'act', a: 'grenade', d: true });
+            guestSendInput();
+        });
+        window.addEventListener('mouseup', e => {
+            if (net.role !== 'guest') return;
+            if (e.button === 0) guest.keys.Mouse0 = false;
+            if (e.button === 2) netSend({ t: 'act', a: 'grenade', d: false });
+            guestSendInput();
+        });
+        wrap.addEventListener('contextmenu', e => e.preventDefault());
+        wrap.addEventListener('wheel', e => {
+            e.preventDefault();
+            if (performance.now() - guest.wheelAt < 150) return;
+            guest.wheelAt = performance.now(); netSend({ t: 'act', a: 'swap', d: true });
+        }, { passive: false });
+        window.addEventListener('blur', () => { if (net.role === 'guest') { guest.keys = {}; guestSendInput(); } });
+    })();
+    function updateGuestOverlay() {
+        const box = document.getElementById('net-guest-msg'), bar = document.getElementById('net-guest-status');
+        if (!box || net.role !== 'guest') return;
+        const h = net.hostState || {}, b = net.lastBank;
+        bar.textContent = `ROOM ${net.code}${h.label ? ' • ' + h.label : ''}${h.ping ? ` • PING ${h.ping} MS` : ''}`;
+        let msg = '';
+        if (!netReady()) msg = net.status || 'Connecting...';
+        else if (!h.s || h.s === 'menu' || !h.inRun) msg = 'CONNECTED AS PLAYER 2\nWaiting for the host to start a mission...';
+        else if (h.s === 'paused') msg = 'PAUSED\nP / Esc / Start resumes';
+        else if (h.s === 'over') msg = b ? `${b.horde ? 'RUN OVER' : b.won ? 'MISSION COMPLETE' : 'MISSION FAILED'}\n+${b.earned} CREDITS${b.gold ? `  +${b.gold} GOLD` : ''}\nWaiting for the host...` : 'Waiting for the host...';
+        box.textContent = msg;
+        box.classList.toggle('hidden', !msg);
+        box.style.background = h.s === 'paused' ? 'rgba(2,6,23,.45)' : '';
+    }
+    function renderNet() { // the ONLINE CO-OP panel on the main menu
+        const box = document.getElementById('net-panel');
+        if (!box) return;
+        const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const typed = (document.getElementById('net-code') || {}).value || '';
+        const status = net.status ? `<div id="net-status" class="text-[11px] text-orange-200 leading-snug mt-2">${esc(net.status)}</div>` : '';
+        if (net.role === 'host') {
+            box.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div><div class="text-[10px] text-slate-400">ROOM CODE</div><div id="net-room-code" class="pixel-font text-lg text-orange-300 tracking-widest select-all">${esc(net.code)}</div></div>
+                    <button onclick="closeRoom()" class="ml-auto px-3 py-2 bg-slate-900 border border-red-900 text-xs text-red-400 rounded hover:bg-red-950">CLOSE ROOM</button>
+                </div>${status}
+                <div class="text-[11px] text-slate-400 leading-snug mt-1">${net.cfg ? `PING ${net.ping} MS &bull; ` : ''}Send the code to a friend: they type it under JOIN on their computer and play Player 2 with their own Guardian. Then pick a stage and LAUNCH. Online co-op takes Player 2's place from local co-op.</div>`;
+        } else {
+            box.innerHTML = `
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="hostOnline()" id="net-host-btn" class="px-3 py-2 saturn-button pixel-font text-[9px] text-orange-300 rounded">HOST A ROOM</button>
+                    <input id="net-code" maxlength="6" placeholder="CODE" autocomplete="off" spellcheck="false" value="${esc(typed)}" onkeydown="if (event.key === 'Enter') joinOnline()"
+                        class="w-28 px-2 py-1.5 bg-slate-950 border-2 border-slate-700 rounded pixel-font text-[10px] text-white uppercase tracking-widest">
+                    <button onclick="joinOnline()" id="net-join-btn" class="px-3 py-2 saturn-button pixel-font text-[9px] text-sky-300 rounded">JOIN</button>
+                </div>${status}
+                <div class="text-[11px] text-slate-400 leading-snug mt-1">Play over the internet: one player hosts a room and runs the game, the other joins with its code and plays Player 2 on their own computer, with their own Guardian, and earns the mission's credits and gold.</div>`;
         }
     }
 

@@ -30,6 +30,10 @@ All editions are the same game with the same saves; cycle between them with the 
 - **Gold & cosmetics:** clearing stages, contracts and sealed chests pays gold, spent on premium armor colours and weapon skins (some recolour your shots)
 - **Secret stage: Nimays Sanctum.** Find the Echo Shard hidden in a secret bunker in 4-2 Hall of Echoes (or finish the campaign) to unlock Nimays, a 500,000 HP boss. She stays immune until you solve her puzzle: watch the order in which she lights her four sigil crystals, then shoot them in that order (in reverse below 25% HP). A wrong crystal or running out of time punishes you. Each solve shatters her ward and opens a short window where your hits are amplified, and every ward adds a step to the next sequence. Beating her pays an Exotic, a key of every sigil and 30 gold
 - **Local co-op (2 players):** turn on **2 PLAYERS** in the menu and a second Guardian joins on the same screen, for the campaign and Horde mode. Player 2 picks their own class, subclass and origin (orange helmet) and shares your loadout and armor. Play with a gamepad (Player 2 takes the first one; with two, one each) or with Player 2 on the arrow keys and the number pad. The camera keeps both of you in frame, each enemy goes after the nearest Guardian, and bosses switch targets every 6 s. Lives are shared: while your partner is standing you go down instead, and come back beside them 3 s later; with no lives left you stay down until a champion falls (in Horde mode, until the next wave). Enemies have 25% more health in co-op and bosses 50% more
+- **Online co-op (beta):** play with a friend over the internet. One player clicks **HOST A ROOM** and gets a 6-character code; the other types it under **JOIN**. The host runs the game: their screen and sound stream live to Player 2, and Player 2's controls (keyboard and mouse, or a gamepad) stream back. Player 2 plays their own Guardian (class, subclass, origin, loadout and armor from their own save), can join mid-mission, and earns the mission's credits and gold in their own save. Rooms are matched through the free PeerJS server; the game then flows directly between the two computers, or through PeerJS's relay when a network blocks direct connections. Both players need an internet connection and the same version of the game; the host's window has to stay open and visible for the stream to keep running
+- **Screen size:** on a computer browser, **SCREEN** in the menu switches between NORMAL (up to 960 px wide), LARGE (as big as the window allows) and FULL (fills the window and goes full screen). In the desktop app, **WINDOW** picks the game area's resolution (960×540, 1280×720, 1600×900, 1920×1080, 2560×1440 or 3840×2160, whichever fit your screen) or full screen, and remembers it
+- **Controls menu:** **CONTROLS** (main menu, or the inventory mid-mission) remaps every action: two keys each for Player 1 and for Player 2 (local co-op), and one gamepad button each. Click a slot and press the key or button; binding a key that's already in use moves it. Saved on that computer, apart from the save. The mouse, the sticks, the D-pad and Esc stay fixed
+- **Player 2's inventory:** in local co-op, Player 2 has their own weapons (from the shared inventory), subclass and class ability version: open it with **P2 INVENTORY** in the co-op panel, the **PLAYER 2** tab of the inventory, or Player 2's inventory key (Numpad +). Changes mid-mission apply right away, and changing subclass resets only Player 2's charges. Online, Player 2 opens their own inventory on their computer (their inventory key) and the host applies the changes when they close it
 - **Gamepad:** also works solo (Player 1 takes the first gamepad)
 - **Horde mode:** endless waves in an arena with one life, a new world every 5 waves, elite waves with champions and loot, and a saved best wave
 - **Difficulty:** Easy, Normal or Hard changes the number of enemies, their health and movement speed, the damage you take, champion count, credits and loot odds
@@ -55,7 +59,7 @@ All editions are the same game with the same saves; cycle between them with the 
 - **11 weapons:** Auto Rifle, SMG, Pulse Rifle, Hand Cannon, Shotgun, Sniper Rifle, Rocket Launcher, Fusion Rifle, plus the three anti-champion weapons
 
 ## Windows desktop app (.exe)
-The `desktop/` folder wraps the game in Electron as three portable, fully offline exes, one per edition:
+The `desktop/` folder wraps the game in Electron as three portable exes, one per edition. They run fully offline; only online co-op needs the internet:
 
 ```bash
 cd desktop
@@ -64,7 +68,7 @@ node node_modules/electron/install.js
 npm run dist
 ```
 
-This writes `SaturnGuardian-64bit.exe`, `SaturnGuardian-128bit.exe` and `SaturnGuardian-256bit.exe` to `desktop/release/` (`npm run dist:64`, `dist:128` or `dist:256` build just one). `npm start`, `npm run start:128` and `npm run start:256` run the app without packaging it. F11 toggles fullscreen.
+This writes `SaturnGuardian-64bit.exe`, `SaturnGuardian-128bit.exe` and `SaturnGuardian-256bit.exe` to `desktop/release/` (`npm run dist:64`, `dist:128` or `dist:256` build just one). `npm start`, `npm run start:128` and `npm run start:256` run the app without packaging it. F11 toggles fullscreen, and the **WINDOW** button in the menu picks the window size (saved in `display.json` next to the save).
 
 The exes are not code-signed, so Windows SmartScreen asks for **More info → Run anyway**, and PCs with Windows 11 Smart App Control turned on may block them outright.
 
@@ -117,8 +121,9 @@ In co-op the arrow keys belong to Player 2; Player 1 keeps WASD, the mouse and t
 | Numpad 6 (or ') | Class ability |
 | Numpad 7 (or O) | Super (hold to aim) |
 | Numpad 9 (or [) | Next weapon |
+| Numpad + | Player 2's inventory |
 
-The keys in brackets are by position on a US layout, for keyboards without a number pad.
+The keys in brackets are by position on a US layout, for keyboards without a number pad. These are the defaults: every key and gamepad button can be changed in **CONTROLS**.
 
 ### Touch controls
 | Control | Action |

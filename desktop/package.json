@@ -20,6 +20,7 @@
     "productName": "Saturn Guardian",
     "files": [
       "main.js",
+      "preload.js",
       "app/**/*"
     ],
     "directories": {

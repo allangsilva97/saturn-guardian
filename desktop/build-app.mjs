@@ -10,6 +10,8 @@ const vendor = path.join(here, 'vendor');
 const out = path.join(here, 'app');
 
 const TAILWIND_URL = 'https://cdn.tailwindcss.com/3.4.17';
+// The online co-op library (PeerJS), loaded by the game only when you host or join a room
+const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js';
 const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Press+Start+2P&display=swap';
 // A modern browser UA makes Google Fonts serve woff2
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
@@ -29,6 +31,12 @@ async function ensureVendor() {
     if (!(await exists(tw))) {
         console.log('Downloading Tailwind...');
         await writeFile(tw, await (await fetchOk(TAILWIND_URL)).text());
+    }
+
+    const peer = path.join(vendor, 'peerjs.min.js');
+    if (!(await exists(peer))) {
+        console.log('Downloading PeerJS...');
+        await writeFile(peer, await (await fetchOk(PEERJS_URL)).text());
     }
 
     const css = path.join(vendor, 'fonts.css');
@@ -57,6 +65,8 @@ async function main() {
     if (html === before || /https:\/\/(cdn\.tailwindcss|fonts\.googleapis)/.test(html)) {
         throw new Error('Could not replace the CDN links in saturn_guardian.html');
     }
+    if (!html.includes(PEERJS_URL)) throw new Error('Could not find the PeerJS URL in saturn_guardian.html');
+    html = html.split(PEERJS_URL).join('peerjs.min.js');
     // The web app manifest and icon only matter for installing from the website
     html = html.replace(/\s*<link rel="(manifest|apple-touch-icon)"[^>]*>/g, '');
     // Graphics mode the exe starts in: `node build-app.mjs 64` (default), `128` or `256`
@@ -68,6 +78,7 @@ async function main() {
     await writeFile(path.join(out, 'index.html'), html);
     await copyFile(path.join(vendor, 'tailwind.js'), path.join(out, 'tailwind.js'));
     await copyFile(path.join(vendor, 'fonts.css'), path.join(out, 'fonts.css'));
+    await copyFile(path.join(vendor, 'peerjs.min.js'), path.join(out, 'peerjs.min.js'));
     const { readdir } = await import('node:fs/promises');
     for (const f of await readdir(path.join(vendor, 'fonts'))) {
         await copyFile(path.join(vendor, 'fonts', f), path.join(out, 'fonts', f));
