@@ -98,6 +98,10 @@
             <div class="text-center mb-4">
                 <div id="gfx-engine" class="pixel-font text-sky-400 text-[10px] mb-2 tracking-widest animate-pulse">SATURN 64-BIT GUARDIAN ENGINE</div>
                 <h1 class="pixel-font text-2xl md:text-4xl text-yellow-400 font-bold tracking-wider mb-1 drop-shadow-[0_0_15px_rgba(234,179,8,0.6)]">SATURN GUARDIAN</h1>
+                <div class="flex justify-center gap-2 mb-2">
+                    <button onclick="openArmory('menu')" class="px-5 py-2 saturn-button pixel-font text-amber-300 text-[10px] font-bold uppercase rounded">SHOP</button>
+                    <button onclick="openInventory()" class="px-5 py-2 saturn-button pixel-font text-sky-300 text-[10px] font-bold uppercase rounded">INVENTORY</button>
+                </div>
                 <p id="gfx-edition" class="text-sm text-slate-400 tracking-widest uppercase">8 Worlds &bull; 41 Stages &bull; 64-Bit Enhanced Edition</p>
             </div>
 
@@ -191,7 +195,7 @@
                     <div class="text-xs text-slate-400">CREDITS <span id="menu-credits" class="text-emerald-400 font-bold">0</span> &bull; GOLD <span id="menu-gold" class="text-amber-300 font-bold">0</span> &bull; BEST <span id="best-score" class="text-yellow-400">0</span>
                         <div id="refund-note" class="text-[11px] text-emerald-300 hidden"></div></div>
                     <div class="flex gap-2">
-                        <button onclick="openArmory('menu')" class="px-5 py-3 saturn-button pixel-font text-sky-300 text-xs font-bold uppercase rounded">ARMORY</button>
+                        <button onclick="openArmory('menu')" class="px-5 py-3 saturn-button pixel-font text-amber-300 text-xs font-bold uppercase rounded">SHOP</button>
                         <button onclick="startGame(true)" id="horde-btn" class="px-4 py-3 saturn-button pixel-font text-fuchsia-300 text-xs font-bold uppercase rounded">HORDE</button>
                         <button onclick="startGame()" id="launch-btn" class="px-6 py-3 saturn-button pixel-font text-yellow-300 text-xs font-bold tracking-widest uppercase rounded">LAUNCH 1-1</button>
                     </div>
@@ -214,15 +218,16 @@
     <div id="armory" class="absolute inset-0 z-40 bg-slate-950/95 hidden flex flex-col items-center p-4 overflow-y-auto">
         <div class="my-auto w-full max-w-5xl saturn-panel p-5 rounded-lg">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="pixel-font text-lg text-sky-300">ARMORY</h2>
+                <h2 class="pixel-font text-lg text-sky-300">SHOP</h2>
                 <div class="text-sm text-slate-300">CREDITS <span id="armory-credits" class="text-emerald-400 font-bold text-lg">0</span> &bull; GOLD <span id="armory-gold" class="text-amber-300 font-bold text-lg">0</span></div>
             </div>
-            <div>
+            <div id="shop-tabs" class="flex flex-wrap gap-2 mb-4"></div>
+            <div data-shop="weapons">
                 <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- WEAPONS --</div>
                 <div id="armory-weapons" class="grid grid-cols-1 lg:grid-cols-2 gap-2"></div>
             </div>
-            <div class="mt-5">
-                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- ARMOR --</div>
+            <div data-shop="armor">
+                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- ARMOR UPGRADES --</div>
                 <div class="grid grid-cols-1 lg:grid-cols-[170px_1fr] gap-4">
                     <div class="bg-slate-950/70 border border-slate-800 rounded p-3 flex flex-col items-center justify-center">
                         <canvas id="armor-preview" width="40" height="40" class="w-32 h-32" style="image-rendering:pixelated"></canvas>
@@ -234,7 +239,7 @@
                 <div class="text-[12px] text-slate-400 mb-2">Buy a colour once, then apply it to any armor piece with the swatches above. <span class="text-amber-300">★ Premium colours cost GOLD, earned by clearing stages, contracts and sealed chests.</span></div>
                 <div id="armory-paints" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
             </div>
-            <div class="mt-5">
+            <div data-shop="skins">
                 <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- WEAPON SKINS (GOLD) --</div>
                 <div class="flex flex-wrap items-center gap-3 mb-2">
                     <canvas id="skin-preview" width="40" height="12" class="w-60 h-[72px] bg-slate-950 rounded border border-slate-800" style="image-rendering:pixelated"></canvas>
@@ -242,16 +247,17 @@
                 </div>
                 <div id="skin-list" class="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2"></div>
             </div>
-            <div class="mt-5">
+            <div data-shop="sealed">
                 <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- SEALED CHESTS --</div>
                 <div class="text-[12px] text-slate-400 mb-2">Sealed chests are carried home from the field. Each one opens only with a key of its own sigil: keys hide on ledges, fall from champions, and come from Quartermaster Iro's contracts.</div>
                 <div id="armory-keys" class="flex flex-wrap gap-2 mb-2"></div>
                 <div id="chest-result" class="hidden text-[12px] mb-2 p-2 rounded bg-slate-900 border border-yellow-700"></div>
                 <div id="armory-sealed" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
             </div>
-            <div class="mt-5">
-                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- INVENTORY (<span id="inventory-count">0</span>) --</div>
-                <div class="text-[12px] text-slate-400 mb-2">Weapons level up from kills (max LV 20): more damage, stronger perks, perk slots unlock at LV 5 and 10. Chests drop new gear. Equip in the LOADOUT on the main menu.</div>
+            <div data-shop="inventory">
+                <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- MY WEAPONS (<span id="inventory-count">0</span>) --</div>
+                <div class="text-[12px] text-slate-400 mb-2">Weapons level up from kills (max LV 20): more damage, stronger perks, perk slots unlock at LV 5 and 10.
+                    <span class="text-amber-300">INFUSE</span> a stronger weapon of the same slot into one you like to raise it to that level; <span class="text-red-300">DISMANTLE</span> the ones you no longer want for gold. Equip them in the Inventory.</div>
                 <div id="armory-inventory" class="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
             </div>
             <div class="flex justify-end mt-5">
@@ -276,13 +282,27 @@
             <div id="inv-class-title" class="pixel-font text-[10px] text-yellow-400 mb-1"></div>
             <div id="inv-class-note" class="text-[12px] text-slate-400 mb-2"></div>
             <div id="inv-ability" class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4"></div>
-            <div class="pixel-font text-[10px] text-yellow-400 mb-2">-- WEAPONS --</div>
+            <div class="flex flex-wrap justify-between items-baseline gap-2 mb-2">
+                <div class="pixel-font text-[10px] text-yellow-400">-- WEAPONS --</div>
+                <div class="text-[11px] text-slate-400">Click a weapon to equip it &bull; <span class="text-amber-300">INFUSE</span> a stronger one into it &bull; <span class="text-red-300">DISMANTLE</span> for gold</div>
+            </div>
             <div id="inv-weapons" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4"></div>
             <div class="flex flex-wrap justify-between items-baseline gap-2 mb-2">
                 <div class="pixel-font text-[10px] text-yellow-400">-- EQUIPMENT --</div>
                 <div class="text-[11px] text-slate-400">Upgrade armor pieces in the Armory</div>
             </div>
             <div id="inv-armor" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"></div>
+        </div>
+    </div>
+
+    <!-- ================= INFUSION ================= -->
+    <div id="infuse-modal" class="fixed inset-0 z-[60] bg-slate-950/80 hidden flex items-center justify-center p-4">
+        <div class="w-full max-w-lg saturn-panel p-4 rounded-lg max-h-[90vh] overflow-y-auto">
+            <div class="pixel-font text-[11px] text-amber-300 mb-1">INFUSION</div>
+            <div id="infuse-target" class="text-[13px] text-white mb-1"></div>
+            <div class="text-[12px] text-slate-400 mb-3">Feed a stronger weapon of the same slot into this one: it rises to that level (damage and perk slots grow with level) and keeps its perks and skin. The weapon you feed in is destroyed. Costs 75 credits per level.</div>
+            <div id="infuse-list" class="flex flex-col gap-2 mb-3"></div>
+            <div class="flex justify-end"><button onclick="closeInfuse()" class="px-4 py-2 saturn-button pixel-font text-yellow-300 text-[10px] rounded">CANCEL</button></div>
         </div>
     </div>
 
@@ -1374,6 +1394,7 @@
     let invOpen = false, invInGame = false;
     function openInventory() {
         if (invOpen) return;
+        pendingDismantle = null;
         invInGame = state === 'playing' || state === 'paused';
         if (state === 'playing') togglePause();
         invOpen = true;
@@ -1415,12 +1436,12 @@
                 <div class="pixel-font text-[8px] mb-1" style="color:${AMMO_COLORS[slot.ammo]}">[${i + 1}] ${slot.label} (${eligible.length})</div>
                 <div class="flex flex-col gap-1.5">${eligible.map(it => {
                     const on = save.loadout[i] === it.uid, c = RARITIES[it.rarity].color;
-                    return `<button onclick="equipFromInventory(${i}, '${it.uid}')" class="text-left bg-slate-950/70 border-2 rounded p-2 ${on ? '' : 'opacity-80 hover:opacity-100'}"
+                    return `<div role="button" tabindex="0" onclick="equipFromInventory(${i}, '${it.uid}')" class="cursor-pointer text-left bg-slate-950/70 border-2 rounded p-2 ${on ? '' : 'opacity-80 hover:opacity-100'}"
                         style="border-color:${on ? c : '#1e293b'}; ${on ? `box-shadow:0 0 12px -3px ${c}` : ''}">
                         <div class="flex justify-between gap-2 text-[12px]"><span style="color:${c}" class="font-bold">${RARITIES[it.rarity].name} ${WEAPONS[it.wid].name}</span>
                             <span class="${on ? 'text-yellow-300' : 'text-slate-500'} pixel-font text-[7px] mt-1">${on ? 'EQUIPPED' : 'EQUIP'}</span></div>
                         <div class="text-[11px] text-slate-400">LV ${it.level} &bull; +${Math.round((itemDmgMult(it) - 1) * 100)}% DMG</div>
-                        <div class="text-[11px] leading-snug">${perkHtml(it)}</div>${xpBarHtml(it)}</button>`;
+                        <div class="text-[11px] leading-snug">${perkHtml(it)}</div>${xpBarHtml(it)}${weaponActions(it)}</div>`;
                 }).join('')}</div></div>`;
         }).join('');
         const abId = classAbilityId(), abColor = CLASSES[selectedClass].color;
@@ -1496,9 +1517,18 @@
         renderMenu();
     }
 
-    function openArmory(from) {
-        armoryReturn = from; lastChestResult = null;
+    const SHOP_TABS = [['weapons', 'WEAPONS'], ['armor', 'ARMOR & PAINT'], ['skins', 'SKINS'], ['sealed', 'SEALED CHESTS'], ['inventory', 'MY WEAPONS']];
+    let shopTabId = 'weapons';
+    function shopTab(id) {
+        shopTabId = id;
+        document.querySelectorAll('[data-shop]').forEach(el => el.classList.toggle('hidden', el.dataset.shop !== id));
+        document.getElementById('shop-tabs').innerHTML = SHOP_TABS.map(([t, label]) =>
+            `<button onclick="shopTab('${t}')" style="--c:#facc15" class="pick ${t === id ? 'sel' : ''} px-3 py-2 pixel-font text-[9px] rounded">${label}</button>`).join('');
+    }
+    function openArmory(from, tab) {
+        armoryReturn = from; lastChestResult = null; pendingDismantle = null;
         document.getElementById('armory').classList.remove('hidden');
+        shopTab(tab || shopTabId);
         renderArmory();
     }
     function closeArmory() {
@@ -1678,18 +1708,80 @@
         if (lastChestResult) {
             const r = lastChestResult, rc = RARITIES[r.item.rarity].color;
             res.innerHTML = `<span style="color:${SIGILS[r.sigil].color}">${SIGILS[r.sigil].name} CHEST OPENED:</span> <span style="color:${rc}">${itemName(r.item)} LV ${r.item.level}</span> + <span class="text-amber-300">${r.gold} GOLD</span> + <span class="text-emerald-400">${r.credits} credits</span>`;
+            const eq = equippedInSlot(ammoOf(r.item));
+            if (eq && save.inventory.includes(r.item) && r.item.level > eq.level)
+                res.innerHTML += ` <button onclick="openInfuse('${eq.uid}', '${r.item.uid}')" class="ml-1 px-2 py-0.5 text-[10px] font-bold rounded border border-amber-600 text-amber-300 bg-amber-950/40">INFUSE INTO YOUR ${WEAPONS[eq.wid].short}</button>`;
         }
         drawArmorPreview();
         renderInventory();
     }
-    const scrapValue = it => Math.round(RARITIES[it.rarity].scrap * (1 + it.level / 10));
-    function scrapItem(uid) {
+    // ---- Infusion: feed a stronger weapon of the same slot (primary / special / heavy) into one you like.
+    // Yours rises to the stronger one's level and keeps its perks and skin; the one you feed in is destroyed.
+    const INFUSE_COST = 75; // credits per level gained
+    const equippedInSlot = ammo => { const i = LOADOUT_SLOTS.findIndex(sl => sl.ammo === ammo); return save.inventory.find(it => it.uid === save.loadout[i]); };
+    const infuseDonors = target => save.inventory.filter(d => d.uid !== target.uid && ammoOf(d) === ammoOf(target) && d.level > target.level)
+        .sort((a, b) => b.level - a.level);
+    let infuseTarget = null;
+    function openInfuse(targetUid, donorUid) {
+        const t = save.inventory.find(i => i.uid === targetUid);
+        if (!t) return;
+        infuseTarget = t.uid;
+        const donors = infuseDonors(t).filter(d => !donorUid || d.uid === donorUid);
+        document.getElementById('infuse-target').innerHTML = `Into: <span style="color:${RARITIES[t.rarity].color}">${itemName(t)}</span> · LV ${t.level}`;
+        document.getElementById('infuse-list').innerHTML = donors.length ? donors.map(d => {
+            const cost = INFUSE_COST * (d.level - t.level), ok = save.credits >= cost, eq = save.loadout.includes(d.uid);
+            return `<button ${ok ? '' : 'disabled'} onclick="doInfuse('${t.uid}', '${d.uid}')" class="pick text-left p-2 rounded" style="--c:#f59e0b">
+                <div class="flex justify-between gap-2 text-[12px]"><span style="color:${RARITIES[d.rarity].color}" class="font-bold">${itemName(d)} · LV ${d.level}${eq ? ' (EQUIPPED)' : ''}</span>
+                <span class="${ok ? 'text-emerald-400' : 'text-red-400'}">${cost} CR</span></div>
+                <div class="text-[11px] text-slate-400">Your ${WEAPONS[t.wid].short} goes from LV ${t.level} to LV ${d.level}; this weapon is destroyed</div></button>`;
+        }).join('') : '<div class="text-[12px] text-slate-400">No stronger weapon of this slot to infuse.</div>';
+        document.getElementById('infuse-modal').classList.remove('hidden');
+    }
+    function closeInfuse() { infuseTarget = null; document.getElementById('infuse-modal').classList.add('hidden'); }
+    function doInfuse(targetUid, donorUid) {
+        const t = save.inventory.find(i => i.uid === targetUid), d = save.inventory.find(i => i.uid === donorUid);
+        if (!t || !d || ammoOf(t) !== ammoOf(d) || d.level <= t.level) return;
+        const cost = INFUSE_COST * (d.level - t.level);
+        if (save.credits < cost) return;
+        save.credits -= cost;
+        t.level = d.level; t.xp = 0;
+        const slot = save.loadout.indexOf(d.uid);
+        if (slot >= 0) save.loadout[slot] = t.uid; // feeding in the equipped weapon equips the infused one in its place
+        save.inventory = save.inventory.filter(i => i.uid !== d.uid);
+        fixLoadout(save);
+        if (player && (state === 'playing' || state === 'paused')) applyLoadoutToPlayer();
+        persist(); initAudio(); playSound('clear');
+        closeInfuse();
+        refreshItemViews();
+    }
+    // ---- Dismantling: weapons you no longer want become gold (equipped ones can't be dismantled)
+    const dismantleGold = it => ({ common: 1, rare: 2, legendary: 5, exotic: 12 }[it.rarity]) + Math.floor(it.level / 5);
+    let pendingDismantle = null; // first click asks, second click dismantles
+    function dismantleItem(uid) {
         const it = save.inventory.find(i => i.uid === uid);
-        if (!it || save.loadout.includes(uid)) return; // equipped items can't be scrapped
-        save.credits += scrapValue(it);
+        if (!it || save.loadout.includes(uid)) return;
+        if (pendingDismantle !== uid) { pendingDismantle = uid; refreshItemViews(); return; }
+        pendingDismantle = null;
+        save.gold += dismantleGold(it);
         save.inventory = save.inventory.filter(i => i.uid !== uid);
         persist(); initAudio(); playSound('pickup');
-        renderArmory();
+        refreshItemViews();
+    }
+    // the INFUSE / DISMANTLE buttons under a weapon card
+    function weaponActions(it) {
+        const equipped = save.loadout.includes(it.uid), donors = infuseDonors(it), g = dismantleGold(it), ask = pendingDismantle === it.uid;
+        const b = (label, fn, cls) => `<button onclick="event.stopPropagation(); ${fn}" class="px-2 py-1 text-[10px] font-bold rounded border whitespace-nowrap ${cls}">${label}</button>`;
+        const parts = [];
+        if (donors.length) parts.push(b(`INFUSE ▲ LV ${donors[0].level}`, `openInfuse('${it.uid}')`, 'border-amber-600 text-amber-300 bg-amber-950/40 hover:bg-amber-900/40'));
+        if (!equipped) parts.push(b(ask ? `CONFIRM: +${g} GOLD?` : `DISMANTLE +${g} GOLD`, `dismantleItem('${it.uid}')`,
+            ask ? 'border-red-500 text-red-100 bg-red-800/70' : 'border-red-900 text-red-300 bg-slate-900 hover:bg-red-950'));
+        return parts.length ? `<div class="flex flex-wrap gap-1 mt-2">${parts.join('')}</div>` : '';
+    }
+    function refreshItemViews() {
+        if (!document.getElementById('armory').classList.contains('hidden')) renderArmory();
+        if (invOpen) renderInventoryScreen();
+        if (state === 'over' && lastResult && !document.getElementById('game-over-screen').classList.contains('hidden')) showResults(lastResult);
+        if (state === 'menu') renderLoadout();
     }
     function renderInventory() {
         const items = save.inventory.slice().sort((a, b) => RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) || b.level - a.level);
@@ -1705,8 +1797,8 @@
                 </div>
                 <div class="flex flex-col items-end justify-between">
                     <span class="text-[11px] text-slate-400">+${Math.round((itemDmgMult(it) - 1) * 100)}% DMG</span>
-                    ${equipped ? '<span class="text-emerald-400 text-[11px] font-bold">EQUIPPED</span>'
-                               : `<button onclick="scrapItem('${it.uid}')" class="px-2 py-1 bg-slate-900 border border-red-900 text-[11px] text-red-300 rounded hover:bg-red-950 whitespace-nowrap">SCRAP +${scrapValue(it)}</button>`}
+                    ${equipped ? '<span class="text-emerald-400 text-[11px] font-bold">EQUIPPED</span>' : ''}
+                    ${weaponActions(it)}
                 </div>
             </div>`;
         }).join('');
@@ -2222,6 +2314,8 @@
         rings.push({ x, y, r: 4, maxR: rarity === 'exotic' ? 90 : rarity === 'legendary' ? 60 : 40, life: 30, max: 30, color: c });
         burst(x, y, rarity === 'common' ? 10 : 30, c, 3.5, 40);
         popText(x - 50, y - 26, `${itemName(item)} LV ${level}`, c);
+        const eq = equippedInSlot(WEAPONS[wid].ammo);
+        if (eq && level > eq.level) popText(x - 64, y - 38, `STRONGER THAN YOUR ${WEAPONS[eq.wid].short}: INFUSE IT`, '#fbbf24');
         if (rarity === 'exotic' || rarity === 'legendary') { flash = 6; playSound('super'); }
     }
 
@@ -2341,6 +2435,7 @@
     //  INPUT
     // =====================================================================
     window.addEventListener('keydown', e => {
+        if (infuseTarget && e.code === 'Escape') { closeInfuse(); return; }
         if (invOpen) { // the inventory takes the keyboard while it is open
             if (['Escape', 'KeyI', 'Tab'].includes(e.code)) { e.preventDefault(); if (!e.repeat) closeInventory(); }
             return;
@@ -3198,7 +3293,7 @@
         persist();
         lastResult = { won, failed: outOfLives, sub, earned, gold, score, kills, deaths, secs: Math.floor(frame / 60), idx, secrets: `${stage.secretsFound}/${stage.secretsTotal}`,
                        sealed: stage.sealedFound || 0, keys: stage.keysFound || 0, contracts: contractSummary(finished),
-                       loot: stage.loot.map(it => ({ name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
+                       loot: stage.loot.map(it => ({ uid: it.uid, name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
         setTimeout(() => { if (state === 'over') showResults(lastResult); }, won ? 600 : 900);
     }
     const contractSummary = finished => save.contracts.map(c => ({ text: contractText(c), npc: c.npc, prog: Math.floor(c.prog), goal: c.goal, done: c.prog >= c.goal, justDone: finished.includes(c) }));
@@ -3218,7 +3313,7 @@
         persist();
         lastResult = { horde: true, won: false, earned, gold, score, kills, deaths, secs: Math.floor(frame / 60), idx: -1, secrets: '-',
                        sub: `${wave} WAVE${wave === 1 ? '' : 'S'} CLEARED${record ? ' — NEW RECORD!' : ` • BEST ${save.hordeBest}`}`, contracts: contractSummary(finished),
-                       loot: stage.loot.map(it => ({ name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
+                       loot: stage.loot.map(it => ({ uid: it.uid, name: itemName(it), level: it.level, color: RARITIES[it.rarity].color })) };
         setTimeout(() => { if (state === 'over') showResults(lastResult); }, 900);
     }
 
@@ -3245,14 +3340,19 @@
         const lootEl = document.getElementById('end-loot');
         lootEl.classList.toggle('hidden', !(r.loot && r.loot.length));
         lootEl.innerHTML = r.loot && r.loot.length ? '<div class="pixel-font text-[9px] text-yellow-400 mb-1">LOOT ACQUIRED</div>' +
-            r.loot.map(l => `<div style="color:${l.color}">◆ ${l.name} · LV ${l.level}</div>`).join('') : '';
+            r.loot.map(l => {
+                const it = save.inventory.find(i => i.uid === l.uid), eq = it && equippedInSlot(ammoOf(it));
+                const offer = it && eq && eq.uid !== it.uid && it.level > eq.level // stronger than what you carry: offer to infuse it
+                    ? ` <button onclick="openInfuse('${eq.uid}', '${it.uid}')" class="ml-1 px-2 py-0.5 text-[10px] font-bold rounded border border-amber-600 text-amber-300 bg-amber-950/40">INFUSE INTO YOUR ${WEAPONS[eq.wid].short} (LV ${eq.level})</button>` : '';
+                return `<div style="color:${l.color}">◆ ${l.name} · LV ${l.level}${it ? '' : ' <span class="text-slate-500">(gone)</span>'}${offer}</div>`;
+            }).join('') : '';
         document.getElementById('final-time').textContent = `${Math.floor(r.secs / 60)}:${String(r.secs % 60).padStart(2, '0')}`;
         document.getElementById('final-credits').textContent = '+' + r.earned;
         document.getElementById('final-bank').textContent = save.credits;
         const btn = (label, fn) => `<button onclick="${fn}" class="flex-1 py-3 saturn-button pixel-font text-yellow-300 text-[10px] font-bold uppercase rounded">${label}</button>`;
         document.getElementById('end-buttons').innerHTML =
             (r.horde ? btn('RETRY', 'startGame(true)') : r.won && !last ? btn('NEXT ' + stageLabel(r.idx + 1), 'nextStage()') : btn(r.won ? 'REPLAY' : 'RETRY', 'startGame()')) +
-            btn('INVENTORY', 'openInventory()') + btn('ARMORY', "openArmory('results')") + btn('MENU', 'returnToMenu()');
+            btn('INVENTORY', 'openInventory()') + btn('SHOP', "openArmory('results')") + btn('MENU', 'returnToMenu()');
         document.getElementById('game-over-screen').classList.remove('hidden');
     }
 
