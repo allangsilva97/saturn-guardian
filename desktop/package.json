@@ -1,7 +1,7 @@
 {
   "name": "saturn-guardian",
   "productName": "Saturn Guardian",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Retro 2D run-and-gun platformer",
   "main": "main.js",
   "private": true,
