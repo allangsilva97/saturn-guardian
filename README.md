@@ -29,6 +29,8 @@ All editions are the same game with the same saves; cycle between them with the 
 - **Infusion and dismantling:** found a stronger weapon? Infuse it into one you like (same slot): yours rises to its level and keeps its perks and skin, for 75 credits per level. The game points out stronger drops and the results screen offers to infuse them. Dismantle weapons you no longer want for gold
 - **Gold & cosmetics:** clearing stages, contracts and sealed chests pays gold, spent on premium armor colours and weapon skins (some recolour your shots)
 - **Secret stage: Nimays Sanctum.** Find the Echo Shard hidden in a secret bunker in 4-2 Hall of Echoes (or finish the campaign) to unlock Nimays, a 500,000 HP boss. She stays immune until you solve her puzzle: watch the order in which she lights her four sigil crystals, then shoot them in that order (in reverse below 25% HP). A wrong crystal or running out of time punishes you. Each solve shatters her ward and opens a short window where your hits are amplified, and every ward adds a step to the next sequence. Beating her pays an Exotic, a key of every sigil and 30 gold
+- **Local co-op (2 players):** turn on **2 PLAYERS** in the menu and a second Guardian joins on the same screen, for the campaign and Horde mode. Player 2 picks their own class, subclass and origin (orange helmet) and shares your loadout and armor. Play with a gamepad (Player 2 takes the first one; with two, one each) or with Player 2 on the arrow keys and the number pad. The camera keeps both of you in frame, each enemy goes after the nearest Guardian, and bosses switch targets every 6 s. Lives are shared: while your partner is standing you go down instead, and come back beside them 3 s later; with no lives left you stay down until a champion falls (in Horde mode, until the next wave). Enemies have 25% more health in co-op and bosses 50% more
+- **Gamepad:** also works solo (Player 1 takes the first gamepad)
 - **Horde mode:** endless waves in an arena with one life, a new world every 5 waves, elite waves with champions and loot, and a saved best wave
 - **Difficulty:** Easy, Normal or Hard changes the number of enemies, their health and movement speed, the damage you take, champion count, credits and loot odds
 - **4 subclasses:** Fire, Shock, Void and Stasis. Your element; match an enemy's shield colour to shatter it. Stasis chills what it hits, slowing enemies until they freeze (frozen enemies take 30% more damage)
@@ -83,6 +85,40 @@ The exes are not code-signed, so Windows SmartScreen asks for **More info → Ru
 | I / Tab | Inventory (weapons, equipment, subclass) |
 | T | Super: hold to aim, release to cast (Deadeye and Singularity fly along the aim; the Sentinel leaps along it and slams down where it lands) |
 | P / Esc | Pause (then M abandons the mission, keeping credits) |
+
+### Gamepad
+| Button | Action |
+|---|---|
+| Left stick / D-pad | Move (up aims up, down crouches) |
+| Right stick | Aim in any direction |
+| RT | Fire (hold) |
+| A | Jump (hold to glide) |
+| B | Dash |
+| X | Reload |
+| Y | Super: hold to aim, release to cast |
+| LB | Grenade: hold to aim, release to throw |
+| RB | Melee |
+| LT | Class ability |
+| Back / View | Next weapon |
+| Start / Menu | Pause |
+
+### Player 2 on the keyboard (co-op)
+In co-op the arrow keys belong to Player 2; Player 1 keeps WASD, the mouse and the other keys.
+
+| Key | Action |
+|---|---|
+| Arrow keys | Move and aim |
+| Numpad 0 (or .) | Jump |
+| Numpad 1 (or /) | Fire (hold) |
+| Numpad 2 (or ,) | Dash |
+| Numpad 3 (or ]) | Reload |
+| Numpad 4 (or L) | Grenade (hold to aim) |
+| Numpad 5 (or ;) | Melee |
+| Numpad 6 (or ') | Class ability |
+| Numpad 7 (or O) | Super (hold to aim) |
+| Numpad 9 (or [) | Next weapon |
+
+The keys in brackets are by position on a US layout, for keyboards without a number pad.
 
 ### Touch controls
 | Control | Action |

@@ -164,6 +164,8 @@
                         <div class="pixel-font text-[10px] text-yellow-400 mt-4 mb-2">-- DIFFICULTY --</div>
                         <div id="difficulty" class="flex space-x-2 mb-2"></div>
                         <div id="difficulty-desc" class="text-[11px] text-slate-400 leading-snug"></div>
+                        <div class="pixel-font text-[10px] text-yellow-400 mt-4 mb-2">-- LOCAL CO-OP --</div>
+                        <div id="coop-panel"></div>
                     </div>
                 </div>
 
@@ -810,7 +812,7 @@
     const SPECIES_IDS = Object.keys(SPECIES);
     // Draws the origin details on a Guardian sprite. layer 'back' goes under the body, 'front' over the helmet.
     function drawOrigin(g, layer, x, top, f, crouch, t) {
-        const sp = save.species, b = save.body, back = f > 0 ? x + 1 : x + 12;
+        const o = ctxOrigin || save, sp = o.species, b = o.body, back = f > 0 ? x + 1 : x + 12;
         if (layer === 'back') {
             if (sp === 'light') { // a soft aura
                 g.fillStyle = `rgba(253,230,138,${0.12 + 0.06 * Math.sin(t * 0.1)})`; g.fillRect(x - 3, top - 3, 22, crouch ? 22 : 34);
@@ -848,6 +850,47 @@
     }
     function setSpecies(id) { if (!SPECIES[id]) return; save.species = id; persist(); renderOrigin(); }
     function setBody(b) { if (!['m', 'f', 'x'].includes(b)) return; save.body = b; persist(); renderOrigin(); }
+
+    // ---- Local co-op (menu): Player 2 picks their own class, subclass and origin and shares the loadout and armor ----
+    const P2_DEFAULT = { on: false, cls: 'sentinel', el: 'shock', species: 'machine', body: 'x' };
+    function p2cfg() {
+        const s = save.p2 = Object.assign({}, P2_DEFAULT, save.p2);
+        if (!CLASSES[s.cls]) s.cls = P2_DEFAULT.cls;
+        if (!ELEMENTS[s.el]) s.el = P2_DEFAULT.el;
+        if (!SPECIES[s.species]) s.species = P2_DEFAULT.species;
+        if (!['m', 'f', 'x'].includes(s.body)) s.body = 'x';
+        return s;
+    }
+    function toggleCoop() { const s = p2cfg(); s.on = !s.on; persist(); renderCoop(); }
+    function setP2(k, v) { p2cfg()[k] = v; persist(); renderCoop(); }
+    function connectedPads() {
+        try { return navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(g => g && g.connected).length : 0; } catch (e) { return 0; }
+    }
+    function renderCoop() {
+        const box = document.getElementById('coop-panel');
+        if (!box) return;
+        const s = p2cfg(), n = connectedPads();
+        const pick = (on, color, call, label) => `<button onclick="${call}" style="--c:${color}" class="pick ${on ? 'sel' : ''} flex-1 py-1.5 text-[10px] font-bold rounded">${label}</button>`;
+        const pads = n >= 2 ? 'Two gamepads: one for each player (Player 1 can also use the mouse and keyboard).'
+            : n === 1 ? 'One gamepad: Player 2 uses it, Player 1 the mouse and keyboard.'
+            : 'No gamepad found (press a button on it to wake it up). Player 2 can play on the arrow keys and the number pad.';
+        box.innerHTML = `
+            <div class="flex items-center gap-2 mb-2">
+                <button onclick="toggleCoop()" id="coop-btn" class="px-3 py-2 saturn-button pixel-font text-[9px] rounded shrink-0 ${s.on ? 'text-orange-300' : 'text-slate-300'}">2 PLAYERS: ${s.on ? 'ON' : 'OFF'}</button>
+                <div class="text-[11px] text-slate-400 leading-snug">${s.on ? pads : 'A second Guardian joins you on the same screen, for the campaign and Horde mode.'}</div>
+            </div>` + (!s.on ? '' : `
+            <div class="text-[11px] text-orange-300 mb-1">PLAYER 2 (orange helmet)</div>
+            <div class="flex gap-2 mb-2">${Object.keys(CLASSES).map(c => pick(s.cls === c, CLASSES[c].color, `setP2('cls','${c}')`, CLASSES[c].label)).join('')}</div>
+            <div class="flex gap-2 mb-2">${ELEMENT_IDS.map(e => pick(s.el === e, ELEMENTS[e].color, `setP2('el','${e}')`, ELEMENTS[e].label)).join('')}</div>
+            <div class="flex gap-2 mb-2">${SPECIES_IDS.map(id => pick(s.species === id, SPECIES[id].color, `setP2('species','${id}')`, SPECIES[id].name)).join('')}</div>
+            <div class="flex gap-2 mb-2">${Object.entries(SPECIES[s.species].bodies).map(([b, l]) => pick(s.body === b, SPECIES[s.species].color, `setP2('body','${b}')`, l)).join('')}</div>
+            <div class="text-[11px] text-slate-400 leading-snug"><span class="text-orange-300">Gamepad:</span> left stick moves, right stick aims, RT fire, A jump, B dash, X reload,
+                Y super and LB grenade (hold to aim), RB melee, LT class ability, Back swap weapon, Start pause.
+                <span class="text-orange-300">Keyboard (Player 2):</span> arrows move and aim; number pad 0 jump, 1 fire, 2 dash, 3 reload, 4 grenade, 5 melee, 6 ability, 7 super, 9 swap.
+                Lives are shared: a downed Guardian comes back beside their partner. Enemies are tougher in co-op.</div>`);
+    }
+    window.addEventListener('gamepadconnected', () => { if (state === 'menu') renderCoop(); });
+    window.addEventListener('gamepaddisconnected', () => { if (state === 'menu') renderCoop(); });
     // Default colour of each piece when painted STANDARD (class item and chest follow the class)
     function gearColor(piece) {
         const paint = PAINTS[save.paint[piece]];
@@ -1147,6 +1190,9 @@
     let livesLeft = 2;
     let score, kills, credits, deaths, frame, cameraX, shake, flash, hurtFlash, bossIntro, stageIntro, victoryTimer;
     let player, platforms, enemies, bullets, particles, rings, items, texts, hazards, weather, boss;
+    // Local co-op: `players` holds one or two Guardians. `player` is the Guardian being updated or drawn right now
+    // (asPlayer swaps it, with its class, subclass and origin); between those swaps it is always Player 1.
+    let players = [], coop = false, ctxOrigin = null;
     let structures = [], treasures = [], checkpoints = [];
     let hordeMode = false;
     let stage = null, theme = WORLDS[0], diff = { hp: 1, dmg: 1 };
@@ -1216,6 +1262,7 @@
     }
     function selectElement(el) {
         selectedElement = el;
+        if (players[0]) players[0].el = el; // Player 1's subclass, also mid-mission
         ELEMENT_IDS.forEach(k => document.getElementById('elem-' + k).classList.toggle('sel', k === el));
     }
     const stageLabel = i => i === SECRET_STAGE ? 'S-1' : `${STAGE_INDEX[i][0] + 1}-${STAGE_INDEX[i][1] + 1}`;
@@ -1227,6 +1274,7 @@
     function renderMenu() {
         document.getElementById('class-desc').textContent = CLASS_INFO[selectedClass];
         renderOrigin();
+        renderCoop();
         const box = document.getElementById('stage-select');
         box.innerHTML = WORLDS.map((w, wi) => `
             <div class="bg-slate-950/70 border border-slate-800 rounded p-2">
@@ -1836,6 +1884,30 @@
         }
         return null;
     }
+    // Runs fn as Guardian p: `player`, the class, the subclass and the origin become theirs, then are restored.
+    // Player shots fired meanwhile are tagged with who fired them (kills, super energy and weapon XP go to the shooter).
+    function asPlayer(p, fn) {
+        const prev = [player, selectedClass, selectedElement, ctxOrigin], list = bullets, n0 = list ? list.length : 0;
+        player = p; selectedClass = p.cls; selectedElement = p.el; ctxOrigin = p.pid ? p.origin : null;
+        try { return fn(p); } finally {
+            [player, selectedClass, selectedElement, ctxOrigin] = prev;
+            if (p.pid && list && list === bullets) for (let i = n0; i < list.length; i++) if (list[i].owner === 'player' && list[i].pid == null) list[i].pid = p.pid;
+        }
+    }
+    const alivePlayers = () => players.filter(p => !p.dead);
+    const shooterOf = b => players[b.pid || 0] || players[0];
+    function nearestPlayer(x, y) { // the living Guardian closest to a point (Player 1 if nobody is standing)
+        let best = null, bd = Infinity;
+        for (const p of players) {
+            if (p.dead) continue;
+            const d = Math.abs(p.x + p.w / 2 - x) + Math.abs(p.y + p.h / 2 - y) * 0.5;
+            if (d < bd) { bd = d; best = p; }
+        }
+        return best || players[0] || player;
+    }
+    function leadPlayer() { // the living Guardian furthest along the stage
+        return alivePlayers().reduce((a, p) => (!a || p.x > a.x ? p : a), null) || player;
+    }
     function playerBox() {
         const p = player;
         // Crouching drops the hitbox below chest height, so level shots fly overhead
@@ -1910,7 +1982,7 @@
         if (--stage.champTimer > 0) return;
         const ahead = cameraX + W - 40 - Math.random() * 60;
         const g = groundAt(ahead);
-        if (!g || ahead > (stage.endX || stage.arenaX - 150) - 60 || ahead - player.x < 140) { stage.champTimer = 45; return; }
+        if (!g || ahead > (stage.endX || stage.arenaX - 150) - 60 || ahead - leadPlayer().x < 140) { stage.champTimer = 45; return; }
         let types = Object.keys(theme.pool).filter(t => !ENEMY_TYPES[t].flying && canBeChampion(t));
         if (!types.length) types = [...UNSTOPPABLE_BASES]; // e.g. an Unstoppable-only stage in a world without ground troops
         const type = types[Math.floor(Math.random() * types.length)], t = ENEMY_TYPES[type];
@@ -2011,6 +2083,7 @@
         // difficulty scales enemy health here; its damage factor is applied once, in hurtPlayer (covers bosses and beams too)
         diff = secret ? { hp: 2.2 * dcfg().hp, dmg: 1.6, speed: dcfg().speed * 1.1 }
                       : { hp: (1 + 0.2 * wi + 0.05 * si) * dcfg().hp, dmg: 1 + 0.1 * wi, speed: dcfg().speed * (1 + 0.03 * wi) };
+        if (coop) diff.hp *= 1.25; // two Guardians: sturdier enemies
         stage = { idx, world: wi, sub: si, secret, name: w.stages[si], isBoss, levelW, arenaX, endX: isBoss ? null : levelW - 140,
                   secretsFound: 0, secretsTotal: 0, champKinds: [], loot: [], cp: null, contracts: [], stats: newStageStats(), pylons: null };
         platforms = []; enemies = []; structures = []; treasures = []; checkpoints = [];
@@ -2215,7 +2288,7 @@
         champKills: 0, chests: 0, secrets: 0, sealed: 0, earned: 0, clears: 0, flawless: 0, bossKills: 0, hordeWave: 0, weaponKills: {} });
     function updateCheckpoints() {
         for (const cp of checkpoints) {
-            if (cp.active || player.x + player.w / 2 < cp.x) continue;
+            if (cp.active || !players.some(q => !q.dead && q.x + q.w / 2 >= cp.x)) continue;
             cp.active = true; stage.cp = cp;
             popText(cp.x - 28, cp.y - 40, 'CHECKPOINT', '#67e8f9');
             rings.push({ x: cp.x, y: cp.y - 14, r: 3, maxR: 26, life: 16, max: 16, color: '#67e8f9' });
@@ -2236,20 +2309,20 @@
                 else if (m.t <= 0) { m.t = 0; m.dir = 1; m.hold = m.wait; }
             }
             p.x = m.x0 + (m.x1 - m.x0) * m.t; p.y = m.y0 + (m.y1 - m.y0) * m.t;
-            if (player.grounded && player.ground === p) { player.x += p.x - ox; player.y += p.y - oy; }
+            for (const q of players) if (q.grounded && q.ground === p) { q.x += p.x - ox; q.y += p.y - oy; }
         }
     }
     // Opening chests and revealing secret bunkers
     function updateTreasures() {
-        const pb = playerBox();
+        const boxes = alivePlayers().map(p => asPlayer(p, playerBox)), touching = o => boxes.some(b => overlap(b, o));
         for (const s of structures) {
             if (s.kind !== 'bunker') continue;
-            const inside = overlap(pb, s);
+            const inside = touching(s);
             s.reveal += ((inside ? 1 : 0) - s.reveal) * 0.15;
             if (inside && !s.found) { s.found = true; stage.stats.secrets++; popText(s.x + s.w / 2 - 34, s.y - 8, 'SECRET AREA!', '#e879f9'); playSound('pickup'); }
         }
         for (const t of treasures) {
-            if (t.opened || !overlap(pb, t)) continue;
+            if (t.opened || !touching(t)) continue;
             t.opened = true; stage.secretsFound++;
             const cx = t.x + 7, cy = t.y;
             if (t.kind === 'shard') { // the Echo Shard: opens the secret stage for good
@@ -2320,7 +2393,7 @@
     }
 
     function makeBoss(type) {
-        const d = BOSSES[type], ax = stage.arenaX, hp = type === 'nimays' ? d.hp : Math.round(d.hp * dcfg().hp);
+        const d = BOSSES[type], ax = stage.arenaX, hp = type === 'nimays' ? d.hp : Math.round(d.hp * dcfg().hp * (coop ? 1.5 : 1));
         type = d.base || type; // later worlds' bosses fight like an earlier one, recoloured (hue)
         return {
             type, hue: d.hue || 0, name: d.name, x: ax + 420, y: { tyrant: 190, forgemaster: 186, thorn: 170 }[type] || 110, r: d.r, hp, maxHp: hp, parts: [],
@@ -2369,10 +2442,23 @@
             reloadTimer: 0, reloadFor: null, fireTimer: 0, burstLeft: 0, burstTimer: 0, switchTimer: 0,
             anim: 0, legFrame: 0, invuln: 60, meleeCd: 0, meleeAnim: 0, grenadeCd: 0,
             safeX: 60, safeY: 190,
+            pid: 0, cls: selectedClass, el: selectedElement, origin: null, respawnT: 0,
         };
+    }
+    // Player 2: their own class, subclass and origin (set in the menu), the same loadout and armor as Player 1
+    function makeSecondPlayer() {
+        const s = p2cfg(), prev = [selectedClass, selectedElement];
+        selectedClass = s.cls; selectedElement = s.el;
+        try {
+            const p = makePlayer();
+            Object.assign(p, { pid: 1, origin: { species: s.species, body: s.body } });
+            Object.assign(p.gear, { helmet: '#fb923c', arms: '#fed7aa' }); // the orange helmet tells the two apart
+            return p;
+        } finally { [selectedClass, selectedElement] = prev; }
     }
 
     function resetGame() {
+        coop = !!p2cfg().on;
         score = 0; kills = 0; credits = 0; deaths = 0; frame = 0;
         livesLeft = dcfg().lives;
         cameraX = 0; shake = 0; flash = 0; hurtFlash = 0; bossIntro = 0; stageIntro = 180; victoryTimer = 0;
@@ -2380,6 +2466,8 @@
         if (hordeMode) generateHordeArena(); else generateStage(selectedStage);
         player = makePlayer();
         if (hordeMode) player.x = 470;
+        players = [player];
+        if (coop) { const p2 = makeSecondPlayer(); p2.x = p2.safeX = player.x - 24; players.push(p2); }
         notifiedContracts.clear();
         initBackground();
         weather = Array.from({ length: theme.weather ? 50 + 15 * Math.min(5, stage.sub || 0) : 0 }, () => ({ x: Math.random() * W, y: Math.random() * H, s: Math.random() }));
@@ -2424,7 +2512,7 @@
     }
     function togglePause() {
         if (invOpen) return;
-        if (player) player.aiming = null;
+        for (const p of players) p.aiming = null;
         if (state === 'playing') state = 'paused';
         else if (state === 'paused') { state = 'playing'; lastTs = 0; }
         if (music.playing && musicOn) musicVolume(state === 'paused' ? MUSIC_VOL * 0.3 : MUSIC_VOL, 0.25); // duck while paused
@@ -2446,12 +2534,17 @@
         }
         if (state === 'menu' || state === 'over') return;
         if (e.code === 'Tab' && !e.repeat) { e.preventDefault(); openInventory(); return; }
-        if (GAME_KEYS.has(e.code)) e.preventDefault();
+        if (GAME_KEYS.has(e.code) || (coop && P2_ALL.has(e.code))) e.preventDefault();
         keys[e.code] = true;
         if (e.repeat) return;
         if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
         if (state === 'paused' && e.code === 'KeyM') { abandonMission(); return; } // quit the mission
         if (state !== 'playing') return;
+        if (coop && P2_ALL.has(e.code)) { // Player 2's keys (the arrows are theirs in co-op)
+            const a = P2_ACTIONS[e.code], p2 = players[1];
+            if (a && p2 && !p2.dead) asPlayer(p2, () => playerAction(a, true));
+            return;
+        }
         if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') startDash();
         if (e.code === 'KeyK' || e.code === 'KeyZ' || e.code === 'KeyW' || e.code === 'ArrowUp') mouse.active = false; // back to keyboard aim
         if (e.code === 'Space' || e.code === 'KeyJ') player.jumpBuffer = 8;
@@ -2465,6 +2558,7 @@
     });
     window.addEventListener('keyup', e => {
         keys[e.code] = false;
+        if (coop && players[1] && P2_ACTIONS[e.code]) asPlayer(players[1], () => playerAction(P2_ACTIONS[e.code], false));
         if (e.code === 'KeyQ') releaseAim('grenade');
         if (e.code === 'KeyT') releaseAim('super');
     });
@@ -2498,13 +2592,79 @@
         }, { passive: false });
     })();
 
+    // ---- Gamepads (standard layout) ----
+    // Left stick / D-pad move (up aims up, down crouches), right stick aims, A jump, B dash, X reload, Y super and
+    // LB grenade (hold to aim, release to throw), RB melee, LT class ability, RT fire, Back swap weapon, Start pause.
+    // Solo, Player 1 takes the first gamepad. In co-op Player 2 takes it, unless there are two (one each).
+    const PAD_ACTIONS = { 0: 'jump', 1: 'dash', 2: 'reload', 3: 'super', 4: 'grenade', 5: 'melee', 6: 'ability', 8: 'swap' };
+    let pads = [];
+    const padPrev = {};
+    function pollPads() { // once per frame: each pad's buttons now and on the previous frame
+        let list = [];
+        try { list = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(g => g && g.connected) : []; } catch (e) {}
+        pads = list.map(g => {
+            const b = g.buttons.map((x, i) => (i === 6 || i === 7) ? x.pressed || x.value > 0.35 : x.pressed);
+            const prev = padPrev[g.index] || b.map(() => false);
+            padPrev[g.index] = b;
+            return { b, prev, ax: g.axes };
+        });
+    }
+    function padOf(pid) {
+        if (!coop) return pid ? null : pads[0] || null;
+        return (pads.length >= 2 ? pads[pid] : pid ? pads[0] : null) || null;
+    }
+    function padHeld(pad, a) {
+        if (!pad) return false;
+        const x = pad.ax[0] || 0, y = pad.ax[1] || 0, b = pad.b;
+        return a === 'left' ? x < -0.4 || b[14] : a === 'right' ? x > 0.4 || b[15] : a === 'up' ? y < -0.55 || b[12]
+            : a === 'down' ? y > 0.55 || b[13] : a === 'jump' ? b[0] : a === 'fire' ? b[7] : false;
+    }
+    function padAim(pad) { // the right stick, when pushed
+        if (!pad) return null;
+        const x = pad.ax[2] || 0, y = pad.ax[3] || 0, d = Math.hypot(x, y);
+        return d > 0.4 ? [x / d, y / d] : null;
+    }
+    function padInput() { // button presses and releases since the last frame
+        for (let pid = 0; pid < 2; pid++) {
+            const pad = padOf(pid), p = players[pid];
+            if (!pad) continue;
+            if (pad.b[9] && !pad.prev[9] && !invOpen) { togglePause(); continue; }
+            if (state !== 'playing' || !p || p.dead) continue;
+            asPlayer(p, () => {
+                for (const i in PAD_ACTIONS) {
+                    if (pad.b[i] && !pad.prev[i]) playerAction(PAD_ACTIONS[i], true);
+                    else if (!pad.b[i] && pad.prev[i]) playerAction(PAD_ACTIONS[i], false);
+                }
+            });
+        }
+    }
+
+    // Held controls of the Guardian in context. Player 1: keyboard (the arrow keys too when playing solo), mouse,
+    // touch and a gamepad. Player 2 (co-op): a gamepad, or the arrow keys and the number pad.
+    const P1_HELD = {
+        left: ['KeyA', 'ArrowLeft', 'TouchLeft'], right: ['KeyD', 'ArrowRight', 'TouchRight'], up: ['KeyW', 'ArrowUp', 'TouchUp'],
+        down: ['KeyS', 'ArrowDown', 'TouchDown'], jump: ['Space', 'KeyJ', 'TouchJump'], fire: ['KeyK', 'KeyZ'],
+    };
+    const P2_HELD = {
+        left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'], jump: ['Numpad0', 'Period'], fire: ['Numpad1', 'Slash'],
+    };
+    // Player 2's buttons: the number pad, or the keys right of the letters on keyboards without one
+    const P2_ACTIONS = {
+        Numpad0: 'jump', Period: 'jump', Numpad2: 'dash', Comma: 'dash', Numpad3: 'reload', BracketRight: 'reload',
+        Numpad4: 'grenade', KeyL: 'grenade', Numpad5: 'melee', Semicolon: 'melee', Numpad6: 'ability', Quote: 'ability',
+        Numpad7: 'super', KeyO: 'super', Numpad9: 'swap', BracketLeft: 'swap',
+    };
+    const P2_ALL = new Set([...Object.values(P2_HELD).flat(), ...Object.keys(P2_ACTIONS)]);
+    function heldBy(a) {
+        const pid = player ? player.pid : 0;
+        if (padHeld(padOf(pid), a)) return true;
+        if (pid) return P2_HELD[a].some(k => keys[k]);
+        if (P1_HELD[a].some(k => keys[k] && !(coop && k.startsWith('Arrow')))) return true;
+        return a === 'fire' && (mouse.down || touch.fire);
+    }
     const held = {
-        left:  () => keys.KeyA || keys.ArrowLeft || keys.TouchLeft,
-        right: () => keys.KeyD || keys.ArrowRight || keys.TouchRight,
-        up:    () => keys.KeyW || keys.ArrowUp || keys.TouchUp,
-        down:  () => keys.KeyS || keys.ArrowDown || keys.TouchDown,
-        jump:  () => keys.Space || keys.KeyJ || keys.TouchJump,
-        fire:  () => keys.KeyK || keys.KeyZ || mouse.down || touch.fire,
+        left: () => heldBy('left'), right: () => heldBy('right'), up: () => heldBy('up'),
+        down: () => heldBy('down'), jump: () => heldBy('jump'), fire: () => heldBy('fire'),
     };
 
     // Touch: the left stick moves (up aims up, down crouches), the right stick fires while held and
@@ -2619,8 +2779,10 @@
     //  WEAPONS & PLAYER ACTIONS
     // =====================================================================
     function getAim() {
-        if (touch.aim && player) return touch.aim;
-        if (mouse.active && player) { // free 360° aim toward the cursor
+        const pid = player ? player.pid : 0, pa = player && padAim(padOf(pid));
+        if (pa) return pa; // a gamepad's right stick
+        if (!pid && touch.aim && player) return touch.aim;
+        if (!pid && mouse.active && player) { // free 360° aim toward the cursor
             const p = player, dx = mouse.x + cameraX - (p.x + p.w / 2), dy = mouse.y - (p.y + (p.crouch ? 26 : 13));
             const d = Math.hypot(dx, dy) || 1;
             return [dx / d, dy / d];
@@ -2757,17 +2919,19 @@
     const riftHere = () => player && rifts.find(r => Math.abs(player.x + player.w / 2 - r.x) < r.r && Math.abs(player.y + player.h - r.y) < 30);
     const inRift = () => !!riftHere();
     function updateAbilities() {
-        const p = player;
-        if (p.abilityCd > 0) p.abilityCd--;
-        if (p.markT > 0) p.markT--;
-        if (p.cloakT > 0) p.cloakT--;
         for (const w of walls) w.life--;
         for (const r of rifts) r.life--;
         walls = walls.filter(w => w.life > 0); rifts = rifts.filter(r => r.life > 0);
-        const rift = riftHere();
-        if (rift && rift.kind === 'healing') {
-            p.shield = Math.min(p.maxShield, p.shield + 2);
-            p.hp = Math.min(p.maxHp, p.hp + 0.3);
+        for (const p of players) {
+            if (p.dead) continue;
+            if (p.abilityCd > 0) p.abilityCd--;
+            if (p.markT > 0) p.markT--;
+            if (p.cloakT > 0) p.cloakT--;
+            const rift = asPlayer(p, riftHere); // a Healing Rift heals any Guardian standing in it
+            if (rift && rift.kind === 'healing') {
+                p.shield = Math.min(p.maxShield, p.shield + 2);
+                p.hp = Math.min(p.maxHp, p.hp + 0.3);
+            }
         }
     }
     function drawAbilityFx() {
@@ -2811,6 +2975,18 @@
 
     // Grenade and super are aimed: hold the key (or right mouse button, or the touch button) to see where
     // they will go, aim with the mouse, the fire stick, W/S or by dragging the touch button, then let go.
+    // One button of the Guardian in context: pressed, or released (which throws an aimed grenade or super)
+    function playerAction(a, down) {
+        const p = player;
+        if (!down) { if (a === 'grenade' || a === 'super') releaseAim(a); return; }
+        if (a === 'jump') p.jumpBuffer = 8;
+        else if (a === 'dash') startDash();
+        else if (a === 'reload') startReload();
+        else if (a === 'grenade' || a === 'super') beginAim(a);
+        else if (a === 'melee') performMelee();
+        else if (a === 'ability') useClassAbility();
+        else if (a === 'swap' && p.owned.length > 1) switchWeapon((p.weaponIdx + 1) % p.owned.length);
+    }
     function beginAim(kind) {
         const p = player;
         if (!p || state !== 'playing' || (kind === 'grenade' ? p.grenadeCd > 0 : p.superEnergy < 100)) return;
@@ -2975,10 +3151,14 @@
         if (wid && WEAPONS[wid].ammo === 'heavy') st.heavyKills++;
         if (en.champ) {
             st.champKills++;
-            if (!stage.horde) { // every champion you defeat grants an extra life
-                livesLeft++;
-                popText(en.x - 20, en.y - 22, '+1 LIFE', '#4ade80');
-                playSound('pickup');
+            if (!stage.horde) { // every champion you defeat grants an extra life (co-op: it first brings back a partner who ran out)
+                const out = players.find(o => o.dead && o.respawnT === -1), mate = players.find(o => !o.dead);
+                if (out && mate) revive(out, mate);
+                else {
+                    livesLeft++;
+                    popText(en.x - 20, en.y - 22, '+1 LIFE', '#4ade80');
+                    playSound('pickup');
+                }
             }
             if (Math.random() < 0.2) dropKey(en.x + en.w / 2, en.y + en.h); // champions sometimes carry a sigil key
         }
@@ -3046,7 +3226,7 @@
         if (boss.hp <= 0) {
             boss.hp = 0; boss.dead = true; victoryTimer = 140;
             score += 5000;
-            player.invuln = 9999;
+            for (const q of players) q.invuln = 9999;
             bullets = bullets.filter(b => b.owner === 'player');
             hazards = [];
             enemies.forEach(e => { if (e.minion) { e.dead = true; explosionFx(e.x + e.w / 2, e.y + e.h / 2, 15, '#f97316'); } });
@@ -3093,14 +3273,33 @@
     // Death: each stage starts with a few lives (by difficulty); champions grant more. Losing one returns you to the last checkpoint
     // and costs score and run credits; losing the last one fails the mission. Horde mode has one life.
     const DEATH_SCORE_LOSS = 0.15, DEATH_CREDIT_LOSS = 0.2;
+    // Co-op: the lives are shared. While your partner is standing you go down instead, and come back beside them
+    // 3 s later; with no lives left you stay down until a champion falls (Horde: until the next wave). Both down: as solo.
     function loseLife() {
         const p = player;
         deaths++;
         explosionFx(p.x + p.w / 2, p.y + p.h / 2, 30, CLASSES[selectedClass].color);
-        if (stage.horde) { p.hp = 0; p.dead = true; endHorde(); return; }
-        if (--livesLeft <= 0) { livesLeft = 0; p.hp = 0; p.dead = true; endStage(false, true); return; }
+        const mate = coop && players.find(o => o !== p && !o.dead), tag = `P${p.pid + 1}`;
+        const goDown = (t, msg, color) => {
+            Object.assign(p, { hp: 0, dead: true, respawnT: t, aiming: null, dashT: 0, slam: 0, hidden: false, ghosts: [] });
+            popText(p.x - msg.length * 2.5, p.y - 12, msg, color);
+        };
+        if (stage.horde) {
+            if (mate) { goDown(-1, `${tag} DOWN: BACK NEXT WAVE`, '#f87171'); return; }
+            p.hp = 0; p.dead = true; endHorde(); return;
+        }
+        if (--livesLeft <= 0) {
+            livesLeft = 0;
+            if (mate) { goDown(-1, `${tag} DOWN: DEFEAT A CHAMPION TO BRING THEM BACK`, '#f87171'); return; }
+            p.hp = 0; p.dead = true; endStage(false, true); return;
+        }
         const lostCredits = Math.round(credits * DEATH_CREDIT_LOSS);
         score -= Math.round(score * DEATH_SCORE_LOSS); credits -= lostCredits;
+        if (mate) {
+            goDown(180, `${tag} DOWN  -${lostCredits} CREDITS`, '#f87171');
+            popText(p.x - 20, p.y - 22, livesLeft === 1 ? 'LAST LIFE!' : `${livesLeft} LIVES LEFT`, livesLeft === 1 ? '#f87171' : '#facc15');
+            return;
+        }
         const inArena = boss && boss.active && !boss.dead;
         if (inArena) { // respawn at the arena entrance; the boss recovers a little
             p.x = stage.arenaX + 50; p.y = 230 - p.h - 4;
@@ -3120,6 +3319,23 @@
         hazards = [];
         popText(p.x - 44, p.y - 12, `BACK TO CHECKPOINT  -${lostCredits} CREDITS`, '#7dd3fc');
         popText(p.x - 20, p.y - 22, livesLeft === 1 ? 'LAST LIFE!' : `${livesLeft} LIVES LEFT`, livesLeft === 1 ? '#f87171' : '#facc15');
+        for (const o of players) if (o !== p && o.dead) revive(o, p); // co-op: a downed partner comes back with you
+    }
+    function revive(p, near) { // co-op: a downed Guardian rejoins beside `near`
+        Object.assign(p, { dead: false, hp: p.maxHp, shield: p.maxShield, respawnT: 0, vx: 0, vy: 0, invuln: 120, reloadTimer: 0, burstLeft: 0,
+            dashT: 0, dashCd: 0, focusT: 0, slam: 0, aiming: null, grounded: false, ground: null, ghosts: [] });
+        p.x = clamp(near.x - near.facing * 18, Math.max(minArenaX(), cameraX + 2), Math.min(stage.levelW, cameraX + W) - p.w - 2);
+        p.y = near.y - 6; p.safeX = near.safeX; p.safeY = near.safeY;
+        rings.push({ x: p.x + p.w / 2, y: p.y + p.h / 2, r: 4, maxR: 30, life: 18, max: 18, color: p.pid ? '#fb923c' : '#38bdf8' });
+        popText(p.x - 22, p.y - 14, `P${p.pid + 1} IS BACK`, '#4ade80');
+        playSound('pickup');
+    }
+    function updateDowned() { // co-op: a downed Guardian's 3 s timer
+        for (const p of players) {
+            if (!p.dead || !(p.respawnT > 0) || --p.respawnT > 0) continue;
+            const mate = players.find(o => !o.dead);
+            if (mate) revive(p, mate);
+        }
     }
     function abandonMission() {
         if (stage.horde) { endHorde(); return; }
@@ -3189,7 +3405,8 @@
         boss = null;
     }
     function startHordeWave() {
-        const s = stage;
+        const s = stage, mate = players.find(o => !o.dead);
+        for (const o of players) if (o.dead && mate) revive(o, mate); // co-op: a downed Guardian is back for the new wave
         s.wave++;
         if (s.wave > 1 && (s.wave - 1) % 5 === 0) { // move on to the next world
             s.world = (s.world + 1) % WORLDS.length; theme = WORLDS[s.world];
@@ -3202,7 +3419,7 @@
         s.toSpawn = Math.round((4 + Math.floor(s.wave * 1.6) + (s.elite ? 3 : 0)) * dcfg().count);
         s.champLeft = s.elite ? 2 : s.wave % 3 === 0 ? 1 : 0;
         s.spawnT = 20; s.phase = 'fight'; s.banner = 110;
-        diff = { hp: dcfg().hp * (1 + 0.1 * (s.wave - 1)), dmg: 1 + 0.05 * (s.wave - 1) };
+        diff = { hp: dcfg().hp * (1 + 0.1 * (s.wave - 1)) * (coop ? 1.25 : 1), dmg: 1 + 0.05 * (s.wave - 1) };
         playSound('beam');
     }
     function spawnHordeEnemy() {
@@ -3214,7 +3431,7 @@
                 const p = Math.random() < 0.6 ? platforms[0] : platforms[1 + Math.floor(Math.random() * (platforms.length - 1))];
                 x = p.x + 6 + Math.random() * (p.w - t.w - 12); y = p.y - t.h - 1;
             }
-            if (Math.abs(x - player.x) > 130) break;
+            if (players.every(q => q.dead || Math.abs(x - q.x) > 130)) break;
         }
         const el = Math.random() < theme.shieldChance * 0.5 ? ELEMENT_IDS[Math.floor(Math.random() * ELEMENT_IDS.length)] : null;
         const en = makeEnemy(type, x, y, el);
@@ -3236,13 +3453,16 @@
         if (s.toSpawn > 0) {
             if (--s.spawnT <= 0 && alive < 8 + Math.min(8, s.wave)) { spawnHordeEnemy(); s.toSpawn--; s.spawnT = Math.max(14, 50 - s.wave * 2); }
         } else if (alive === 0) { // wave cleared
-            const p = player, bonus = 40 + 15 * s.wave;
+            const p = leadPlayer(), bonus = 40 + 15 * s.wave;
             score += 400 * s.wave; credits += bonus;
-            p.ammo.special = Math.min(p.maxAmmo.special, p.ammo.special + Math.ceil(p.maxAmmo.special * 0.25));
-            p.ammo.heavy = Math.min(p.maxAmmo.heavy, p.ammo.heavy + 1);
+            for (const q of players) {
+                q.ammo.special = Math.min(q.maxAmmo.special, q.ammo.special + Math.ceil(q.maxAmmo.special * 0.25));
+                q.ammo.heavy = Math.min(q.maxAmmo.heavy, q.ammo.heavy + 1);
+                if (s.elite && !q.dead) { q.hp = q.maxHp; q.shield = q.maxShield; } // every 5th wave
+            }
             popText(p.x - 44, p.y - 22, `WAVE ${s.wave} CLEARED +${bonus}`, '#4ade80');
             playSound('clear');
-            if (s.elite) { p.hp = p.maxHp; p.shield = p.maxShield; dropLoot(p.x + p.w / 2, p.y); } // every 5th wave
+            if (s.elite) dropLoot(p.x + p.w / 2, p.y);
             s.phase = 'break'; s.waveTimer = 200;
         }
     }
@@ -3362,7 +3582,8 @@
     function update() {
         frame++;
         updateMovers();
-        updatePlayer();
+        for (const p of players) if (!p.dead) asPlayer(p, updatePlayer);
+        updateDowned();
         updateCheckpoints();
         updateAbilities();
         updateTreasures();
@@ -3378,20 +3599,21 @@
         updateFx();
         updateCamera();
         enemies = enemies.filter(e => !e.dead);
-        if (player.superEnergy < 100) addSuper(0.015);
+        for (const p of players) if (!p.dead && p.superEnergy < 100) asPlayer(p, () => addSuper(0.015));
         if (shake > 0) { shake *= 0.85; if (shake < 0.2) shake = 0; }
         if (flash > 0) flash--;
         if (hurtFlash > 0) hurtFlash--;
         if (bossIntro > 0) bossIntro--;
         if (stageIntro > 0) stageIntro--;
-        if (stage.endX && state === 'playing' && player.x + player.w > stage.endX) {
+        const lead = leadPlayer();
+        if (stage.endX && state === 'playing' && lead.x + lead.w > stage.endX) {
             if (beaconUnlocked()) {
                 score += 1000;
                 explosionFx(stage.endX, 180, 40, '#22c55e');
                 endStage(true);
             } else if (frame - (stage.lockedMsgAt || -999) > 90) {
                 stage.lockedMsgAt = frame;
-                popText(player.x - 40, player.y - 14, `BEACON LOCKED: DEFEAT ${stage.killsNeeded - kills} MORE`, '#f87171');
+                popText(lead.x - 40, lead.y - 14, `BEACON LOCKED: DEFEAT ${stage.killsNeeded - kills} MORE`, '#f87171');
                 playSound('immune');
             }
         }
@@ -3413,7 +3635,7 @@
             else p.burstLeft = 0;
             if (p.burstLeft === 0 && p.mags[p.weapon] === 0) startReload();
         }
-        if (save.species === 'light' && frame % 9 === 0)
+        if ((ctxOrigin || save).species === 'light' && frame % 9 === 0)
             particles.push({ x: p.x + 2 + Math.random() * 12, y: p.y + 6 + Math.random() * 20, vx: 0, vy: -0.4, life: 26, max: 26, color: '#fde68a', size: 1 });
         if (p.regenDelay > 0) p.regenDelay--;
         else if (p.shield < p.maxShield) p.shield = Math.min(p.maxShield, p.shield + p.shieldRegen);
@@ -3426,8 +3648,12 @@
         if (Math.abs(p.vx) < 0.05) p.vx = 0;
         if (p.slam > 0) p.vx = p.slamVx;
         if (dir !== 0) p.facing = dir;
-        if (mouse.active) p.facing = mouse.x + cameraX >= p.x + p.w / 2 ? 1 : -1; // face the cursor
-        if (touch.aim && Math.abs(touch.aim[0]) > 0.15) p.facing = touch.aim[0] > 0 ? 1 : -1; // face the fire stick
+        const padA = padAim(padOf(p.pid));
+        if (padA) { if (Math.abs(padA[0]) > 0.15) p.facing = padA[0] > 0 ? 1 : -1; } // face the right stick
+        else if (!p.pid) {
+            if (mouse.active) p.facing = mouse.x + cameraX >= p.x + p.w / 2 ? 1 : -1; // face the cursor
+            if (touch.aim && Math.abs(touch.aim[0]) > 0.15) p.facing = touch.aim[0] > 0 ? 1 : -1; // face the fire stick
+        }
 
         if (p.grounded) p.coyote = 6; else if (p.coyote > 0) p.coyote--;
         if (p.jumpBuffer > 0) {
@@ -3469,6 +3695,7 @@
 
         p.x += p.vx;
         p.x = clamp(p.x, minArenaX(), stage.levelW - p.w);
+        if (coop) p.x = clamp(p.x, cameraX + 2, cameraX + W - p.w - 2); // co-op: both Guardians stay on the shared screen
 
         const prevBottom = p.y + p.h;
         p.y += p.vy;
@@ -3484,7 +3711,11 @@
         }
         if (p.y > H + 20) {
             hurtPlayer(35, true);
-            if (state === 'playing') { p.x = Math.max(p.safeX, minArenaX()); p.y = p.safeY - 4; p.vx = 0; p.vy = 0; }
+            if (state === 'playing' && !p.dead) {
+                const mate = coop && players.find(o => o !== p && !o.dead && o.grounded); // co-op: climb back out beside your partner
+                if (mate) { p.x = mate.x; p.y = mate.y - 4; } else { p.x = Math.max(p.safeX, minArenaX()); p.y = p.safeY - 4; }
+                p.vx = 0; p.vy = 0;
+            }
         }
 
         if (p.grounded && Math.abs(p.vx) > 0.3) {
@@ -3536,140 +3767,147 @@
         return selectedClass === 'ranger' && p.crouch && Math.abs(p.vx) < 0.2 ? 'far' : false;
     }
     function updateEnemies() {
-        // Enemies aim at head height while you crouch, so their shots pass over you
-        const pb = playerBox(), pcx = player.x + player.w / 2, pcy = player.crouch ? player.y + 8 : player.y + player.h / 2;
-        const hid = playerHidden(), seeRange = hid === 'far' ? 150 : 44;
-        player.hidden = !!hid;
+        // who can be seen this frame (hidden in cover or in a shelter, or cloaked)
+        for (const p of players) { p.hid = !p.dead && asPlayer(p, playerHidden); p.hidden = !!p.hid; }
         for (const en of enemies) {
             if (en.dead) continue;
-            const t = en.t;
-            if (en.hurt > 0) en.hurt--;
-
-            let plat = null;
-            if (!t.flying) {
-                en.vy = Math.min(en.vy + GRAVITY * theme.gravity, 9);
-                const prevBottom = en.y + en.h;
-                en.y += en.vy;
-                plat = landOnPlatforms(en, prevBottom, false);
-                if (en.y > H + 40) { en.dead = true; continue; }
-            }
-
-            if (en.chill > 0) en.chill = Math.max(0, en.chill - 0.35);
-            if (en.frozen > 0) { en.frozen--; continue; } // frozen solid: no movement, firing or contact damage
-            const margin = t.flying ? 80 : 30;
-            const onScreen = en.x + en.w > cameraX - margin && en.x < cameraX + W + margin;
-            if (!onScreen && !en.minion) continue;
-            const slow = en.chill > 0 ? 1 - 0.5 * en.chill / 100 : 1, x0 = en.x;
-
-            const dx = pcx - (en.x + en.w / 2), dy = pcy - (en.y + en.h / 2);
-            en.aware = en.minion || (Math.abs(dx) < (t.range || 260) && Math.abs(dy) < (t.flying ? 220 : 150));
-            if (hid && !en.minion && (Math.abs(dx) > seeRange || Math.abs(dy) > 40)) en.aware = false; // lost sight of you
-            if (en.champ) {
-                const mode = updateChampion(en, plat, dx, dy);
-                if (mode === 'stun') continue; // stunned: no movement, firing or contact damage
-                if (mode === 'charge') {
-                    if (overlap(pb, en)) hurtPlayer(en.chargeT > 0 ? t.dmg * en.dmgMult * 1.5 : 10);
-                    continue;
-                }
-            }
-            const charging = en.aware && en.fireTimer < 18;
-            let faceSet = false;
-
-            switch (t.ai) {
-                case 'patrol':
-                    if (plat && !charging && en.burstLeft <= 0 && !(en.spin > 0)) patrol(en, plat);
-                    break;
-                case 'skirmish': // keeps to mid range: closes in from afar, backs off when you get too close
-                    if (plat && en.burstLeft <= 0) {
-                        if (en.aware) {
-                            const want = Math.abs(dx) > 140 ? Math.sign(dx) : Math.abs(dx) < 70 ? -Math.sign(dx) : 0;
-                            const nx = en.x + want * t.speed * 1.4 * en.spd, foot = want > 0 ? nx + en.w + 1 : nx - 1;
-                            if (want && foot >= plat.x && foot <= plat.x + plat.w && nx >= minArenaX() && nx + en.w <= stage.levelW) {
-                                en.x = nx;
-                                if (++en.anim > 6) { en.anim = 0; en.leg ^= 1; }
-                            }
-                        } else patrol(en, plat);
-                    }
-                    break;
-                case 'charger':
-                    if (en.chargeT > 0) {
-                        en.chargeT--;
-                        const nx = en.x + en.vx, foot = en.vx > 0 ? nx + en.w + 1 : nx - 1;
-                        if (!plat || foot < plat.x || foot > plat.x + plat.w) en.chargeT = 0; else en.x = nx;
-                        if (frame % 3 === 0) particles.push({ x: en.x + en.w / 2, y: en.y + en.h, vx: -en.vx * 0.3, vy: -0.5, life: 12, max: 12, color: '#a8a29e', size: 2 });
-                        if (en.chargeT === 0) { en.cool = 70; en.vx = Math.sign(en.vx) * t.speed * en.spd; }
-                        en.facing = Math.sign(en.vx) || 1; faceSet = true;
-                    } else if (en.windup > 0) {
-                        if (--en.windup === 0) { en.chargeT = 80; en.vx = en.facing * 3.4 * en.spd; }
-                        faceSet = true;
-                    } else {
-                        if (en.cool > 0) en.cool--;
-                        if (en.aware && en.cool <= 0 && Math.abs(dy) < 30 && plat) { en.windup = 30; en.facing = Math.sign(dx) || 1; faceSet = true; }
-                        else if (plat) patrol(en, plat);
-                    }
-                    break;
-                case 'drone': {
-                    const side = dx > 0 ? -1 : 1;
-                    const tx = en.aware ? pcx + side * 90 : en.homeX, ty = en.aware ? clamp(pcy - 60, 40, 170) : en.homeY;
-                    en.x += clamp((tx - en.x) * 0.02, -t.speed * en.spd, t.speed * en.spd);
-                    en.y += clamp((ty - en.y) * 0.03, -1, 1) + Math.sin(frame * 0.08 + en.seed) * 0.3;
-                    en.x = clamp(en.x, minArenaX(), stage.levelW - en.w);
-                    break;
-                }
-                case 'bomber':
-                    if (en.aware) en.x += clamp(dx * 0.03, -t.speed * en.spd, t.speed * en.spd);
-                    else { en.x += en.vx; if (Math.abs(en.x - en.homeX) > 120) en.vx = -en.vx; }
-                    en.y = en.homeY * 0.4 + 24 + Math.sin(frame * 0.05 + en.seed) * 6;
-                    en.x = clamp(en.x, minArenaX(), stage.levelW - en.w);
-                    break;
-                case 'phantom':
-                    if (en.tp === 0 && en.aware && --en.tpTimer <= 0) { en.tp = 1; en.tpT = 20; }
-                    if (en.tp === 1) {
-                        if (--en.tpT <= 0) {
-                            const side = Math.random() < 0.5 ? -1 : 1;
-                            const nx = clamp(player.x + side * (90 + Math.random() * 60), Math.max(cameraX + 10, minArenaX()), cameraX + W - en.w - 10);
-                            const g = groundAt(nx + en.w / 2);
-                            if (g) { en.x = nx; en.y = g.y - en.h; en.vy = 0; }
-                            en.tp = 2; en.tpT = 20;
-                            burst(en.x + en.w / 2, en.y + en.h / 2, 10, '#c084fc', 2);
-                        }
-                    } else if (en.tp === 2 && --en.tpT <= 0) {
-                        en.tp = 0; en.tpTimer = 200 + Math.random() * 100; en.fireTimer = Math.min(en.fireTimer, 40);
-                    }
-                    en.alpha = en.tp === 1 ? en.tpT / 20 : en.tp === 2 ? 1 - en.tpT / 20 : 1;
-                    break;
-            }
-            if (slow < 1) en.x = x0 + (en.x - x0) * slow;
-            if (!faceSet && !(t.auto && en.burstLeft > 0)) en.facing = en.aware ? (Math.sign(dx) || 1) : (Math.sign(en.vx) || en.facing);
-
-            // Firing
-            if (en.aware && t.fire !== 'none' && en.tp === 0) {
-                if (t.fire === 'snipe' && en.fireTimer > 15) en.aim = Math.atan2(pcy - (en.y + 12), pcx - (en.x + en.w / 2 + en.facing * 8));
-                en.fireTimer -= slow;
-                const ready = en.fireTimer <= 0 && (t.fire !== 'bomb' || Math.abs(dx) < 24);
-                if (ready) {
-                    en.fireTimer = t.fireRate * (0.8 + Math.random() * 0.4) * (en.champ === 'overload' && en.disrupt <= 0 ? 0.6 : 1);
-                    enemyFire(en, pcx, pcy);
-                }
-            }
-            if (en.spin > 0 && (en.spin -= slow) <= 0) { en.spin = 0; en.burstLeft = t.auto.rounds; en.burstT = 0; }
-            if (en.burstLeft > 0 && (en.burstT -= slow) <= 0) {
-                const ox = en.x + en.w / 2 + en.facing * 8, oy = en.y + Math.min(14, en.h / 2), target = Math.atan2(pcy - oy, pcx - ox);
-                if (t.auto) { // automatic fire: the aim swings toward you and every round strays a little
-                    const turn = Math.atan2(Math.sin(target - en.aim), Math.cos(target - en.aim));
-                    en.aim += clamp(turn, -t.auto.track, t.auto.track);
-                    en.facing = Math.cos(en.aim) >= 0 ? 1 : -1;
-                    enemyShot(ox, oy, en.aim + (Math.random() - 0.5) * t.auto.spread, t.auto.speed, t.dmg * en.dmgMult, { small: true });
-                    playSound(t.fire === 'minigun' ? 'smg' : 'enemyShot');
-                    en.burstLeft--; en.burstT = t.auto.gap;
-                } else {
-                    enemyShot(ox, oy, target, 3.4, t.dmg * en.dmgMult);
-                    playSound('enemyShot');
-                    en.burstLeft--; en.burstT = 7;
-                }
-            }
-            if (en.alpha > 0.5 && overlap(pb, en)) hurtPlayer(en.chargeT > 0 ? t.dmg * en.dmgMult : 10);
+            const target = nearestPlayer(en.x + en.w / 2, en.y + en.h / 2); // each enemy goes after the nearest Guardian
+            asPlayer(target, () => updateEnemy(en));
+            if (coop && !en.dead && en.alpha > 0.5 && !(en.frozen > 0)) // touching it still hurts the other one
+                for (const o of players) if (o !== target && !o.dead && overlap(asPlayer(o, playerBox), en)) asPlayer(o, () => hurtPlayer(10));
         }
+    }
+    function updateEnemy(en) {
+        // Enemies aim at head height while you crouch, so their shots pass over you
+        const pb = playerBox(), pcx = player.x + player.w / 2, pcy = player.crouch ? player.y + 8 : player.y + player.h / 2;
+        const hid = player.hid, seeRange = hid === 'far' ? 150 : 44;
+        const t = en.t;
+        if (en.hurt > 0) en.hurt--;
+
+        let plat = null;
+        if (!t.flying) {
+            en.vy = Math.min(en.vy + GRAVITY * theme.gravity, 9);
+            const prevBottom = en.y + en.h;
+            en.y += en.vy;
+            plat = landOnPlatforms(en, prevBottom, false);
+            if (en.y > H + 40) { en.dead = true; return; }
+        }
+
+        if (en.chill > 0) en.chill = Math.max(0, en.chill - 0.35);
+        if (en.frozen > 0) { en.frozen--; return; } // frozen solid: no movement, firing or contact damage
+        const margin = t.flying ? 80 : 30;
+        const onScreen = en.x + en.w > cameraX - margin && en.x < cameraX + W + margin;
+        if (!onScreen && !en.minion) return;
+        const slow = en.chill > 0 ? 1 - 0.5 * en.chill / 100 : 1, x0 = en.x;
+
+        const dx = pcx - (en.x + en.w / 2), dy = pcy - (en.y + en.h / 2);
+        en.aware = en.minion || (Math.abs(dx) < (t.range || 260) && Math.abs(dy) < (t.flying ? 220 : 150));
+        if (hid && !en.minion && (Math.abs(dx) > seeRange || Math.abs(dy) > 40)) en.aware = false; // lost sight of you
+        if (en.champ) {
+            const mode = updateChampion(en, plat, dx, dy);
+            if (mode === 'stun') return; // stunned: no movement, firing or contact damage
+            if (mode === 'charge') {
+                if (overlap(pb, en)) hurtPlayer(en.chargeT > 0 ? t.dmg * en.dmgMult * 1.5 : 10);
+                return;
+            }
+        }
+        const charging = en.aware && en.fireTimer < 18;
+        let faceSet = false;
+
+        switch (t.ai) {
+            case 'patrol':
+                if (plat && !charging && en.burstLeft <= 0 && !(en.spin > 0)) patrol(en, plat);
+                break;
+            case 'skirmish': // keeps to mid range: closes in from afar, backs off when you get too close
+                if (plat && en.burstLeft <= 0) {
+                    if (en.aware) {
+                        const want = Math.abs(dx) > 140 ? Math.sign(dx) : Math.abs(dx) < 70 ? -Math.sign(dx) : 0;
+                        const nx = en.x + want * t.speed * 1.4 * en.spd, foot = want > 0 ? nx + en.w + 1 : nx - 1;
+                        if (want && foot >= plat.x && foot <= plat.x + plat.w && nx >= minArenaX() && nx + en.w <= stage.levelW) {
+                            en.x = nx;
+                            if (++en.anim > 6) { en.anim = 0; en.leg ^= 1; }
+                        }
+                    } else patrol(en, plat);
+                }
+                break;
+            case 'charger':
+                if (en.chargeT > 0) {
+                    en.chargeT--;
+                    const nx = en.x + en.vx, foot = en.vx > 0 ? nx + en.w + 1 : nx - 1;
+                    if (!plat || foot < plat.x || foot > plat.x + plat.w) en.chargeT = 0; else en.x = nx;
+                    if (frame % 3 === 0) particles.push({ x: en.x + en.w / 2, y: en.y + en.h, vx: -en.vx * 0.3, vy: -0.5, life: 12, max: 12, color: '#a8a29e', size: 2 });
+                    if (en.chargeT === 0) { en.cool = 70; en.vx = Math.sign(en.vx) * t.speed * en.spd; }
+                    en.facing = Math.sign(en.vx) || 1; faceSet = true;
+                } else if (en.windup > 0) {
+                    if (--en.windup === 0) { en.chargeT = 80; en.vx = en.facing * 3.4 * en.spd; }
+                    faceSet = true;
+                } else {
+                    if (en.cool > 0) en.cool--;
+                    if (en.aware && en.cool <= 0 && Math.abs(dy) < 30 && plat) { en.windup = 30; en.facing = Math.sign(dx) || 1; faceSet = true; }
+                    else if (plat) patrol(en, plat);
+                }
+                break;
+            case 'drone': {
+                const side = dx > 0 ? -1 : 1;
+                const tx = en.aware ? pcx + side * 90 : en.homeX, ty = en.aware ? clamp(pcy - 60, 40, 170) : en.homeY;
+                en.x += clamp((tx - en.x) * 0.02, -t.speed * en.spd, t.speed * en.spd);
+                en.y += clamp((ty - en.y) * 0.03, -1, 1) + Math.sin(frame * 0.08 + en.seed) * 0.3;
+                en.x = clamp(en.x, minArenaX(), stage.levelW - en.w);
+                break;
+            }
+            case 'bomber':
+                if (en.aware) en.x += clamp(dx * 0.03, -t.speed * en.spd, t.speed * en.spd);
+                else { en.x += en.vx; if (Math.abs(en.x - en.homeX) > 120) en.vx = -en.vx; }
+                en.y = en.homeY * 0.4 + 24 + Math.sin(frame * 0.05 + en.seed) * 6;
+                en.x = clamp(en.x, minArenaX(), stage.levelW - en.w);
+                break;
+            case 'phantom':
+                if (en.tp === 0 && en.aware && --en.tpTimer <= 0) { en.tp = 1; en.tpT = 20; }
+                if (en.tp === 1) {
+                    if (--en.tpT <= 0) {
+                        const side = Math.random() < 0.5 ? -1 : 1;
+                        const nx = clamp(player.x + side * (90 + Math.random() * 60), Math.max(cameraX + 10, minArenaX()), cameraX + W - en.w - 10);
+                        const g = groundAt(nx + en.w / 2);
+                        if (g) { en.x = nx; en.y = g.y - en.h; en.vy = 0; }
+                        en.tp = 2; en.tpT = 20;
+                        burst(en.x + en.w / 2, en.y + en.h / 2, 10, '#c084fc', 2);
+                    }
+                } else if (en.tp === 2 && --en.tpT <= 0) {
+                    en.tp = 0; en.tpTimer = 200 + Math.random() * 100; en.fireTimer = Math.min(en.fireTimer, 40);
+                }
+                en.alpha = en.tp === 1 ? en.tpT / 20 : en.tp === 2 ? 1 - en.tpT / 20 : 1;
+                break;
+        }
+        if (slow < 1) en.x = x0 + (en.x - x0) * slow;
+        if (!faceSet && !(t.auto && en.burstLeft > 0)) en.facing = en.aware ? (Math.sign(dx) || 1) : (Math.sign(en.vx) || en.facing);
+
+        // Firing
+        if (en.aware && t.fire !== 'none' && en.tp === 0) {
+            if (t.fire === 'snipe' && en.fireTimer > 15) en.aim = Math.atan2(pcy - (en.y + 12), pcx - (en.x + en.w / 2 + en.facing * 8));
+            en.fireTimer -= slow;
+            const ready = en.fireTimer <= 0 && (t.fire !== 'bomb' || Math.abs(dx) < 24);
+            if (ready) {
+                en.fireTimer = t.fireRate * (0.8 + Math.random() * 0.4) * (en.champ === 'overload' && en.disrupt <= 0 ? 0.6 : 1);
+                enemyFire(en, pcx, pcy);
+            }
+        }
+        if (en.spin > 0 && (en.spin -= slow) <= 0) { en.spin = 0; en.burstLeft = t.auto.rounds; en.burstT = 0; }
+        if (en.burstLeft > 0 && (en.burstT -= slow) <= 0) {
+            const ox = en.x + en.w / 2 + en.facing * 8, oy = en.y + Math.min(14, en.h / 2), target = Math.atan2(pcy - oy, pcx - ox);
+            if (t.auto) { // automatic fire: the aim swings toward you and every round strays a little
+                const turn = Math.atan2(Math.sin(target - en.aim), Math.cos(target - en.aim));
+                en.aim += clamp(turn, -t.auto.track, t.auto.track);
+                en.facing = Math.cos(en.aim) >= 0 ? 1 : -1;
+                enemyShot(ox, oy, en.aim + (Math.random() - 0.5) * t.auto.spread, t.auto.speed, t.dmg * en.dmgMult, { small: true });
+                playSound(t.fire === 'minigun' ? 'smg' : 'enemyShot');
+                en.burstLeft--; en.burstT = t.auto.gap;
+            } else {
+                enemyShot(ox, oy, target, 3.4, t.dmg * en.dmgMult);
+                playSound('enemyShot');
+                en.burstLeft--; en.burstT = 7;
+            }
+        }
+        if (en.alpha > 0.5 && overlap(pb, en)) hurtPlayer(en.chargeT > 0 ? t.dmg * en.dmgMult : 10);
     }
 
     // ---------------- BOSSES ----------------
@@ -3781,8 +4019,7 @@
             if (b.floodWarn > 0 && --b.floodWarn === 0) { b.floodT = enraged ? 220 : 180; playSound('explosion'); shake = Math.max(shake, 5); }
             if (b.floodT > 0) {
                 b.floodT--;
-                const p = player;
-                if (p.grounded && p.ground && p.ground.ground && p.x + p.w > ax) hurtPlayer(16);
+                for (const p of players) if (!p.dead && p.grounded && p.ground && p.ground.ground && p.x + p.w > ax) asPlayer(p, () => hurtPlayer(16));
                 if (frame % 3 === 0) particles.push({ x: ax + Math.random() * 700, y: 226, vx: 0, vy: -1 - Math.random(), life: 20, max: 20, color: Math.random() < 0.5 ? '#f97316' : '#fde047', size: 2 });
                 if (b.floodT === 0) b.heat = Math.min(100, b.heat + 15);
             }
@@ -3860,7 +4097,7 @@
             if (++b.attackTimer > (enraged ? 60 : 90)) { b.attackTimer = 0; bossAimed(b, 3.8, 13, { bolt: true }); playSound('enemyShot'); }
             if (b.gust > 0) { // gale: the wind shoves you toward the arena's edge
                 b.gust--;
-                if (player.dashT <= 0) player.x = clamp(player.x + b.windDir * 1.15, minArenaX(), stage.levelW - player.w);
+                for (const q of players) if (!q.dead && q.dashT <= 0) q.x = clamp(q.x + b.windDir * 1.15, minArenaX(), stage.levelW - q.w);
             } else if (--b.gustTimer <= 0) {
                 b.gustTimer = enraged ? 480 : 640; b.gust = 200; b.windDir = player.x + player.w / 2 > ax + 350 ? 1 : -1;
                 popText(player.x - 24, player.y - 26, b.windDir > 0 ? 'GALE  >>>' : '<<<  GALE', '#e2e8f0');
@@ -3889,9 +4126,12 @@
                 if (bm.warn > 0) { bm.warn--; bm.a = bm.a0; }
                 else {
                     bm.t++; bm.a = bm.a0 + (bm.a1 - bm.a0) * bm.t / bm.dur;
-                    const px = player.x + player.w / 2 - b.x, py = player.y + player.h / 2 - b.y;
-                    const proj = px * Math.cos(bm.a) + py * Math.sin(bm.a), perp = Math.abs(-px * Math.sin(bm.a) + py * Math.cos(bm.a));
-                    if (proj > 0 && perp < 8) hurtPlayer(30);
+                    for (const q of players) {
+                        if (q.dead) continue;
+                        const px = q.x + q.w / 2 - b.x, py = q.y + q.h / 2 - b.y;
+                        const proj = px * Math.cos(bm.a) + py * Math.sin(bm.a), perp = Math.abs(-px * Math.sin(bm.a) + py * Math.cos(bm.a));
+                        if (proj > 0 && perp < 8) asPlayer(q, () => hurtPlayer(30));
+                    }
                     if (bm.t >= bm.dur) b.beam = null;
                 }
             } else if (--b.beamTimer <= 0) {
@@ -4135,7 +4375,7 @@
             return;
         }
         if (!b.active) {
-            if (player.x > stage.arenaX + 40) {
+            if (players.some(q => !q.dead && q.x > stage.arenaX + 40)) {
                 b.active = true; bossIntro = 150;
                 document.getElementById('boss-hud-name').textContent = b.name;
                 document.getElementById('boss-hud').classList.remove('hidden');
@@ -4145,8 +4385,11 @@
         b.t++;
         if (b.hurt > 0) b.hurt--;
         const enraged = b.hp < b.maxHp * (b.type === 'herald' || b.type === 'arbiter' ? 0.4 : 0.5);
-        BOSS_AI[b.type](b, enraged);
-        if (b.alpha > 0.5 && circleRect(b.x, b.y, b.r - 4, playerBox())) hurtPlayer(20);
+        // co-op: the boss turns its attention to the other Guardian every 6 s
+        if (coop && b.t % 360 === 0) b.aggro = 1 - (b.aggro || 0);
+        const focus = players[b.aggro || 0], target = focus && !focus.dead ? focus : nearestPlayer(b.x, b.y);
+        asPlayer(target, () => BOSS_AI[b.type](b, enraged));
+        for (const q of players) if (!q.dead && b.alpha > 0.5) asPlayer(q, () => { if (circleRect(b.x, b.y, b.r - 4, playerBox())) hurtPlayer(20); });
     }
 
     // Dynamic stage events: crumbling ledges give way under you and come back later; debris falls near you
@@ -4156,28 +4399,29 @@
         for (const p of platforms) {
             const c = p.crumble;
             if (!c) continue;
-            if (c.state === 0 && player.grounded && player.ground === p) { c.state = 1; c.t = 40; }
+            if (c.state === 0 && players.some(q => !q.dead && q.grounded && q.ground === p)) { c.state = 1; c.t = 40; }
             else if (c.state === 1 && --c.t <= 0) {
                 c.state = 2; c.t = 360; p.gone = true;
                 burst(p.x + p.w / 2, p.y + 4, 12, theme.platTop, 2.5, 18);
                 playSound('hit');
-            } else if (c.state === 2 && --c.t <= 0 && !overlap(player, p)) { c.state = 0; p.gone = false; }
+            } else if (c.state === 2 && --c.t <= 0 && !players.some(q => !q.dead && overlap(q, p))) { c.state = 0; p.gone = false; }
         }
         if (ev.debris && stageIntro <= 0 && !(boss && boss.active) && state === 'playing' && --ev.debrisT <= 0) {
             ev.debrisT = Math.round((360 + Math.random() * 360) / (diff.speed || 1));
-            const side = Math.random() < 0.65 ? player.facing : -player.facing;
-            const x = clamp(player.x + player.w / 2 + side * (30 + Math.random() * 140), minArenaX() + 10, stage.levelW - 10);
+            const live = alivePlayers(), pl = live[Math.floor(Math.random() * live.length)] || player; // near one of the Guardians
+            const side = Math.random() < 0.65 ? pl.facing : -pl.facing;
+            const x = clamp(pl.x + pl.w / 2 + side * (30 + Math.random() * 140), minArenaX() + 10, stage.levelW - 10);
             hazards.push({ x, warn: 70, fire: 16, kind: 'debris' });
-            if (!ev.warned) { ev.warned = true; popText(player.x - 40, player.y - 24, 'FALLING DEBRIS! WATCH THE SHADOWS', '#fb923c'); }
+            if (!ev.warned) { ev.warned = true; popText(pl.x - 40, pl.y - 24, 'FALLING DEBRIS! WATCH THE SHADOWS', '#fb923c'); }
         }
     }
     function updateHazards() {
-        const pcx = player.x + player.w / 2;
         for (const h of hazards) {
             if (h.warn > 0) { if (--h.warn === 0) { playSound('beam'); shake = Math.max(shake, 2); } }
             else {
                 h.fire--;
-                if (Math.abs(pcx - h.x) < 13 && (!h.low || player.y + player.h > 214)) hurtPlayer(h.dmg || 25); // low hazards (thorns) only reach the floor
+                for (const p of players) // low hazards (thorns) only reach the floor
+                    if (!p.dead && Math.abs(p.x + p.w / 2 - h.x) < 13 && (!h.low || p.y + p.h > 214)) asPlayer(p, () => hurtPlayer(h.dmg || 25));
             }
         }
         hazards = hazards.filter(h => h.warn > 0 || h.fire > 0);
@@ -4192,7 +4436,6 @@
     const isExplosive = b => b.kind === 'grenade' || b.kind === 'nova' || b.kind === 'rocket';
 
     function updateBullets() {
-        const pb = playerBox();
         for (const b of bullets) {
             if (b.dead) continue;
             if (b.kind === 'grenade' || b.grav) b.vy += 0.2;
@@ -4206,86 +4449,28 @@
             b.life--;
 
             if (b.life <= 0 || b.x < cameraX - 60 || b.x > cameraX + W + 60 || b.y < -80 || b.y > H + 20) {
-                if (b.life <= 0 && b.owner === 'player' && isExplosive(b)) detonate(b);
+                if (b.life <= 0 && b.owner === 'player' && isExplosive(b)) asPlayer(shooterOf(b), () => detonate(b));
                 b.dead = true;
                 continue;
             }
 
-            if (b.owner === 'player') {
-                // Nimays' crystals catch any player shot once the fight has started
-                if (stage.pylons && boss && boss.active && !boss.dead) {
-                    const py = stage.pylons.find(q => b.x > q.x - 2 && b.x < q.x + q.w + 2 && b.y > q.y - 2 && b.y < q.y + q.h);
-                    if (py) { if (isExplosive(b)) detonate(b); else b.dead = true; hitPylon(py); continue; }
-                }
-                if (boss && boss.parts.length && boss.active && !boss.dead) {
-                    const q = boss.parts.find(o => o.hp > 0 && Math.hypot(b.x - o.x, b.y - o.y) < o.r + 2 && !(b.hit && b.hit.has(o)));
-                    if (q) {
-                        if (isExplosive(b)) { detonate(b); continue; }
-                        hitBossPart(q, b.dmg); burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
-                        if (b.hit) b.hit.add(q); else { b.dead = true; continue; }
-                    }
-                }
-                const box = { x: b.x - 2, y: b.y - 2, w: 4, h: 4 };
-                if (isExplosive(b)) {
-                    const rad = b.kind === 'nova' ? 8 : 3;
-                    const hitPlat = b.kind === 'rocket'
-                        ? platforms.some(pl => b.x > pl.x && b.x < pl.x + pl.w && b.y > pl.y && b.y < pl.y + pl.h)
-                        : b.vy > 0 && platforms.some(pl => b.x > pl.x && b.x < pl.x + pl.w && prevY + rad <= pl.y && b.y + rad >= pl.y);
-                    const hitEnemy = enemies.some(en => !en.dead && circleRect(b.x, b.y, rad, en));
-                    const hitBoss = bossHittable() && Math.hypot(b.x - boss.x, b.y - boss.y) < boss.r + rad;
-                    if (hitPlat || hitEnemy || hitBoss) detonate(b);
-                    if (b.kind === 'nova' && frame % 2 === 0) particles.push({ x: b.x, y: b.y, vx: Math.random() - 0.5, vy: Math.random() - 0.5, life: 16, max: 16, color: '#c084fc', size: 3 });
-                    continue;
-                }
-                const pierce = !!b.hit;
-                for (const en of enemies) {
-                    if (en.dead || en.alpha < 0.3 || (pierce && b.hit.has(en)) || (b.seen && b.seen.has(en)) || !overlap(box, en)) continue;
-                    // Shieldbearer: frontal barrier blocks normal bullets (lowered while it fires)
-                    if (en.t.frontShield && b.kind === 'bullet' && Math.sign(b.vx) === -en.facing && Math.abs(b.vx) > 0.5 && !(en.aware && en.fireTimer < 18)) {
-                        b.dead = true;
-                        burst(b.x, b.y, 3, '#bfdbfe', 1.5, 8);
-                        playSound('immune');
-                        break;
-                    }
-                    // headshot: the bullet struck the top 11px of a walking enemy (drones, bombers and turrets have no head)
-                    const hasHead = !en.t.flying && en.type !== 'turret';
-                    // (9px, not the full 11px head, so level chest-height fire at short enemies doesn't crit for free)
-                    // Hunter's Mark (Ranger [F]) makes every bullet hit a crit
-                    const crit = (b.kind === 'bullet' || b.kind === 'precision') && (player.markT > 0 || (hasHead && b.y <= en.y + 9));
-                    const critMult = crit ? (b.kind === 'precision' ? CRIT_MULT_PRECISION : CRIT_MULT) * (selectedClass === 'ranger' ? 1.15 : 1) : 1;
-                    damageEnemy(en, b.dmg * critMult, b.element, b.kind === 'golden' ? 'super' : b.kind, b.wid, crit);
-                    burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
-                    const it = b.wid && player.items[b.wid];
-                    if (hasPerk(it, 'impact') && Math.random() < 0.12 * perkStrength(it.level)) explode(b.x, b.y, 22, b.dmg * 0.4, b.element, 'impact', b.wid);
-                    if (pierce) b.hit.add(en);
-                    else if (b.pen > 0) { b.pen--; (b.seen || (b.seen = new Set())).add(en); } // Penetrator: one extra target
-                    else { b.dead = true; break; }
-                }
-                if (!b.dead && bossHittable() && !(pierce && b.hit.has(boss))) {
-                    const dist = Math.hypot(b.x - boss.x, b.y - boss.y);
-                    if (dist < boss.r) {
-                        // the boss core (inner 45% of its radius) is its weak point
-                        const core = (dist < boss.r * 0.45 || player.markT > 0) && (b.kind === 'bullet' || b.kind === 'precision');
-                        if (core && boss.type === 'forgemaster' && boss.state !== 'vent') boss.heat = Math.min(100, boss.heat + 1.5); // striking the furnace heats it
-                        if (damageBoss(b.dmg * (core ? BOSS_CRIT_MULT : 1), b.element) && core) {
-                            playSound('crit'); burst(b.x, b.y, 4, '#fde047', 2, 10);
-                            if (frame - (boss.critAt || -99) > 30) { boss.critAt = frame; popText(boss.x - 8, boss.y - boss.r - 8, 'CRIT', '#fde047'); }
-                        }
-                        if (pierce) b.hit.add(boss); else b.dead = true;
-                    }
-                }
-            } else {
+            if (b.owner === 'player') asPlayer(shooterOf(b), () => playerBulletHits(b, prevY));
+            else {
                 if (b.grav && b.vy > 0 && platforms.some(pl => b.x > pl.x && b.x < pl.x + pl.w && prevY <= pl.y && b.y >= pl.y)) {
                     b.dead = true;
                     burst(b.x, b.y, 8, '#fb923c', 2, 14);
                     rings.push({ x: b.x, y: b.y, r: 2, maxR: 16, life: 10, max: 10, color: '#fb923c' });
-                    if (Math.abs(b.x - (player.x + player.w / 2)) < 18 && Math.abs(b.y - (player.y + player.h)) < 20) hurtPlayer(b.dmg);
+                    for (const p of players) if (!p.dead && Math.abs(b.x - (p.x + p.w / 2)) < 18 && Math.abs(b.y - (p.y + p.h)) < 20) asPlayer(p, () => hurtPlayer(b.dmg));
                     continue;
                 }
-                const hw = b.hw || 2, hh = b.hh || 2;
-                if (overlap({ x: b.x - hw, y: b.y - hh, w: hw * 2, h: hh * 2 }, pb)) {
-                    if (player.dashT > 0) perfectDodge(); // the shot passes straight through a dashing Guardian
-                    else { hurtPlayer(b.dmg); b.dead = true; }
+                const hw = b.hw || 2, hh = b.hh || 2, box = { x: b.x - hw, y: b.y - hh, w: hw * 2, h: hh * 2 };
+                for (const p of players) {
+                    if (p.dead || b.dead) continue;
+                    asPlayer(p, () => {
+                        if (!overlap(box, playerBox())) return;
+                        if (p.dashT > 0) perfectDodge(); // the shot passes straight through a dashing Guardian
+                        else { hurtPlayer(b.dmg); b.dead = true; }
+                    });
                 }
                 // Sentinel barricade soaks enemy shots
                 if (!b.dead && walls.some(w => b.x > w.x - 2 && b.x < w.x + w.w + 2 && b.y > w.y && b.y < w.y + w.h)) {
@@ -4299,11 +4484,76 @@
         }
         bullets = bullets.filter(b => !b.dead);
     }
+    // A Guardian's shot against crystals, boss parts, enemies and the boss (runs as the Guardian who fired it)
+    function playerBulletHits(b, prevY) {
+        // Nimays' crystals catch any player shot once the fight has started
+        if (stage.pylons && boss && boss.active && !boss.dead) {
+            const py = stage.pylons.find(q => b.x > q.x - 2 && b.x < q.x + q.w + 2 && b.y > q.y - 2 && b.y < q.y + q.h);
+            if (py) { if (isExplosive(b)) detonate(b); else b.dead = true; hitPylon(py); return; }
+        }
+        if (boss && boss.parts.length && boss.active && !boss.dead) {
+            const q = boss.parts.find(o => o.hp > 0 && Math.hypot(b.x - o.x, b.y - o.y) < o.r + 2 && !(b.hit && b.hit.has(o)));
+            if (q) {
+                if (isExplosive(b)) { detonate(b); return; }
+                hitBossPart(q, b.dmg); burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
+                if (b.hit) b.hit.add(q); else { b.dead = true; return; }
+            }
+        }
+        const box = { x: b.x - 2, y: b.y - 2, w: 4, h: 4 };
+        if (isExplosive(b)) {
+            const rad = b.kind === 'nova' ? 8 : 3;
+            const hitPlat = b.kind === 'rocket'
+                ? platforms.some(pl => b.x > pl.x && b.x < pl.x + pl.w && b.y > pl.y && b.y < pl.y + pl.h)
+                : b.vy > 0 && platforms.some(pl => b.x > pl.x && b.x < pl.x + pl.w && prevY + rad <= pl.y && b.y + rad >= pl.y);
+            const hitEnemy = enemies.some(en => !en.dead && circleRect(b.x, b.y, rad, en));
+            const hitBoss = bossHittable() && Math.hypot(b.x - boss.x, b.y - boss.y) < boss.r + rad;
+            if (hitPlat || hitEnemy || hitBoss) detonate(b);
+            if (b.kind === 'nova' && frame % 2 === 0) particles.push({ x: b.x, y: b.y, vx: Math.random() - 0.5, vy: Math.random() - 0.5, life: 16, max: 16, color: '#c084fc', size: 3 });
+            return;
+        }
+        const pierce = !!b.hit;
+        for (const en of enemies) {
+            if (en.dead || en.alpha < 0.3 || (pierce && b.hit.has(en)) || (b.seen && b.seen.has(en)) || !overlap(box, en)) continue;
+            // Shieldbearer: frontal barrier blocks normal bullets (lowered while it fires)
+            if (en.t.frontShield && b.kind === 'bullet' && Math.sign(b.vx) === -en.facing && Math.abs(b.vx) > 0.5 && !(en.aware && en.fireTimer < 18)) {
+                b.dead = true;
+                burst(b.x, b.y, 3, '#bfdbfe', 1.5, 8);
+                playSound('immune');
+                break;
+            }
+            // headshot: the bullet struck the top 11px of a walking enemy (drones, bombers and turrets have no head)
+            const hasHead = !en.t.flying && en.type !== 'turret';
+            // (9px, not the full 11px head, so level chest-height fire at short enemies doesn't crit for free)
+            // Hunter's Mark (Ranger [F]) makes every bullet hit a crit
+            const crit = (b.kind === 'bullet' || b.kind === 'precision') && (player.markT > 0 || (hasHead && b.y <= en.y + 9));
+            const critMult = crit ? (b.kind === 'precision' ? CRIT_MULT_PRECISION : CRIT_MULT) * (selectedClass === 'ranger' ? 1.15 : 1) : 1;
+            damageEnemy(en, b.dmg * critMult, b.element, b.kind === 'golden' ? 'super' : b.kind, b.wid, crit);
+            burst(b.x, b.y, 3, ELEMENTS[b.element].color, 1.5, 10);
+            const it = b.wid && player.items[b.wid];
+            if (hasPerk(it, 'impact') && Math.random() < 0.12 * perkStrength(it.level)) explode(b.x, b.y, 22, b.dmg * 0.4, b.element, 'impact', b.wid);
+            if (pierce) b.hit.add(en);
+            else if (b.pen > 0) { b.pen--; (b.seen || (b.seen = new Set())).add(en); } // Penetrator: one extra target
+            else { b.dead = true; break; }
+        }
+        if (!b.dead && bossHittable() && !(pierce && b.hit.has(boss))) {
+            const dist = Math.hypot(b.x - boss.x, b.y - boss.y);
+            if (dist < boss.r) {
+                // the boss core (inner 45% of its radius) is its weak point
+                const core = (dist < boss.r * 0.45 || player.markT > 0) && (b.kind === 'bullet' || b.kind === 'precision');
+                if (core && boss.type === 'forgemaster' && boss.state !== 'vent') boss.heat = Math.min(100, boss.heat + 1.5); // striking the furnace heats it
+                if (damageBoss(b.dmg * (core ? BOSS_CRIT_MULT : 1), b.element) && core) {
+                    playSound('crit'); burst(b.x, b.y, 4, '#fde047', 2, 10);
+                    if (frame - (boss.critAt || -99) > 30) { boss.critAt = frame; popText(boss.x - 8, boss.y - boss.r - 8, 'CRIT', '#fde047'); }
+                }
+                if (pierce) b.hit.add(boss); else b.dead = true;
+            }
+        }
+    }
 
     function updateItems() {
-        const p = player, pcx = p.x + p.w / 2, pcy = p.y + p.h / 2;
         for (const it of items) {
             it.life--;
+            const p = nearestPlayer(it.x + 5, it.y + 5), pcx = p.x + p.w / 2, pcy = p.y + p.h / 2; // drawn to the nearest Guardian
             const dx = pcx - (it.x + 5), dy = pcy - (it.y + 5), d = Math.hypot(dx, dy);
             if (d < 45) { it.x += dx / d * 2; it.y += dy / d * 2; }
             else {
@@ -4312,7 +4562,7 @@
                 const prev = it.y + it.h; it.y += it.vy;
                 landOnPlatforms(it, prev, false);
             }
-            if (overlap(it, p)) {
+            if (!p.dead && overlap(it, p)) asPlayer(p, () => {
                 it.life = 0;
                 playSound('pickup');
                 if (it.type === 'orb') { addSuper(20); p.hp = Math.min(p.maxHp, p.hp + 15); popText(it.x - 10, it.y - 6, '+POWER', '#facc15'); }
@@ -4321,7 +4571,7 @@
                     p.ammo[type] = Math.min(p.maxAmmo[type], p.ammo[type] + amt);
                     popText(it.x - 10, it.y - 6, '+' + type.toUpperCase(), AMMO_COLORS[type]);
                 }
-            }
+            });
         }
         items = items.filter(it => it.life > 0 && it.y < H + 20);
     }
@@ -4345,7 +4595,12 @@
     }
 
     function updateCamera() {
-        const target = player.x + player.w / 2 - W * 0.4 + player.facing * 30;
+        const live = alivePlayers(), lp = live[0] || player;
+        let target = lp.x + lp.w / 2 - W * 0.4 + lp.facing * 30;
+        if (live.length > 1) { // co-op: keep both Guardians in frame
+            const xs = live.map(q => q.x + q.w / 2), lo = Math.min(...xs), hi = Math.max(...xs);
+            target = clamp((lo + hi) / 2 - W / 2, hi + 30 - W, lo - 30);
+        }
         cameraX += (target - cameraX) * 0.1;
         cameraX = clamp(cameraX, minArenaX(), stage.levelW - W);
     }
@@ -4358,6 +4613,8 @@
         if (!lastTs) lastTs = ts;
         const dt = Math.min(250, ts - lastTs);
         lastTs = ts;
+        pollPads();
+        if (state === 'playing' || state === 'paused') padInput();
         if (state === 'playing') {
             acc += dt;
             let n = 0;
@@ -4770,7 +5027,7 @@
                 if (en.type === 'turret') {
                     ctx.fillStyle = '#1e293b'; ctx.fillRect(x, y + 12, en.w, 8);
                     ctx.fillStyle = body; ctx.beginPath(); ctx.arc(x + en.w / 2, y + 12, 8, Math.PI, 0); ctx.fill();
-                    const a = Math.atan2(player.y + 15 - (y + 10), player.x + 8 - (x + en.w / 2));
+                    const tp = nearestPlayer(x + en.w / 2, y + 10), a = Math.atan2(tp.y + 15 - (y + 10), tp.x + 8 - (x + en.w / 2));
                     ctx.save(); ctx.translate(x + en.w / 2, y + 10); ctx.rotate(en.aware ? a : (f > 0 ? 0 : Math.PI));
                     ctx.fillStyle = '#64748b'; ctx.fillRect(0, -2, 14, 4); ctx.restore();
                     ctx.fillStyle = en.burstLeft > 0 || (en.aware && en.fireTimer < 18) ? '#fff' : '#ef4444'; ctx.fillRect(x + en.w / 2 - 2, y + 7, 4, 2);
@@ -4920,7 +5177,7 @@
         ctx.translate(b.x, b.y);
         ctx.globalAlpha = b.dead ? Math.max(0, (victoryTimer - 40) / 100) : b.alpha;
         const white = b.hurt > 0;
-        const ea = Math.atan2(player.y + 15 - b.y, player.x + 8 - b.x);
+        const tp = nearestPlayer(b.x, b.y), ea = Math.atan2(tp.y + 15 - b.y, tp.x + 8 - b.x);
         const glowColor = { overseer: '239,68,68', tyrant: '251,146,60', hive: '103,232,249', herald: '192,132,252', nimays: '232,121,249',
                             thorn: '132,204,22', forgemaster: '249,115,22', titan: '96,165,250', arbiter: '253,224,71' }[b.type];
         const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, b.r + 24);
@@ -5306,6 +5563,10 @@
             ctx.fillStyle = '#0f172a'; ctx.fillRect(x - 4, y - 8, 24, 4);
             ctx.fillStyle = '#fbbf24'; ctx.fillRect(x - 3, y - 7, 22 * (1 - p.reloadTimer / total), 2);
         }
+        if (coop) { // P1 / P2 tag over the head
+            ctx.font = '5px "Press Start 2P", monospace'; ctx.fillStyle = p.pid ? '#fb923c' : '#38bdf8';
+            ctx.fillText(`P${p.pid + 1}`, x + 3, y - (hiddenNow || p.reloadTimer > 0 ? 10 : 4));
+        }
     }
 
     function drawBullets() {
@@ -5424,6 +5685,7 @@
         ctx.font = '5px "Press Start 2P", monospace';
         p.owned.forEach((id, i) => {
             const w = WEAPONS[id], it = p.items[id], cur = i === p.weaponIdx, empty = p.mags[id] <= 0 && p.ammo[w.ammo] <= 0;
+            if (coop && !cur) return; // co-op: just the weapon in hand, to make room for Player 2's panel
             const label = `${i + 1} ${w.short} L${it ? it.level : 1}`, wd = ctx.measureText(label).width + 6;
             ctx.fillStyle = cur ? 'rgba(15,23,42,0.9)' : 'rgba(15,23,42,0.55)';
             ctx.fillRect(x, y, wd, 9);
@@ -5455,6 +5717,49 @@
         ctx.fillStyle = aReady ? '#fff' : '#94a3b8'; ctx.fillText(aLabel, x + 3, y + 7);
     }
 
+    // Co-op: Player 2's status in the bottom-right corner (Player 1 keeps the top bar), aim reticles, who is down
+    function drawCoopHud() {
+        const p = players[1];
+        if (!p) return;
+        ctx.font = '5px "Press Start 2P", monospace';
+        const x0 = W - 134, y0 = H - 36, bw = 130;
+        ctx.fillStyle = 'rgba(15,23,42,0.78)'; ctx.fillRect(x0, y0, bw, 32);
+        ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 1; ctx.strokeRect(x0 + 0.5, y0 + 0.5, bw - 1, 31);
+        ctx.fillStyle = '#fb923c'; ctx.fillText('P2', x0 + 4, y0 + 9);
+        const bar = (x, w, frac, color) => {
+            ctx.fillStyle = '#1e293b'; ctx.fillRect(x, y0 + 4, w, 5);
+            ctx.fillStyle = color; ctx.fillRect(x, y0 + 4, w * clamp(frac, 0, 1), 5);
+        };
+        bar(x0 + 18, 64, p.hp / p.maxHp, p.hp < p.maxHp * 0.35 ? '#f87171' : '#34d399');
+        bar(x0 + 86, 40, p.shield / p.maxShield, '#38bdf8');
+        if (p.dead) {
+            ctx.fillStyle = '#f87171';
+            ctx.fillText(p.respawnT > 0 ? `DOWN  BACK IN ${Math.ceil(p.respawnT / 60)}` : stage.horde ? 'DOWN  BACK NEXT WAVE' : 'DOWN  NEED A CHAMPION', x0 + 4, y0 + 19);
+        } else {
+            const w = WEAPONS[p.weapon], mag = p.mags[p.weapon], res = p.ammo[w.ammo], sidearm = w.ammo === 'primary' && mag <= 0 && res <= 0;
+            const ammo = p.reloadTimer > 0 ? 'RELOAD' : sidearm ? 'INF' : `${mag}/${res === Infinity ? 'INF' : res}`; // no ∞ glyph at this size
+            ctx.fillStyle = AMMO_COLORS[w.ammo]; ctx.fillText(`${sidearm ? 'SIDEARM' : w.short} ${ammo}`, x0 + 4, y0 + 19);
+            const sp = Math.floor(p.superEnergy), st = sp >= 100 ? 'SUPER!' : `S ${sp}%`;
+            ctx.fillStyle = sp >= 100 ? '#fde047' : '#facc15'; ctx.fillText(st, x0 + bw - 4 - ctx.measureText(st).width, y0 + 19);
+            const ab = asPlayer(p, classAbility), pills = [['DASH', p.dashCd <= 0], [ab.short, p.abilityCd <= 0], ['GREN', p.grenadeCd <= 0], ['MELEE', p.meleeCd <= 0]];
+            let x = x0 + 4;
+            for (const [label, ready] of pills) { ctx.fillStyle = ready ? '#4ade80' : '#64748b'; ctx.fillText(label, x, y0 + 28); x += ctx.measureText(label).width + 6; }
+        }
+        const p1 = players[0];
+        if (p1.dead) {
+            ctx.fillStyle = '#f87171';
+            ctx.fillText(p1.respawnT > 0 ? `P1 DOWN  BACK IN ${Math.ceil(p1.respawnT / 60)}` : stage.horde ? 'P1 DOWN  BACK NEXT WAVE' : 'P1 DOWN  NEED A CHAMPION', 6, H - 20);
+        }
+        if (state !== 'playing') return;
+        for (const q of players) { // aim reticles for gamepads and Player 2's keyboard (the mouse has its crosshair)
+            if (q.dead || !(q.pid || padAim(padOf(0)))) continue;
+            asPlayer(q, () => {
+                const [ax, ay] = getAim(), mx = q.x + q.w / 2 - cameraX + ax * 40, my = q.y + (q.crouch ? 26 : 13) + ay * 40;
+                ctx.strokeStyle = q.pid ? '#fb923c' : ELEMENTS[selectedElement].color; ctx.lineWidth = 1; ctx.globalAlpha = 0.8;
+                ctx.beginPath(); ctx.arc(mx, my, 3, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+            });
+        }
+    }
     function centerText(text, y, size, color) {
         ctx.font = `${size}px "Press Start 2P", monospace`;
         const w = ctx.measureText(text).width;
@@ -5594,7 +5899,7 @@
             ctx.beginPath(); ctx.ellipse(cx, g + 0.5, w * 0.6 * s, 2.2 * s, 0, 0, Math.PI * 2); ctx.fill();
         };
         for (const en of enemies) if (en.x + en.w > cameraX - 20 && en.x < cameraX + W + 20) shadow(en.x + en.w / 2, en.y + en.h, en.w);
-        if (player && !player.dead) shadow(player.x + player.w / 2, player.y + player.h, player.w + 2);
+        for (const p of players) if (!p.dead) shadow(p.x + p.w / 2, p.y + p.h, p.w + 2);
         ctx.globalAlpha = 1;
     }
     // Top of the nearest platform at or below `bottom` under x (null if none within reach)
@@ -5650,12 +5955,12 @@
             ctx.globalAlpha = 0.25; ctx.fillStyle = '#a855f7'; ctx.fillRect(h.x - 30, 0, 60, H);
         }
         for (const cp of checkpoints) if (cp.active && Math.abs(cp.x - cameraX - W / 2) < W) light(cp.x, cp.y - 24, 12, '#67e8f9', 0.45);
-        if (player && !player.dead) {
+        for (const q of players) if (!q.dead) asPlayer(q, () => {
             if (player.focusT > 0) light(player.x + player.w / 2, player.y + 15, 24, '#67e8f9', 0.25);
             const el = ELEMENTS[selectedElement].color, top = player.crouch ? player.y + 13 : player.y;
             light(player.x + player.w / 2 + player.facing * 3, top + 4, 9, el, 0.45);
             if (player.superEnergy >= 100) light(player.x + player.w / 2, player.y + 15, 26 + Math.sin(frame * 0.15) * 3, '#fde047', 0.22);
-        }
+        });
         for (const b of bullets) {
             if (b.owner === 'enemy') {
                 const col = b.kind === 'wave' ? '#fb923c' : b.snipe ? '#fca5a5' : b.ice ? '#67e8f9' : b.voidOrb ? '#c084fc' : (b.grav || b.big) ? '#fb923c' : '#f87171';
@@ -5715,7 +6020,7 @@
         try {
             const mirror = (footY, draw) => { r.save(); r.translate(0, 2 * footY); r.scale(1, -1); draw(); r.restore(); };
             for (const en of enemies) if (!en.t.flying && en.grounded && en.x + en.w > cameraX - 20 && en.x < cameraX + W + 20) mirror(en.y + en.h, () => drawEnemy(en));
-            if (!player.dead && player.grounded) mirror(player.y + player.h, () => drawPlayer());
+            for (const p of players) if (!p.dead && p.grounded) mirror(p.y + p.h, () => asPlayer(p, drawPlayer));
         } finally { ctx = main; }
         r.restore();
         ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -5780,7 +6085,7 @@
         drawBoss();
         drawBossFx();
         drawHazards();
-        if (!player.dead) { drawPlayer(); drawAimPreview(); }
+        for (const p of [...players].reverse()) if (!p.dead) asPlayer(p, () => { drawPlayer(); drawAimPreview(); });
         drawBullets();
         drawCovers();
         drawBunkers();
@@ -5796,6 +6101,7 @@
             ctx.drawImage(vignetteCanvas, 0, 0, W, H);
         }
         drawWeaponStrip();
+        if (coop) drawCoopHud();
         if (save.contracts.length) drawContracts();
         // crosshair (the system cursor is hidden over the canvas while mouse-aiming)
         canvas.style.cursor = mouse.active && state === 'playing' ? 'none' : '';
