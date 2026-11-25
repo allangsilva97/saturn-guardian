@@ -37,6 +37,7 @@ All editions are the same game with the same saves; cycle between them with the 
   - **Tempest Titan:** shielded until you shoot down one of his homing storm orbs; lightning strikes and gales push you around
   - **The Arbiter:** only his ward's current element really hurts him (change subclass in the inventory), his prism beam sweeps the floor (dash through it), and he ascends at 66% and 33%
 - **A changing map:** each later stage of a world is rougher and darker, with more pits and height changes; from the second stage ledges crumble under you (and come back later), and from the third debris falls from above
+- **Automatic weapons:** Riflemen fire 8-round bursts, Skirmishers spray SMG fire while keeping to mid range, and the heavy Ravager spins up its minigun (watch the barrel glow) before a long stream that tracks you
 - **Cover and hiding:** low walls to crouch behind (they stop enemy shots) and open shelters to stand in; hidden, enemies lose track of you until you fire
 - **Champions:** random Barrier, Overload and Unstoppable variants (at most 2 types per stage), plus mid-stage warp-ins, each countered by its own weapon: Piercer Rifle, Arc Disruptor, Breacher Slug
 - **Shuffled stages:** every run rebuilds each stage from randomly ordered modules (pits, climbs, lifts across wide gaps, elevator towers, secret bunkers)

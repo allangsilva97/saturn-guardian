@@ -848,6 +848,14 @@
         shieldbearer: { name: 'Shieldbearer', hp: 110, w: 22, h: 34, speed: 0.4,  fireRate: 120, dmg: 14, score: 260, color: '#1d4ed8', head: '#e2e8f0', ai: 'patrol',  fire: 'single', frontShield: true },
         bomber:       { name: 'Bomber',       hp: 60,  w: 26, h: 14, speed: 1.2,  fireRate: 70,  dmg: 16, score: 220, color: '#475569', head: '#f97316', ai: 'bomber',  fire: 'bomb', flying: true },
         phantom:      { name: 'Phantom',      hp: 65,  w: 18, h: 30, speed: 0,    fireRate: 100, dmg: 12, score: 280, color: '#6d28d9', head: '#e9d5ff', ai: 'phantom', fire: 'burst' },
+        // Automatic weapons: a burst of `rounds` shots `gap` frames apart; the aim drifts toward you (`track`
+        // radians a shot) and each round strays by up to `spread`. The Ravager spins its minigun up first.
+        rifleman:     { name: 'Rifleman',     hp: 75,  w: 20, h: 32, speed: 0.55, fireRate: 140, dmg: 9,  score: 190, color: '#3f6212', head: '#a8a29e', ai: 'patrol',   fire: 'auto',
+                        auto: { rounds: 8, gap: 5, spread: 0.12, speed: 4, track: 0.05 } },
+        skirmisher:   { name: 'Skirmisher',   hp: 55,  w: 18, h: 28, speed: 0.9,  fireRate: 110, dmg: 7,  score: 200, color: '#9d174d', head: '#fda4af', ai: 'skirmish', fire: 'auto',
+                        auto: { rounds: 10, gap: 3, spread: 0.24, speed: 3.8, track: 0.08 } },
+        ravager:      { name: 'Ravager',      hp: 300, w: 30, h: 40, speed: 0.22, fireRate: 230, dmg: 10, score: 650, color: '#44403c', head: '#f97316', ai: 'patrol',   fire: 'minigun',
+                        auto: { rounds: 40, gap: 3, spread: 0.16, speed: 4.2, track: 0.025, spin: 50 } },
         turret:       { name: 'Turret',       hp: 90,  w: 20, h: 20, speed: 0,    fireRate: 110, dmg: 10, score: 160, color: '#334155', head: '#475569', ai: 'static',  fire: 'burst' },
     };
 
@@ -874,7 +882,7 @@
         unstoppable: { name: 'UNSTOPPABLE', color: '#fb923c' },
     };
     const CHAMPION_IDS = Object.keys(CHAMPIONS);
-    const UNSTOPPABLE_BASES = new Set(['scav', 'raider', 'brute', 'juggernaut', 'charger', 'shieldbearer']);
+    const UNSTOPPABLE_BASES = new Set(['scav', 'raider', 'brute', 'juggernaut', 'charger', 'shieldbearer', 'rifleman', 'ravager']);
 
     const WORLDS = [
         {
@@ -883,7 +891,7 @@
             far: '#111a33', mid: '#18213a', midTop: '#243049', lights: 'rgba(250,204,21,0.55)', structure: 'city',
             ground: '#1e293b', groundTop: '#475569', seam: '#273449', plat: '#334155', platTop: '#94a3b8', platGlow: 'rgba(56,189,248,0.25)',
             weather: null, friction: 1, gravity: 1, pitChance: 0.35, heightVar: 0.15, platDensity: 0.55, shieldChance: 0.6,
-            pool: { scav: 4, raider: 3, brute: 2, drone: 1.5, turret: 1, juggernaut: 0.4 },
+            pool: { scav: 4, raider: 3, brute: 2, drone: 1.5, turret: 1, juggernaut: 0.4, rifleman: 2, skirmisher: 1 },
         },
         {
             name: 'CRIMSON DUNES', stages: ['RED WASTES', 'GLASS CANYON', 'SCORCHED REACH', "TYRANT'S PIT"], boss: 'tyrant', color: '#fb923c',
@@ -891,7 +899,7 @@
             far: '#4a1a0c', mid: '#5c2410', midTop: '#7c3414', lights: null, structure: 'mesa',
             ground: '#7c2d12', groundTop: '#c2410c', seam: '#6b260f', plat: '#78350f', platTop: '#fdba74', platGlow: 'rgba(251,146,60,0.25)',
             weather: 'sand', friction: 1, gravity: 1, pitChance: 0.45, heightVar: 0.4, platDensity: 0.5, shieldChance: 0.7,
-            pool: { raider: 3, brute: 3, sniper: 2, charger: 2, drone: 1.5, juggernaut: 0.8 },
+            pool: { raider: 3, brute: 3, sniper: 2, charger: 2, drone: 1.5, juggernaut: 0.8, rifleman: 2, ravager: 0.5 },
         },
         {
             name: 'FROZEN MOON', stages: ['RIME FIELDS', 'CRYO VAULT', 'SHIVER PASS', 'PALE ARCHIVE', 'HIVE THRONE'], boss: 'hive', color: '#7dd3fc',
@@ -899,7 +907,7 @@
             far: '#0f2a44', mid: '#1e3a5f', midTop: '#bae6fd', lights: null, structure: 'ice',
             ground: '#334155', groundTop: '#e0f2fe', seam: '#3b4a60', plat: '#475569', platTop: '#f0f9ff', platGlow: 'rgba(186,230,253,0.3)',
             weather: 'snow', friction: 0.4, gravity: 1, pitChance: 0.4, heightVar: 0.3, platDensity: 0.6, shieldChance: 0.75,
-            pool: { scav: 2, shieldbearer: 3, drone: 2, bomber: 2, charger: 1.5, turret: 1.5 },
+            pool: { scav: 2, shieldbearer: 3, drone: 2, bomber: 2, charger: 1.5, turret: 1.5, skirmisher: 1.5, rifleman: 1.5 },
         },
         {
             name: 'VOID CITADEL', stages: ['SHATTERED GATE', 'HALL OF ECHOES', 'UMBRAL STAIR', 'NULL GARDENS', "HERALD'S SPIRE"], boss: 'herald', color: '#c084fc',
@@ -907,7 +915,7 @@
             far: '#1a0b2e', mid: '#2a1048', midTop: '#7e22ce', lights: 'rgba(216,180,254,0.5)', structure: 'spires',
             ground: '#1e1b2e', groundTop: '#a855f7', seam: '#2e2547', plat: '#3b2a5c', platTop: '#d8b4fe', platGlow: 'rgba(168,85,247,0.35)',
             weather: 'motes', friction: 1, gravity: 0.9, pitChance: 0.5, heightVar: 0.35, platDensity: 0.6, shieldChance: 0.85,
-            pool: { phantom: 3, shieldbearer: 2, sniper: 2, bomber: 1.5, charger: 2, juggernaut: 1 },
+            pool: { phantom: 3, shieldbearer: 2, sniper: 2, bomber: 1.5, charger: 2, juggernaut: 1, ravager: 0.6, skirmisher: 1 },
         },
         {
             name: 'VERDANT MAW', stages: ['OVERGROWN LANDING', 'ROOTWAY', 'SPORE HOLLOW', 'CANOPY RUINS', 'THE TANGLE', "THORN QUEEN'S BOWER"], boss: 'thorn', color: '#4ade80',
@@ -915,7 +923,7 @@
             far: '#0b2a17', mid: '#123d22', midTop: '#4d7c0f', lights: 'rgba(190,242,100,0.45)', structure: 'trees',
             ground: '#1a2e1a', groundTop: '#65a30d', seam: '#22381f', plat: '#3f2d1c', platTop: '#a3e635', platGlow: 'rgba(163,230,53,0.25)',
             weather: 'spores', friction: 0.9, gravity: 1, pitChance: 0.45, heightVar: 0.4, platDensity: 0.65, shieldChance: 0.75,
-            pool: { raider: 2, charger: 3, phantom: 1.5, bomber: 1.5, brute: 2, sniper: 1.5, drone: 1 },
+            pool: { raider: 2, charger: 3, phantom: 1.5, bomber: 1.5, brute: 2, sniper: 1.5, drone: 1, skirmisher: 2, rifleman: 1.5 },
         },
         {
             name: 'MOLTEN FORGE', stages: ['CINDER GATE', 'SLAG RIVERS', 'ANVIL WORKS', 'EMBER SPIRES', "FORGEMASTER'S CRUCIBLE"], boss: 'forgemaster', color: '#f97316',
@@ -923,7 +931,7 @@
             far: '#2a0b07', mid: '#3b0f0a', midTop: '#ea580c', lights: 'rgba(251,146,60,0.6)', structure: 'stacks',
             ground: '#292524', groundTop: '#f97316', seam: '#3a2f2a', plat: '#44403c', platTop: '#fdba74', platGlow: 'rgba(249,115,22,0.35)',
             weather: 'ash', friction: 1, gravity: 1.05, pitChance: 0.55, heightVar: 0.45, platDensity: 0.6, shieldChance: 0.8,
-            pool: { brute: 3, juggernaut: 1.5, turret: 2, bomber: 2, shieldbearer: 2, charger: 1.5 },
+            pool: { brute: 3, juggernaut: 1.5, turret: 2, bomber: 2, shieldbearer: 2, charger: 1.5, ravager: 1.2, rifleman: 2 },
         },
         {
             name: 'TEMPEST REACH', stages: ['STORMBREAK PIER', 'LIGHTNING ROADS', 'DROWNED DECKS', 'EYE OF THE GALE', 'SKYWRECK', 'TEMPEST TITAN'], boss: 'titan', color: '#60a5fa',
@@ -931,7 +939,7 @@
             far: '#111827', mid: '#1f2937', midTop: '#93c5fd', lights: 'rgba(147,197,253,0.5)', structure: 'city',
             ground: '#1f2937', groundTop: '#60a5fa', seam: '#2b3544', plat: '#374151', platTop: '#bfdbfe', platGlow: 'rgba(96,165,250,0.3)',
             weather: 'rain', friction: 0.75, gravity: 0.95, pitChance: 0.6, heightVar: 0.45, platDensity: 0.7, shieldChance: 0.85,
-            pool: { drone: 3, bomber: 2.5, sniper: 2, raider: 2, turret: 1.5, phantom: 1.5, juggernaut: 0.8 },
+            pool: { drone: 3, bomber: 2.5, sniper: 2, raider: 2, turret: 1.5, phantom: 1.5, juggernaut: 0.8, rifleman: 2, skirmisher: 1.5, ravager: 0.8 },
         },
         {
             name: 'ASTRAL THRONE', stages: ['THRESHOLD OF LIGHT', 'PRISM STEPS', 'CHOIR OF STARS', 'MIRROR SEA', 'EVENT HORIZON', 'THE ASTRAL THRONE'], boss: 'arbiter', color: '#fde047',
@@ -939,7 +947,7 @@
             far: '#1e1b4b', mid: '#2e2a6b', midTop: '#fde68a', lights: 'rgba(254,240,138,0.6)', structure: 'crystals',
             ground: '#1e1b4b', groundTop: '#fde047', seam: '#2a2660', plat: '#3730a3', platTop: '#fef9c3', platGlow: 'rgba(253,224,71,0.35)',
             weather: 'light', friction: 1, gravity: 0.85, pitChance: 0.55, heightVar: 0.5, platDensity: 0.7, shieldChance: 0.9,
-            pool: { phantom: 3, shieldbearer: 2, sniper: 2, juggernaut: 1.2, drone: 2, charger: 1.5, bomber: 1 },
+            pool: { phantom: 3, shieldbearer: 2, sniper: 2, juggernaut: 1.2, drone: 2, charger: 1.5, bomber: 1, ravager: 1, skirmisher: 1.5, rifleman: 1.5 },
         },
     ];
     // Stage index -> [world, stage in world]; worlds have 4-6 stages and the last one is the boss
@@ -3398,6 +3406,8 @@
             case 'single': enemyShot(ox, oy, a, 3.2, dmg); break;
             case 'spread': for (const d of [-0.2, 0, 0.2]) enemyShot(ox, oy, a + d, 3.2, dmg); break;
             case 'burst': en.burstLeft = 3; en.burstT = 0; return;
+            case 'auto': en.burstLeft = t.auto.rounds; en.burstT = 0; en.aim = a; return;
+            case 'minigun': en.spin = t.auto.spin; en.aim = a; return; // spins up first (the barrel glows)
             case 'snipe': enemyShot(ox, oy, en.aim, 9, dmg, { snipe: true }); playSound('snipe'); return;
             case 'bomb': bullets.push({ x: en.x + en.w / 2, y: en.y + en.h, vx: 0, vy: 1, owner: 'enemy', kind: 'bullet', dmg, life: 200, grav: true, big: true }); break;
         }
@@ -3467,7 +3477,19 @@
 
             switch (t.ai) {
                 case 'patrol':
-                    if (plat && !charging) patrol(en, plat);
+                    if (plat && !charging && en.burstLeft <= 0 && !(en.spin > 0)) patrol(en, plat);
+                    break;
+                case 'skirmish': // keeps to mid range: closes in from afar, backs off when you get too close
+                    if (plat && en.burstLeft <= 0) {
+                        if (en.aware) {
+                            const want = Math.abs(dx) > 140 ? Math.sign(dx) : Math.abs(dx) < 70 ? -Math.sign(dx) : 0;
+                            const nx = en.x + want * t.speed * 1.4 * en.spd, foot = want > 0 ? nx + en.w + 1 : nx - 1;
+                            if (want && foot >= plat.x && foot <= plat.x + plat.w && nx >= minArenaX() && nx + en.w <= stage.levelW) {
+                                en.x = nx;
+                                if (++en.anim > 6) { en.anim = 0; en.leg ^= 1; }
+                            }
+                        } else patrol(en, plat);
+                    }
                     break;
                 case 'charger':
                     if (en.chargeT > 0) {
@@ -3518,7 +3540,7 @@
                     break;
             }
             if (slow < 1) en.x = x0 + (en.x - x0) * slow;
-            if (!faceSet) en.facing = en.aware ? (Math.sign(dx) || 1) : (Math.sign(en.vx) || en.facing);
+            if (!faceSet && !(t.auto && en.burstLeft > 0)) en.facing = en.aware ? (Math.sign(dx) || 1) : (Math.sign(en.vx) || en.facing);
 
             // Firing
             if (en.aware && t.fire !== 'none' && en.tp === 0) {
@@ -3530,11 +3552,21 @@
                     enemyFire(en, pcx, pcy);
                 }
             }
-            if (en.burstLeft > 0 && --en.burstT <= 0) {
-                const ox = en.x + en.w / 2 + en.facing * 8, oy = en.y + Math.min(14, en.h / 2);
-                enemyShot(ox, oy, Math.atan2(pcy - oy, pcx - ox), 3.4, t.dmg * en.dmgMult);
-                playSound('enemyShot');
-                en.burstLeft--; en.burstT = 7;
+            if (en.spin > 0 && (en.spin -= slow) <= 0) { en.spin = 0; en.burstLeft = t.auto.rounds; en.burstT = 0; }
+            if (en.burstLeft > 0 && (en.burstT -= slow) <= 0) {
+                const ox = en.x + en.w / 2 + en.facing * 8, oy = en.y + Math.min(14, en.h / 2), target = Math.atan2(pcy - oy, pcx - ox);
+                if (t.auto) { // automatic fire: the aim swings toward you and every round strays a little
+                    const turn = Math.atan2(Math.sin(target - en.aim), Math.cos(target - en.aim));
+                    en.aim += clamp(turn, -t.auto.track, t.auto.track);
+                    en.facing = Math.cos(en.aim) >= 0 ? 1 : -1;
+                    enemyShot(ox, oy, en.aim + (Math.random() - 0.5) * t.auto.spread, t.auto.speed, t.dmg * en.dmgMult, { small: true });
+                    playSound(t.fire === 'minigun' ? 'smg' : 'enemyShot');
+                    en.burstLeft--; en.burstT = t.auto.gap;
+                } else {
+                    enemyShot(ox, oy, target, 3.4, t.dmg * en.dmgMult);
+                    playSound('enemyShot');
+                    en.burstLeft--; en.burstT = 7;
+                }
             }
             if (en.alpha > 0.5 && overlap(pb, en)) hurtPlayer(en.chargeT > 0 ? t.dmg * en.dmgMult : 10);
         }
@@ -4675,7 +4707,22 @@
                 const ch = (en.aware && en.fireTimer < 18) || en.windup > 0;
                 ctx.fillStyle = ch ? (frame % 4 < 2 ? '#ffffff' : '#f87171') : (t.ai === 'phantom' ? '#c084fc' : '#facc15');
                 ctx.fillRect(f > 0 ? x + en.w / 2 : x + 4, y + 4, en.w / 2 - 4, 3);
-                if (t.fire !== 'none') { ctx.fillStyle = '#475569'; ctx.fillRect(f > 0 ? x + en.w - 4 : x - 8, y + 14, 12, 4); }
+                if (t.auto) {
+                    const firing = en.burstLeft > 0 || en.spin > 0, mini = t.fire === 'minigun';
+                    const len = mini ? 20 : t.ai === 'skirmish' ? 10 : 16, th = mini ? 6 : 3;
+                    if (mini) { ctx.fillStyle = '#292524'; ctx.fillRect(f > 0 ? x - 4 : x + en.w - 4, y + 12, 8, 14); } // ammo drum on the back
+                    ctx.save(); ctx.translate(x + en.w / 2 + f * 4, y + Math.min(16, en.h / 2));
+                    ctx.rotate(firing && en.aim != null ? en.aim : (f > 0 ? 0 : Math.PI));
+                    ctx.fillStyle = '#334155'; ctx.fillRect(0, -th / 2, len, th);
+                    if (!mini) { ctx.fillStyle = '#1e293b'; ctx.fillRect(3, th / 2, 3, 3); } // magazine
+                    else {
+                        ctx.fillStyle = '#78716c';
+                        for (let i = 0; i < 3; i++) ctx.fillRect(4 + ((firing ? frame * 2 : 0) + i * 5) % 14, -th / 2, 2, th);
+                        if (en.spin > 0) { ctx.fillStyle = `rgba(251,146,60,${0.35 + 0.6 * (1 - en.spin / t.auto.spin)})`; ctx.fillRect(len - 5, -th / 2, 5, th); }
+                    }
+                    if (en.burstLeft > 0 && frame % 3 === 0) { ctx.fillStyle = '#fde047'; ctx.fillRect(len, -2.5, 4, 5); }
+                    ctx.restore();
+                } else if (t.fire !== 'none') { ctx.fillStyle = '#475569'; ctx.fillRect(f > 0 ? x + en.w - 4 : x - 8, y + 14, 12, 4); }
                 if (t.frontShield) {
                     const lowered = en.aware && en.fireTimer < 18;
                     ctx.fillStyle = lowered ? 'rgba(147,197,253,0.3)' : 'rgba(147,197,253,0.75)';
@@ -5175,7 +5222,7 @@
                     ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx * 2, b.y - b.vy * 2); ctx.stroke();
                     continue;
                 }
-                const r = b.big ? 4 : 3;
+                const r = b.big ? 4 : b.small ? 2 : 3;
                 const col = b.spore ? '#84cc16' : b.bolt ? '#93c5fd' : b.holy ? '#fde047' : b.ice ? '#67e8f9' : b.voidOrb ? '#c084fc' : b.grav ? '#fb923c' : b.big ? '#fb923c' : '#f87171';
                 ctx.globalAlpha = 0.35; ctx.fillStyle = col;
                 ctx.beginPath(); ctx.arc(b.x, b.y, r + 2, 0, Math.PI * 2); ctx.fill();
