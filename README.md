@@ -4,7 +4,7 @@
 
 A retro 2D run-and-gun platformer in a single HTML file. No build step: open `saturn_guardian.html` in a browser.
 
-**▶ Play in your browser:** https://allangsilva97.github.io/saturn-vanguard/ on a computer (keyboard and mouse) or a phone or tablet (touch). Pick an edition:
+**▶ Play in your browser:** https://allangsilva97.github.io/saturn-guardian/ on a computer (keyboard and mouse) or a phone or tablet (touch). Pick an edition:
 - **64-bit Classic:** chunky 480×270 pixel art with CRT scanlines
 - **128-bit Remastered:** 3× resolution, dynamic lighting, bloom, shadows, richer skies and more particles
 - **256-bit Ultra:** 1080p rendering with everything in 128-bit plus mirror reflections, volumetric fog, a wide second bloom pass and denser particles
@@ -13,7 +13,7 @@ All editions are the same game with the same saves; cycle between them with the 
 
 **📱 Phones and tablets:** open the site, turn the phone sideways and play with on-screen controls. Use **Add to Home screen** (Android Chrome or iPhone Safari) to install it as a full-screen app that also works offline. The 64-bit edition runs best on most phones.
 
-**⬇ Windows download:** [latest release](https://github.com/allangsilva97/saturn-vanguard/releases/latest)
+**⬇ Windows download:** [latest release](https://github.com/allangsilva97/saturn-guardian/releases/latest)
 
 ## Features
 - **Skill first:** headshots are critical hits (+75%, sniper +150%), boss cores are weak points, and a dash that avoids a hit is a Perfect Dodge (+25% damage for 3s, dash refunded). Gear stat bonuses are deliberately small
